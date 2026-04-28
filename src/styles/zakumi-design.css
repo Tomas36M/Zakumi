@@ -292,6 +292,7 @@
   .hero h1 {
     font-family: var(--font-playfair), 'Playfair Display', serif;
     font-weight: 400;
+    /* En escritorio --hero-size (p. ej. 8.5rem) viene de JS; en móvil se quita JS y manda el clamp */
     font-size: var(--hero-size, clamp(3rem, 9vw, 8.5rem));
     line-height: 0.95;
     letter-spacing: -0.02em;
@@ -795,12 +796,35 @@
   }
 
   @media (max-width: 720px) {
+    /* Hero móvil: sin --hero-size fijo + altura viewport estable (svh/dvh) + alineación arriba */
     .hero {
-      padding: 6.5rem 5vw 4rem;
-      min-height: min(100dvh, 100vh);
+      justify-content: flex-start;
+      padding-top: calc(env(safe-area-inset-top, 0px) + 5.75rem);
+      padding-right: 5vw;
+      padding-bottom: 3.25rem;
+      padding-left: 5vw;
+      min-height: 100vh;
+      min-height: 100svh;
+      min-height: 100dvh;
+      overflow-x: clip;
     }
-    .hero h1 { max-width: none; }
-    .hero-meta { gap: 2rem; }
+    .hero h1 {
+      max-width: none;
+      font-size: clamp(2.05rem, 5.85vw + 0.85rem, 3.35rem);
+      line-height: 1.03;
+      letter-spacing: -0.025em;
+      margin-bottom: 2rem;
+      text-wrap: balance;
+    }
+    .hero-tag {
+      margin-bottom: 1.85rem;
+      letter-spacing: 0.26em;
+      font-size: 0.6rem;
+    }
+    .hero-meta {
+      gap: 1.75rem 2.5rem;
+      margin-bottom: 2.5rem;
+    }
     section { padding-left: 5vw !important; padding-right: 5vw !important; }
     .stats-section { padding-top: 6rem !important; padding-bottom: 5rem !important; }
     .philosophy { padding-top: 6.5rem !important; padding-bottom: 6.5rem !important; }

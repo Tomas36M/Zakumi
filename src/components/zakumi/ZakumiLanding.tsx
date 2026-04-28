@@ -40,16 +40,33 @@ export function ZakumiLanding() {
   const rootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    document.documentElement.style.setProperty(
-      "--hero-size",
-      `${TWEAK_DEFAULTS.heroSize}rem`,
-    );
+    const applyHeroSize = () => {
+      const wide = window.matchMedia("(min-width: 721px)").matches;
+      if (wide) {
+        document.documentElement.style.setProperty(
+          "--hero-size",
+          `${TWEAK_DEFAULTS.heroSize}rem`,
+        );
+      } else {
+        document.documentElement.style.removeProperty("--hero-size");
+      }
+    };
+    applyHeroSize();
+    const mq = window.matchMedia("(min-width: 721px)");
+    const onBreakpoint = () => {
+      applyHeroSize();
+      requestAnimationFrame(() => ScrollTrigger.refresh());
+    };
+    mq.addEventListener("change", onBreakpoint);
+
     document.documentElement.style.setProperty("--orange", TWEAK_DEFAULTS.accent);
     const bg = document.getElementById("bg");
     if (bg) {
       bg.classList.toggle("bg-full", TWEAK_DEFAULTS.bgMode === "full");
       bg.classList.toggle("bg-mix", TWEAK_DEFAULTS.bgMode === "mix");
     }
+
+    return () => mq.removeEventListener("change", onBreakpoint);
   }, []);
 
   useEffect(() => {
