@@ -651,7 +651,7 @@ export function ZakumiLanding() {
             </div>
             <div className="meta-block">
               <div className="label">Sede</div>
-              <div className="val">CDMX · Remoto</div>
+              <div className="val">Colombia · Remoto</div>
             </div>
             <div className="meta-block">
               <div className="label">Estatus</div>
@@ -737,7 +737,7 @@ export function ZakumiLanding() {
                 </div>
                 <div className="service-meta-row">
                   <span className="k">Desde</span>
-                  <span className="v">$120k MXN</span>
+                  <span className="v">Desde $28M COP</span>
                 </div>
               </div>
             </div>
@@ -775,7 +775,7 @@ export function ZakumiLanding() {
                 </div>
                 <div className="service-meta-row">
                   <span className="k">Desde</span>
-                  <span className="v">$280k MXN</span>
+                  <span className="v">Desde $68M COP</span>
                 </div>
               </div>
             </div>
@@ -909,7 +909,7 @@ export function ZakumiLanding() {
         </section>
 
         <footer>
-          <div>© 2026 ZAKUMI Studio · CDMX</div>
+          <div>© 2026 ZAKUMI Studio · Colombia</div>
           <div>Diseño · Código · Marca</div>
           <div>v.02 — gsap</div>
         </footer>
