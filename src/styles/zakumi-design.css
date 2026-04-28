@@ -107,6 +107,11 @@
     background: rgba(10, 12, 18, 0.7);
     border-bottom: 1px solid rgba(118, 130, 142, 0.12);
   }
+  nav.nav-menu-open {
+    z-index: 120;
+    background: rgba(10, 12, 18, 0.92);
+    border-bottom-color: rgba(118, 130, 142, 0.15);
+  }
   .nav-logo {
     font-family: var(--font-playfair), 'Playfair Display', serif;
     font-size: 1.4rem;
@@ -141,6 +146,125 @@
   .nav-links a:hover { color: var(--paper); }
   .nav-links a:hover::after { transform: scaleX(1); }
   @media (max-width: 720px) { .nav-links { display: none; } }
+
+  /* ——— Nav móvil (complemento responsive) ——— */
+  .nav-toggle {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border: 1px solid rgba(118, 130, 142, 0.35);
+    background: rgba(10, 12, 18, 0.5);
+    color: var(--paper);
+    cursor: pointer;
+    transition: border-color 0.3s, background 0.3s;
+    z-index: 60;
+  }
+  .nav-toggle:hover { border-color: var(--orange); }
+  .nav-toggle:focus-visible {
+    outline: 2px solid var(--orange);
+    outline-offset: 3px;
+  }
+  .nav-toggle-bars {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 6px;
+    width: 20px;
+    pointer-events: none;
+  }
+  .nav-toggle-bars span {
+    display: block;
+    height: 2px;
+    width: 100%;
+    background: var(--paper);
+    transition: transform 0.35s ease, opacity 0.25s ease;
+  }
+  .nav-toggle.is-open .nav-toggle-bars span:nth-child(1) {
+    transform: translateY(8px) rotate(45deg);
+  }
+  .nav-toggle.is-open .nav-toggle-bars span:nth-child(2) { opacity: 0; }
+  .nav-toggle.is-open .nav-toggle-bars span:nth-child(3) {
+    transform: translateY(-8px) rotate(-45deg);
+  }
+  @media (max-width: 720px) {
+    .nav-toggle { display: flex; }
+  }
+
+  .nav-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 105;
+    pointer-events: none;
+    visibility: hidden;
+    opacity: 0;
+    transition: opacity 0.35s ease, visibility 0.35s ease;
+  }
+  .nav-overlay.is-open {
+    pointer-events: auto;
+    visibility: visible;
+    opacity: 1;
+  }
+  .nav-overlay-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(10, 12, 18, 0.88);
+    backdrop-filter: blur(8px);
+  }
+  .nav-overlay-panel {
+    position: absolute;
+    top: 0; right: 0;
+    width: min(100%, 340px);
+    height: 100%;
+    padding: 6rem 1.75rem 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    background: linear-gradient(160deg, rgba(10,12,18,0.98) 0%, var(--black) 100%);
+    border-left: 1px solid rgba(118, 130, 142, 0.2);
+    transform: translateX(100%);
+    transition: transform 0.45s cubic-bezier(0.7, 0, 0.3, 1);
+  }
+  .nav-overlay.is-open .nav-overlay-panel {
+    transform: translateX(0);
+  }
+  .nav-overlay-panel a {
+    font-size: 0.8rem;
+    letter-spacing: 0.35em;
+    text-transform: uppercase;
+    color: var(--slate);
+    text-decoration: none;
+    padding: 1rem 0;
+    border-bottom: 1px solid rgba(118, 130, 142, 0.15);
+    transition: color 0.25s, padding-left 0.25s;
+  }
+  .nav-overlay-panel a:hover,
+  .nav-overlay-panel a:focus-visible {
+    color: var(--paper);
+    padding-left: 0.5rem;
+  }
+  .nav-overlay-heading {
+    font-family: var(--font-playfair), 'Playfair Display', serif;
+    font-size: 0.75rem;
+    letter-spacing: 0.35em;
+    text-transform: uppercase;
+    color: var(--orange);
+    margin-bottom: 1.5rem;
+  }
+
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
 
   /* ——— Hero ——— */
   .hero {
@@ -662,4 +786,37 @@
     transform-origin: left;
     transform: scaleX(0);
   }
+
+  /* ——— Curtain + secciones: móvil / tablet ——— */
+  @media (max-width: 640px) {
+    .curtain-inner { flex-wrap: wrap; justify-content: center; gap: 1rem 1.5rem; font-size: 0.62rem; letter-spacing: 0.22em; padding: 0 1rem; text-align: center; }
+    .curtain-counter { font-size: clamp(2.75rem, 14vw, 5rem); right: 5vw; bottom: 1.75rem; }
+    .curtain-label { left: 5vw; bottom: 1.75rem; font-size: 0.55rem; letter-spacing: 0.28em; }
+  }
+
+  @media (max-width: 720px) {
+    .hero {
+      padding: 6.5rem 5vw 4rem;
+      min-height: min(100dvh, 100vh);
+    }
+    .hero h1 { max-width: none; }
+    .hero-meta { gap: 2rem; }
+    section { padding-left: 5vw !important; padding-right: 5vw !important; }
+    .stats-section { padding-top: 6rem !important; padding-bottom: 5rem !important; }
+    .philosophy { padding-top: 6.5rem !important; padding-bottom: 6.5rem !important; }
+    .outro { padding-top: 5rem !important; padding-bottom: 5rem !important; }
+    .philosophy .big { max-width: none; }
+    .marquee-item { font-size: clamp(1.1rem, 4vw, 1.6rem); gap: clamp(2rem, 6vw, 4rem); }
+    footer {
+      flex-direction: column;
+      align-items: flex-start;
+      text-align: left;
+      letter-spacing: 0.2em;
+    }
+    .service { min-height: 0; padding: 2.75rem 1.75rem 2rem !important; }
+    .service-arrow { top: 2.75rem !important; right: 1.75rem !important; }
+    .zakumi-servicios-section { padding-top: 4rem !important; padding-bottom: 0 !important; }
+  }
+
+  .zakumi-servicios-section { padding: 8rem 0 0; margin: 0; }
 

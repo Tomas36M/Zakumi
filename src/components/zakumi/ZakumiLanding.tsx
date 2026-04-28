@@ -25,7 +25,15 @@ const TWEAK_DEFAULTS: {
   accent: "#DB5227",
 };
 
+const NAV_ITEMS = [
+  { href: "#servicios", label: "Servicios" },
+  { href: "#datos", label: "Datos" },
+  { href: "#filosofia", label: "Filosofía" },
+  { href: "#contacto", label: "Contacto" },
+] as const;
+
 export function ZakumiLanding() {
+  const [menuOpen, setMenuOpen] = useState(false);
   const [activeService, setActiveService] = useState<number | null>(null);
   const dotRef = useRef<HTMLDivElement>(null);
   const ringRef = useRef<HTMLDivElement>(null);
@@ -43,6 +51,24 @@ export function ZakumiLanding() {
       bg.classList.toggle("bg-mix", TWEAK_DEFAULTS.bgMode === "mix");
     }
   }, []);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onResize = () => {
+      if (window.matchMedia("(min-width: 721px)").matches) setMenuOpen(false);
+    };
+    const onEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMenuOpen(false);
+    };
+    document.body.style.overflow = "hidden";
+    window.addEventListener("resize", onResize);
+    document.addEventListener("keydown", onEscape);
+    return () => {
+      document.body.style.overflow = "";
+      window.removeEventListener("resize", onResize);
+      document.removeEventListener("keydown", onEscape);
+    };
+  }, [menuOpen]);
 
   useLayoutEffect(() => {
     const ctx = gsap.context(() => {
@@ -538,7 +564,7 @@ export function ZakumiLanding() {
         <div className="cursor-ring" ref={ringRef} />
         <div className="cursor-dot" ref={dotRef} />
 
-        <nav>
+        <nav className={menuOpen ? "nav-menu-open" : undefined}>
           <div className="nav-logo">
             <span>
               ZAKUMI
@@ -546,12 +572,51 @@ export function ZakumiLanding() {
             </span>
           </div>
           <div className="nav-links">
-            <a href="#servicios">Servicios</a>
-            <a href="#datos">Datos</a>
-            <a href="#filosofia">Filosofía</a>
-            <a href="#contacto">Contacto</a>
+            {NAV_ITEMS.map(({ href, label }) => (
+              <a key={href} href={href}>
+                {label}
+              </a>
+            ))}
           </div>
+          <button
+            type="button"
+            className={`nav-toggle${menuOpen ? " is-open" : ""}`}
+            aria-expanded={menuOpen}
+            aria-controls="zakumi-mobile-nav"
+            onClick={() => setMenuOpen((o) => !o)}
+          >
+            <span className="sr-only">{menuOpen ? "Cerrar menú" : "Abrir menú"}</span>
+            <span className="nav-toggle-bars" aria-hidden>
+              <span />
+              <span />
+              <span />
+            </span>
+          </button>
         </nav>
+
+        <div
+          id="zakumi-mobile-nav"
+          className={`nav-overlay${menuOpen ? " is-open" : ""}`}
+          aria-hidden={!menuOpen}
+        >
+          <div
+            className="nav-overlay-backdrop"
+            onClick={() => setMenuOpen(false)}
+            aria-hidden
+          />
+          <div className="nav-overlay-panel">
+            <div className="nav-overlay-heading">Navegación</div>
+            {NAV_ITEMS.map(({ href, label }) => (
+              <a
+                key={`m-${href}`}
+                href={href}
+                onClick={() => setMenuOpen(false)}
+              >
+                {label}
+              </a>
+            ))}
+          </div>
+        </div>
 
         <section className="hero" id="hero">
           <div className="hero-tag">
@@ -611,7 +676,7 @@ export function ZakumiLanding() {
           </div>
         </div>
 
-        <section id="servicios" style={{ padding: "8rem 0 0" }}>
+        <section id="servicios" className="zakumi-servicios-section">
           <div style={{ padding: "0 4vw 4rem" }}>
             <div className="section-num">01 / Servicios</div>
             <h2 className="section-title">
