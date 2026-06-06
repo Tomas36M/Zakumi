@@ -6,6 +6,7 @@ import React, {
   useRef,
   useState,
 } from "react";
+import Image from "next/image";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import ScrollToPlugin from "gsap/ScrollToPlugin";
@@ -27,10 +28,28 @@ const TWEAK_DEFAULTS: {
 
 const NAV_ITEMS = [
   { href: "#servicios", label: "Servicios" },
-  { href: "#datos", label: "Datos" },
-  { href: "#filosofia", label: "Filosofía" },
+  { href: "#seleccion", label: "Selección" },
+  { href: "#datos", label: "Cómo trabajamos" },
   { href: "#contacto", label: "Contacto" },
 ] as const;
+
+const EMAIL = "zakumiestudio@gmail.com";
+const WHATSAPP_NUMBER = "573134276879";
+const WHATSAPP_MESSAGE =
+  "Hola Zakumi, vi su sitio y quiero hablar sobre un proyecto.";
+const WHATSAPP_URL = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(
+  WHATSAPP_MESSAGE,
+)}`;
+
+/** Imágenes del carrusel del hero. Para añadir más, sube el .webp a
+ *  /public/work y agrega su ruta aquí. */
+const HERO_IMAGES = [
+  "/work/zk-hero-foto.webp",
+  "/work/zk-hero-2.webp",
+  "/work/zk-hero-3.webp",
+  "/work/zk-hero-4.webp",
+];
+const HERO_INTERVAL = 5000;
 
 export function ZakumiLanding() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -342,6 +361,21 @@ export function ZakumiLanding() {
         });
       });
 
+      gsap.utils.toArray(".show-tile").forEach((tile, i) => {
+        gsap.from(tile as gsap.DOMTarget, {
+          y: 60,
+          opacity: 0,
+          duration: 1,
+          delay: (i % 2) * 0.1 + Math.floor(i / 2) * 0.08,
+          ease: "expo.out",
+          scrollTrigger: {
+            trigger: ".showcase-grid",
+            start: "top 82%",
+            once: true,
+          },
+        });
+      });
+
       gsap.utils.toArray(".stat").forEach((stat) => {
         const statEl = stat as HTMLElement;
         const numEl = statEl.querySelector(".num") as HTMLElement | null;
@@ -524,6 +558,74 @@ export function ZakumiLanding() {
     };
   }, []);
 
+  useEffect(() => {
+    const slides = gsap.utils.toArray(".hero-slide") as HTMLElement[];
+    if (slides.length === 0) return;
+    const dots = gsap.utils.toArray(".hero-dot") as HTMLElement[];
+
+    const zoom = (el: HTMLElement, secs: number, loop = false) => {
+      const img = el.querySelector("img");
+      if (!img) return;
+      gsap.killTweensOf(img);
+      if (loop) {
+        gsap.fromTo(
+          img,
+          { scale: 1.0 },
+          { scale: 1.12, duration: secs, ease: "sine.inOut", yoyo: true, repeat: -1 },
+        );
+      } else {
+        gsap.fromTo(img, { scale: 1.0 }, { scale: 1.12, duration: secs, ease: "none" });
+      }
+    };
+
+    slides.forEach((s, i) => gsap.set(s, { opacity: i === 0 ? 1 : 0 }));
+
+    // Una sola imagen: zoom lento continuo (movimiento sutil)
+    if (slides.length < 2) {
+      zoom(slides[0], 14, true);
+      return;
+    }
+
+    let current = 0;
+    zoom(slides[0], HERO_INTERVAL / 1000 + 1.5);
+
+    const go = (next: number) => {
+      if (next === current) return;
+      gsap.to(slides[current], { opacity: 0, duration: 1.2, ease: "power2.inOut" });
+      gsap.to(slides[next], { opacity: 1, duration: 1.2, ease: "power2.inOut" });
+      zoom(slides[next], HERO_INTERVAL / 1000 + 1.5);
+      dots[current]?.classList.remove("is-active");
+      dots[next]?.classList.add("is-active");
+      current = next;
+    };
+
+    let timer = window.setInterval(
+      () => go((current + 1) % slides.length),
+      HERO_INTERVAL,
+    );
+    const restart = () => {
+      window.clearInterval(timer);
+      timer = window.setInterval(
+        () => go((current + 1) % slides.length),
+        HERO_INTERVAL,
+      );
+    };
+
+    const handlers = dots.map((d, i) => {
+      const h = () => {
+        go(i);
+        restart();
+      };
+      d.addEventListener("click", h);
+      return h;
+    });
+
+    return () => {
+      window.clearInterval(timer);
+      dots.forEach((d, i) => d.removeEventListener("click", handlers[i]));
+    };
+  }, []);
+
   const renderHeadline = () => {
     const words = TWEAK_DEFAULTS.headline.split(" ");
     return words.map((w, i) => {
@@ -636,6 +738,42 @@ export function ZakumiLanding() {
         </div>
 
         <section className="hero" id="hero">
+          <figure className="hero-visual" aria-hidden>
+            <div className="hero-carousel">
+              {HERO_IMAGES.map((src, i) => (
+                <div
+                  className={`hero-slide${i === 0 ? " is-active" : ""}`}
+                  data-slide={i}
+                  key={src}
+                >
+                  <Image
+                    src={src}
+                    alt=""
+                    fill
+                    priority={i === 0}
+                    sizes="(max-width: 1100px) 100vw, 40vw"
+                    style={{ objectFit: "cover" }}
+                  />
+                </div>
+              ))}
+            </div>
+            <span className="hero-visual-frame" />
+          </figure>
+
+          {HERO_IMAGES.length > 1 && (
+            <div className="hero-dots" role="tablist" aria-label="Galería del estudio">
+              {HERO_IMAGES.map((src, i) => (
+                <button
+                  type="button"
+                  key={`dot-${src}`}
+                  className={`hero-dot${i === 0 ? " is-active" : ""}`}
+                  data-dot={i}
+                  aria-label={`Ver imagen ${i + 1}`}
+                />
+              ))}
+            </div>
+          )}
+
           <div className="hero-tag">
             <span className="line" />
             <span className="dot" />
@@ -644,6 +782,31 @@ export function ZakumiLanding() {
 
           <h1 key={TWEAK_DEFAULTS.headline}>{renderHeadline()}</h1>
 
+          <div className="hero-strip" aria-hidden>
+            <div className="hero-strip-track">
+              <div className="strip-card strip-card-brand">
+                <span className="strip-card-logo">
+                  ZAKUMI<span className="dot">.</span>
+                </span>
+                <span className="strip-card-sub">Manual · Logo · Papelería</span>
+              </div>
+              <div className="strip-card strip-card-ui">
+                <div className="strip-bars">
+                  <span style={{ height: "55%" }} />
+                  <span style={{ height: "80%" }} />
+                  <span style={{ height: "45%" }} />
+                  <span style={{ height: "100%" }} />
+                </div>
+                <span className="strip-card-sub">Dashboard · MVP · App</span>
+              </div>
+              <div className="strip-card strip-card-web">
+                <span className="strip-url">tumarca.com</span>
+                <span className="strip-cta">Cotizar →</span>
+                <span className="strip-card-sub">Landing · E-commerce</span>
+              </div>
+            </div>
+          </div>
+
           <div className="hero-meta">
             <div className="meta-block">
               <div className="label">Disciplinas</div>
@@ -651,16 +814,16 @@ export function ZakumiLanding() {
             </div>
             <div className="meta-block">
               <div className="label">Sede</div>
-              <div className="val">Colombia · Remoto</div>
+              <div className="val">Colombia · Toda LatAm en remoto</div>
             </div>
             <div className="meta-block">
               <div className="label">Estatus</div>
-              <div className="val">Aceptando 2 proyectos · Q3</div>
+              <div className="val">Agenda abierta 2026 · Cupos limitados</div>
             </div>
           </div>
 
           <a href="#contacto" className="cta">
-            <span>Impulsa tu visión</span>
+            <span>Hablemos de tu proyecto</span>
             <span className="arrow">→</span>
           </a>
 
@@ -694,13 +857,41 @@ export function ZakumiLanding() {
         </div>
 
         <section id="servicios" className="zakumi-servicios-section">
-          <div style={{ padding: "0 4vw 4rem" }}>
-            <div className="section-num">01 / Servicios</div>
-            <h2 className="section-title">
-              Dos caminos.
-              <br />
-              <em>Un estudio.</em>
-            </h2>
+          <div className="servicios-head">
+            <div className="servicios-head-text">
+              <div className="section-num">01 / Servicios</div>
+              <h2 className="section-title">
+                Dos caminos.
+                <br />
+                <em>Un estudio.</em>
+              </h2>
+              <p className="servicios-lead">
+                No hacemos de todo. Hacemos dos cosas — y las hacemos bien:{" "}
+                <em>marcas que se recuerdan</em> y <em>software que funciona</em>.
+                Bajo el mismo techo, el mismo equipo, sin traspasos perdidos
+                entre el diseño y el código.
+              </p>
+              <ul className="servicios-tags">
+                <li>Identidad</li>
+                <li>Estrategia</li>
+                <li>Diseño de producto</li>
+                <li>Frontend</li>
+                <li>Backend</li>
+                <li>Sin handoffs</li>
+              </ul>
+            </div>
+            <figure className="servicios-visual">
+              <div className="servicios-visual-frame">
+                <Image
+                  src="/work/zk-servicios.webp"
+                  alt="Marca y software en un mismo escritorio: identidad impresa junto a una laptop con código"
+                  fill
+                  sizes="(max-width: 900px) 100vw, 46vw"
+                  style={{ objectFit: "cover" }}
+                />
+              </div>
+              <figcaption>Marca a un lado. Software al otro. El mismo equipo.</figcaption>
+            </figure>
           </div>
 
           <div className="services">
@@ -728,16 +919,12 @@ export function ZakumiLanding() {
                   <span className="v">Sistema · Manual · Activos</span>
                 </div>
                 <div className="service-meta-row">
-                  <span className="k">Plazo</span>
-                  <span className="v">4 — 8 semanas</span>
-                </div>
-                <div className="service-meta-row">
                   <span className="k">Equipo</span>
-                  <span className="v">2 diseñadores · 1 director</span>
+                  <span className="v">Diseño + dirección dedicada</span>
                 </div>
                 <div className="service-meta-row">
-                  <span className="k">Desde</span>
-                  <span className="v">Desde $28M COP</span>
+                  <span className="k">Inversión</span>
+                  <span className="v">A medida · Propuesta sin compromiso</span>
                 </div>
               </div>
             </div>
@@ -766,99 +953,146 @@ export function ZakumiLanding() {
                   <span className="v">React · TypeScript · Postgres</span>
                 </div>
                 <div className="service-meta-row">
-                  <span className="k">Plazo</span>
-                  <span className="v">8 — 24 semanas</span>
-                </div>
-                <div className="service-meta-row">
                   <span className="k">Equipo</span>
-                  <span className="v">3 ingenieros · 1 PM</span>
+                  <span className="v">Diseño y código, mismo techo</span>
                 </div>
                 <div className="service-meta-row">
-                  <span className="k">Desde</span>
-                  <span className="v">Desde $68M COP</span>
+                  <span className="k">Inversión</span>
+                  <span className="v">A medida · Propuesta sin compromiso</span>
                 </div>
               </div>
             </div>
           </div>
         </section>
 
-        <section className="stats-section" id="datos">
-          <div className="section-num">02 / Datos</div>
-          <div className="stats-intro">
-            <h2 className="section-title" style={{ margin: 0, maxWidth: "none" }}>
-              Sin relleno.
-              <br />
-              <em>Solo señal.</em>
-            </h2>
-            <p className="lead">
-              Nuestro trabajo se mide en <em>velocidad</em>, <em>fidelidad</em> y <em>retención</em>. Lo demás es
-              ruido.
-            </p>
-          </div>
+        <section className="showcase" id="seleccion">
+          <div className="section-num">02 / Selección</div>
+          <h2 className="section-title">
+            Marca y producto,
+            <br />
+            <em>con intención.</em>
+          </h2>
 
-          <div className="stats-grid">
-            <div className="stat">
-              <div className="num" data-num="14">
-                <span data-target="14">0</span>
-                <span className="acc">.</span>
+          <div className="showcase-grid">
+            <figure className="show-tile tile-brand">
+              <div className="show-mock">
+                <Image
+                  src="/work/zk-brand-foto2.webp"
+                  alt="Sistema de identidad de marca Zakumi: papelería, tarjeta y paleta"
+                  fill
+                  className="show-img"
+                  sizes="(max-width: 720px) 100vw, 50vw"
+                />
               </div>
-              <div className="stat-label">Marcas lanzadas · 2026</div>
-              <div className="stat-desc">Nueve startups, tres consumer, dos fintech.</div>
+              <figcaption>
+                <span className="show-tag">Identidad</span>
+                <span className="show-title">Sistemas de marca</span>
+              </figcaption>
+            </figure>
+
+            <figure className="show-tile tile-soft">
+              <div className="show-mock">
+                <Image
+                  src="/work/zk-software-foto.webp"
+                  alt="Dashboard de producto Zakumi con métricas de ingresos y conversión"
+                  fill
+                  className="show-img"
+                  sizes="(max-width: 720px) 100vw, 50vw"
+                />
+              </div>
+              <figcaption>
+                <span className="show-tag">Producto</span>
+                <span className="show-title">Interfaces que venden</span>
+              </figcaption>
+            </figure>
+
+            <figure className="show-tile tile-form">
+              <div className="show-mock">
+                <Image
+                  src="/work/zk-form-foto.webp"
+                  alt="Landing page de alta conversión diseñada por Zakumi"
+                  fill
+                  className="show-img"
+                  sizes="(max-width: 720px) 100vw, 25vw"
+                />
+              </div>
+              <figcaption>
+                <span className="show-tag">Web</span>
+                <span className="show-title">Landings que convierten</span>
+              </figcaption>
+            </figure>
+
+            <figure className="show-tile tile-ink">
+              <div className="show-mock">
+                <Image
+                  src="/work/zk-ink-foto.webp"
+                  alt="Código de producción en Next.js y TypeScript por Zakumi"
+                  fill
+                  className="show-img"
+                  sizes="(max-width: 720px) 100vw, 25vw"
+                />
+              </div>
+              <figcaption>
+                <span className="show-tag">Código</span>
+                <span className="show-title">Listo para producción</span>
+              </figcaption>
+            </figure>
+          </div>
+        </section>
+
+        <section className="stats-section" id="datos">
+          <div className="stats-inner">
+            <div className="section-num">03 / Cómo trabajamos</div>
+            <div className="stats-intro">
+              <h2 className="section-title">
+                Sin letra chica.
+                <br />
+                <em>Solo compromisos.</em>
+              </h2>
+              <p className="lead">
+                Somos un estudio joven, y eso es una ventaja: trabajamos con{" "}
+                <em>obsesión</em>, sin <em>plantillas</em> y cuidamos cada
+                proyecto como si fuera el nuestro.
+              </p>
             </div>
+
+            <div className="stats-grid">
             <div className="stat">
-              <div className="num" data-num="0.92">
-                <em>
-                  <span data-target="0.92">0.00</span>
-                </em>
+              <div className="num" data-num="2">
+                <span data-target="2">0</span>
               </div>
-              <div className="stat-label">Lighthouse · Performance</div>
-              <div className="stat-desc">Score promedio en producción.</div>
-            </div>
-            <div className="stat">
-              <div className="num" data-num="38">
-                +<span data-target="38">0</span>
-                <span className="acc">%</span>
+              <div className="stat-label">Disciplinas, un equipo</div>
+              <div className="stat-desc">
+                Marca y software bajo un mismo techo. Sin intermediarios entre
+                quien diseña y quien programa.
               </div>
-              <div className="stat-label">Conversión · post-rebrand</div>
-              <div className="stat-desc">Mediana en clientes con seguimiento de 6 meses.</div>
-            </div>
-            <div className="stat">
-              <div className="num" data-num="6">
-                <span data-target="6">0</span>
-                <span className="acc">w</span>
-              </div>
-              <div className="stat-label">Time to ship · MVP</div>
-              <div className="stat-desc">Desde kickoff hasta producción.</div>
             </div>
             <div className="stat">
               <div className="num" data-num="100">
                 <span data-target="100">0</span>
                 <span className="acc">%</span>
               </div>
-              <div className="stat-label">Renovación de retainer</div>
-              <div className="stat-desc">Clientes que continúan al año.</div>
+              <div className="stat-label">Hecho por nosotros</div>
+              <div className="stat-desc">
+                Diseño y código propios, de principio a fin. Nada tercerizado.
+              </div>
             </div>
             <div className="stat">
-              <div className="num" data-num="3">
-                <em>
-                  <span data-target="3">0</span>
-                </em>
+              <div className="num">0</div>
+              <div className="stat-label">Plantillas</div>
+              <div className="stat-desc">
+                Cada proyecto se construye a la medida, desde cero. Nunca un
+                molde reutilizado.
               </div>
-              <div className="stat-label">Personas · proyecto</div>
-              <div className="stat-desc">Equipos pequeños, decisiones rápidas.</div>
-            </div>
-            <div className="stat">
-              <div className="num" data-num="2">
-                <span data-target="2">0</span>
-                <span className="acc">/yr</span>
-              </div>
-              <div className="stat-label">Cupos abiertos</div>
-              <div className="stat-desc">Trabajamos pocos proyectos a la vez. A propósito.</div>
             </div>
             <div className="stat">
               <div className="num">∞</div>
-              <div className="stat-label">Iteraciones incluidas</div>
-              <div className="stat-desc">Hasta que el detalle suene exacto.</div>
+              <div className="stat-label">Iteraciones</div>
+              <div className="stat-desc">
+                Ajustamos las veces que haga falta, hasta que cada detalle quede
+                exacto.
+              </div>
+            </div>
             </div>
           </div>
         </section>
@@ -894,17 +1128,39 @@ export function ZakumiLanding() {
           <h2>
             ¿Tienes una visión?
             <br />
-            <em>Empecemos.</em>
+            <em>Empecemos hoy.</em>
           </h2>
           <div className="right">
             <p>
-              Aceptamos un nuevo proyecto cada seis semanas. Si lo tuyo encaja con lo que hacemos — y nosotros
-              con lo tuyo — agendemos una llamada de 30 minutos.
+              Estamos recibiendo nuevos proyectos. Cuéntanos qué quieres construir
+              y empecemos la conversación — sin formularios eternos. La primera
+              llamada es gratis y sin compromiso.
             </p>
-            <a href="mailto:hola@zakumi.studio" className="cta" style={{ opacity: 1 }}>
-              <span>hola@zakumi.studio</span>
-              <span className="arrow">→</span>
-            </a>
+            <div className="contact-actions">
+              <a
+                href={WHATSAPP_URL}
+                className="cta"
+                style={{ opacity: 1 }}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <span className="wa-icon" aria-hidden>
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                    <path d="M17.5 14.4c-.3-.2-1.8-.9-2-1-.3-.1-.5-.2-.7.1-.2.3-.7 1-.9 1.2-.2.2-.3.2-.6.1-.3-.2-1.3-.5-2.4-1.5-.9-.8-1.5-1.8-1.7-2.1-.2-.3 0-.5.1-.6.1-.1.3-.4.4-.5.1-.2.2-.3.3-.5.1-.2 0-.4 0-.5-.1-.2-.7-1.6-.9-2.2-.2-.6-.5-.5-.7-.5h-.6c-.2 0-.5.1-.8.4-.3.3-1 1-1 2.5s1.1 2.9 1.2 3.1c.2.2 2.1 3.2 5 4.5.7.3 1.3.5 1.7.6.7.2 1.3.2 1.8.1.6-.1 1.8-.7 2-1.4.3-.7.3-1.3.2-1.4-.1-.1-.3-.2-.6-.4zM12 2a10 10 0 0 0-8.6 15l-1.3 4.8 4.9-1.3A10 10 0 1 0 12 2zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2z" />
+                  </svg>
+                </span>
+                <span>Escríbenos por WhatsApp</span>
+                <span className="arrow">→</span>
+              </a>
+              <a
+                href={`mailto:${EMAIL}`}
+                className="cta cta-ghost"
+                style={{ opacity: 1 }}
+              >
+                <span>{EMAIL}</span>
+                <span className="arrow">→</span>
+              </a>
+            </div>
           </div>
         </section>
 

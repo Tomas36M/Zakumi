@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter, Playfair_Display } from "next/font/google";
 import { JsonLd } from "@/components/site/JsonLd";
 import "./globals.css";
@@ -22,32 +22,75 @@ const playfair = Playfair_Display({
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
-  title: "ZAKUMI — Estudio de marca & software",
+  title: {
+    default: "ZAKUMI — Estudio de marca & software en Colombia",
+    template: "%s · ZAKUMI",
+  },
   description:
-    "Creamos marcas. Desarrollamos el futuro. Identidad, software a medida y producto digital con sede en Colombia.",
+    "Estudio de marca y software a medida desde Colombia. Creamos identidad visual y producto digital end-to-end: diseño y código bajo el mismo techo. Recibiendo nuevos proyectos.",
+  applicationName: "ZAKUMI",
+  authors: [{ name: "ZAKUMI Studio" }],
+  creator: "ZAKUMI Studio",
+  publisher: "ZAKUMI Studio",
+  category: "technology",
   keywords: [
     "estudio de marca Colombia",
-    "diseño identidad visual",
-    "software a medida Colombia",
+    "agencia de branding Colombia",
+    "diseño de identidad visual",
+    "desarrollo de software a medida Colombia",
+    "diseño web Colombia",
     "producto digital",
-    "branding",
+    "desarrollo de aplicaciones",
+    "branding y diseño",
   ],
+  alternates: { canonical: "/" },
+  formatDetection: { email: false, address: false, telephone: false },
   openGraph: {
-    title: "ZAKUMI — Estudio de marca & software",
+    title: "ZAKUMI — Marca & software a medida desde Colombia",
     description:
-      "Estudio boutique de marca y software en Colombia. Sistemas visuales precisos y producto digital end-to-end.",
+      "Identidad de marca y producto digital end-to-end. Diseño y código en un mismo estudio. Recibiendo nuevos proyectos.",
     locale: "es_CO",
     type: "website",
     url: siteUrl,
     siteName: "ZAKUMI",
+    images: [
+      {
+        url: "/og.jpg",
+        width: 1200,
+        height: 630,
+        alt: "ZAKUMI — Creamos marcas. Desarrollamos el futuro.",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "ZAKUMI — Estudio de marca & software",
+    title: "ZAKUMI — Marca & software a medida desde Colombia",
     description:
-      "Marca y software boutique desde Colombia. Identidad, producto digital y desarrollo en un mismo estudio.",
+      "Diseño y código en un mismo estudio. Identidad de marca y producto digital end-to-end.",
+    images: ["/og.jpg"],
   },
-  robots: { index: true, follow: true },
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/icon.svg", type: "image/svg+xml" },
+    ],
+    apple: [{ url: "/apple-icon.png", sizes: "180x180" }],
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#0A0C12",
+  colorScheme: "dark",
 };
 
 export default function RootLayout({
