@@ -1067,6 +1067,20 @@
     /* En escritorio la foto es franja derecha: los puntos van sobre ella */
     .hero-dots { left: auto; right: 2rem; transform: none; }
   }
+  @media (max-width: 720px) {
+    /* Móvil: los puntos van en flujo al final del hero, no flotando sobre el CTA */
+    .hero-dots {
+      position: static;
+      order: 1;
+      inset: auto;
+      left: auto;
+      right: auto;
+      bottom: auto;
+      transform: none;
+      margin-top: 1.75rem;
+      justify-content: flex-start;
+    }
+  }
   /* Escritorio ancho: la foto vuelve a ser franja lateral derecha */
   @media (min-width: 1100px) {
     .hero-visual { left: auto; right: 0; width: clamp(420px, 38vw, 640px); }
