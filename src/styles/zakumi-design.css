@@ -336,6 +336,14 @@
     color: var(--paper);
   }
 
+  .hero-sub {
+    font-size: clamp(0.9rem, 1.1vw, 1.05rem);
+    line-height: 1.6;
+    color: var(--slate);
+    max-width: 52ch;
+    margin-bottom: 2rem;
+  }
+
   .cta {
     display: inline-flex;
     align-items: center;
@@ -1535,5 +1543,21 @@
     .show-tile,
     .tile-form,
     .tile-ink { aspect-ratio: 4 / 3; }
+  }
+
+  /* ——— Hero: burbuja de chat animada ——— */
+  .hero-chat-bubble {
+    position: absolute; left: 8%; bottom: 12%;
+    background: rgba(20,22,25,.92); border: 1px solid rgba(255,107,53,.4);
+    border-radius: 14px 14px 14px 4px; padding: 10px 14px; max-width: 240px;
+    font-size: .85rem; color: #f4f1ea; backdrop-filter: blur(6px);
+    z-index: 2;
+  }
+  .hero-chat-typing { display: inline-flex; gap: 4px; }
+  .hero-chat-typing i { width: 6px; height: 6px; border-radius: 50%; background: var(--orange); opacity: .5; }
+  .hero-chat-text { display: none; }
+  @media (prefers-reduced-motion: reduce) {
+    .hero-chat-typing { display: none; }
+    .hero-chat-text { display: inline; }
   }
 

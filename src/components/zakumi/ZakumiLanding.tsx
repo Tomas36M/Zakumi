@@ -487,6 +487,20 @@ export function ZakumiLanding() {
         });
       });
 
+      // ——— Burbuja de chat: animación de escritura ———
+      const bubble = document.querySelector(".hero-chat-bubble");
+      const mm = gsap.matchMedia();
+      mm.add("(prefers-reduced-motion: no-preference)", () => {
+        const typing = bubble?.querySelector(".hero-chat-typing");
+        const text = bubble?.querySelector(".hero-chat-text") as HTMLElement | null;
+        if (!typing || !text) return;
+        const tl = gsap.timeline({ delay: 1.6 });
+        tl.to(typing, { duration: 1.1 })          // "escribe"
+          .set(typing, { display: "none" })
+          .set(text, { display: "inline" })
+          .from(text, { autoAlpha: 0, y: 6, duration: 0.4 });
+      });
+
       ScrollTrigger.refresh();
     });
 
@@ -615,32 +629,6 @@ export function ZakumiLanding() {
     };
   }, []);
 
-  const renderHeadline = () => {
-    const words = TWEAK_DEFAULTS.headline.split(" ");
-    return words.map((w, i) => {
-      const isItalic = i >= words.length - 2;
-      return (
-        <span
-          className="line-mask"
-          key={i}
-          style={{ display: "inline-block", verticalAlign: "top" }}
-        >
-          <span
-            className="word"
-            style={
-              isItalic
-                ? { fontStyle: "italic", color: "var(--orange)" }
-                : undefined
-            }
-          >
-            {w}
-            {i < words.length - 1 ? "\u00A0" : ""}
-          </span>
-        </span>
-      );
-    });
-  };
-
   const philosophyLine1 = "Diseñamos como si el código importara.".split(" ");
   const philosophyLine2 = ["Programamos", "como", "si", "el"];
   const philosophyEm = ["diseño"];
@@ -726,10 +714,7 @@ export function ZakumiLanding() {
           </div>
         </div>
 
-        <Hero
-          renderHeadline={renderHeadline}
-          headlineKey={TWEAK_DEFAULTS.headline}
-        />
+        <Hero />
 
         <div className="marquee">
           <div className="marquee-track">

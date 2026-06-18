@@ -1,12 +1,12 @@
 import Image from "next/image";
-import { HERO_IMAGES } from "../content";
+import { HERO, HERO_IMAGES } from "../content";
+import {
+  WHATSAPP_URL,
+  TELEGRAM_ENABLED,
+  TELEGRAM_URL,
+} from "../contact";
 
-interface HeroProps {
-  renderHeadline: () => React.ReactNode;
-  headlineKey: string;
-}
-
-export function Hero({ renderHeadline, headlineKey }: HeroProps) {
+export function Hero() {
   return (
     <section className="hero" id="hero">
       <figure className="hero-visual" aria-hidden>
@@ -29,6 +29,12 @@ export function Hero({ renderHeadline, headlineKey }: HeroProps) {
           ))}
         </div>
         <span className="hero-visual-frame" />
+
+        {/* Burbuja de chat animada */}
+        <div className="hero-chat-bubble" aria-hidden>
+          <span className="hero-chat-typing"><i></i><i></i><i></i></span>
+          <span className="hero-chat-text">¿Hacen tiendas con pago en línea?</span>
+        </div>
       </figure>
 
       {HERO_IMAGES.length > 1 && (
@@ -48,10 +54,25 @@ export function Hero({ renderHeadline, headlineKey }: HeroProps) {
       <div className="hero-tag">
         <span className="line" />
         <span className="dot" />
-        <span>Estudio · Marca &amp; Software · 2026</span>
+        <span>{HERO.tag}</span>
       </div>
 
-      <h1 key={headlineKey}>{renderHeadline()}</h1>
+      <h1>
+        <span
+          className="line-mask"
+          style={{ display: "block" }}
+        >
+          <span className="word">{HERO.titulo1}</span>
+        </span>
+        <span
+          className="line-mask"
+          style={{ display: "block" }}
+        >
+          <em className="word" style={{ fontStyle: "italic", color: "var(--orange)" }}>
+            {HERO.tituloEm}
+          </em>
+        </span>
+      </h1>
 
       <div className="hero-strip" aria-hidden>
         <div className="hero-strip-track">
@@ -93,10 +114,33 @@ export function Hero({ renderHeadline, headlineKey }: HeroProps) {
         </div>
       </div>
 
-      <a href="#contacto" className="cta">
-        <span>Hablemos de tu proyecto</span>
+      <p className="hero-sub">{HERO.sub}</p>
+
+      {/* CTA primario: WhatsApp */}
+      <a
+        href={WHATSAPP_URL}
+        className="cta"
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="Habla con nuestro agente de IA por WhatsApp"
+      >
+        <span>{HERO.ctaPrimario}</span>
         <span className="arrow">→</span>
       </a>
+
+      {/* CTA secundario: Telegram (solo cuando esté habilitado) */}
+      {TELEGRAM_ENABLED && (
+        <a
+          href={TELEGRAM_URL}
+          className="cta cta-ghost"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="Escríbenos por Telegram"
+        >
+          <span>{HERO.ctaSecundario}</span>
+          <span className="arrow">→</span>
+        </a>
+      )}
 
       <div className="hero-deco">EST. 2026 — ZKM ·</div>
 
