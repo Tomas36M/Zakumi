@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { PILARES } from "../content";
 
 interface ServiciosProps {
   activeService: number | null;
@@ -13,22 +14,21 @@ export function Servicios({ activeService, onMouseEnter, onMouseLeave }: Servici
         <div className="servicios-head-text">
           <div className="section-num">01 / Servicios</div>
           <h2 className="section-title">
-            Dos caminos.
+            Tres pilares.
             <br />
             <em>Un estudio.</em>
           </h2>
           <p className="servicios-lead">
-            No hacemos de todo. Hacemos dos cosas — y las hacemos bien:{" "}
-            <em>marcas que se recuerdan</em> y <em>software que funciona</em>.
-            Bajo el mismo techo, el mismo equipo, sin traspasos perdidos
-            entre el diseño y el código.
+            IA & Automatización · Software & Plataformas · Marca & Contenido.{" "}
+            Tres disciplinas bajo el mismo techo, el mismo equipo,{" "}
+            <em>sin traspasos perdidos</em> entre lo que piensas, lo que ves y lo que funciona.
           </p>
           <ul className="servicios-tags">
-            <li>Identidad</li>
-            <li>Estrategia</li>
-            <li>Diseño de producto</li>
-            <li>Frontend</li>
-            <li>Backend</li>
+            <li>Agentes de IA</li>
+            <li>Software a medida</li>
+            <li>Identidad visual</li>
+            <li>Automatización</li>
+            <li>Contenido</li>
             <li>Sin handoffs</li>
           </ul>
         </div>
@@ -36,84 +36,39 @@ export function Servicios({ activeService, onMouseEnter, onMouseLeave }: Servici
           <div className="servicios-visual-frame">
             <Image
               src="/work/zk-servicios.webp"
-              alt="Marca y software en un mismo escritorio: identidad impresa junto a una laptop con código"
+              alt="IA, software y marca en un mismo escritorio: tecnología e identidad construidas por el mismo equipo"
               fill
               sizes="(max-width: 900px) 100vw, 46vw"
               style={{ objectFit: "cover" }}
             />
           </div>
-          <figcaption>Marca a un lado. Software al otro. El mismo equipo.</figcaption>
+          <figcaption>IA a un lado. Marca al otro. El mismo equipo.</figcaption>
         </figure>
       </div>
 
       <div className="services">
-        <div
-          className={`service${activeService === 0 ? " active" : ""}`}
-          onMouseEnter={() => onMouseEnter(0)}
-          onMouseLeave={onMouseLeave}
-        >
-          <div className="service-arrow">↗</div>
-          <div>
-            <div className="service-num">— I.</div>
-            <h3>
-              Identidad
-              <br />
-              <em>de marca.</em>
-            </h3>
-            <p>
-              Construimos marcas que se reconocen en una sola línea. Sistemas visuales precisos:
-              tipografía, color, voz, aplicación. Lo justo. Nada más.
-            </p>
-          </div>
-          <div className="service-meta">
-            <div className="service-meta-row">
-              <span className="k">Entregables</span>
-              <span className="v">Sistema · Manual · Activos</span>
+        {PILARES.map((p, i) => (
+          <div
+            key={p.titulo}
+            className={`service${activeService === i ? " active" : ""}`}
+            onMouseEnter={() => onMouseEnter(i)}
+            onMouseLeave={onMouseLeave}
+          >
+            <div className="service-arrow">↗</div>
+            <div>
+              <div className="service-num">{p.num}</div>
+              <h3>{p.titulo}</h3>
+              <p>{p.desc}</p>
             </div>
-            <div className="service-meta-row">
-              <span className="k">Equipo</span>
-              <span className="v">Diseño + dirección dedicada</span>
-            </div>
-            <div className="service-meta-row">
-              <span className="k">Inversión</span>
-              <span className="v">A medida · Propuesta sin compromiso</span>
+            <div className="service-meta">
+              {p.tags.map((t) => (
+                <div className="service-meta-row" key={t}>
+                  {t}
+                </div>
+              ))}
             </div>
           </div>
-        </div>
-
-        <div
-          className={`service${activeService === 1 ? " active" : ""}`}
-          onMouseEnter={() => onMouseEnter(1)}
-          onMouseLeave={onMouseLeave}
-        >
-          <div className="service-arrow">↗</div>
-          <div>
-            <div className="service-num">— II.</div>
-            <h3>
-              Software
-              <br />
-              <em>a medida.</em>
-            </h3>
-            <p>
-              Producto digital end-to-end. Desde el primer prototipo hasta la versión 3.0. Diseño y
-              código bajo el mismo techo, sin handoffs perdidos.
-            </p>
-          </div>
-          <div className="service-meta">
-            <div className="service-meta-row">
-              <span className="k">Stack</span>
-              <span className="v">React · TypeScript · Postgres</span>
-            </div>
-            <div className="service-meta-row">
-              <span className="k">Equipo</span>
-              <span className="v">Diseño y código, mismo techo</span>
-            </div>
-            <div className="service-meta-row">
-              <span className="k">Inversión</span>
-              <span className="v">A medida · Propuesta sin compromiso</span>
-            </div>
-          </div>
-        </div>
+        ))}
       </div>
     </section>
   );
