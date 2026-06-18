@@ -1904,26 +1904,21 @@
 
   /* ——— Demo del agente (chat guionizado) ——— */
   .agent-demo {
-    padding: 6rem 5vw;
+    padding: 8rem 4vw;
     border-top: 1px solid color-mix(in srgb, var(--slate) 18%, transparent);
   }
 
-  /* mobile-first: una columna por defecto, dos en desktop */
+  /* mobile-first: una columna; llena el ancho como las demás secciones (sin centrar) */
   .agent-grid {
     display: grid;
     grid-template-columns: 1fr;
     gap: 2.5rem;
-    justify-items: center;
-    max-width: 600px;
-    margin: 0 auto;
   }
   @media (min-width: 861px) {
     .agent-grid {
       grid-template-columns: 1.1fr 0.9fr;
       gap: clamp(2.5rem, 5vw, 5rem);
       align-items: center;
-      justify-items: stretch;
-      max-width: 1280px;
     }
   }
   .agent-intro .section-num { margin-bottom: 1.1rem; }
