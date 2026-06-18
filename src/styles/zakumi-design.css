@@ -2548,3 +2548,93 @@
     }
   }
 
+  /* ——— ServicePage (lenguaje editorial del sitio) ——— */
+  .service-view { padding-top: 9rem; }
+
+  /* Intro asimétrica, como el hero */
+  .service-intro {
+    display: grid; grid-template-columns: 1.05fr 0.95fr; gap: clamp(2rem, 4vw, 4.5rem);
+    align-items: center; padding: 1rem 4vw 5rem;
+  }
+  .service-intro h1 {
+    font-family: var(--font-playfair), serif; font-weight: 400;
+    font-size: clamp(2.6rem, 4.6vw, 4.6rem); line-height: 1.03; letter-spacing: -0.02em;
+    color: var(--paper); margin: 0.8rem 0 1.4rem;
+  }
+  .service-lead {
+    font-size: clamp(1.05rem, 1.5vw, 1.35rem); line-height: 1.6; color: var(--slate);
+    max-width: 52ch; margin-bottom: 2.2rem;
+  }
+  .service-intro-visual {
+    position: relative; aspect-ratio: 4/3; overflow: hidden;
+    border-left: 1px solid color-mix(in srgb, var(--slate) 18%, transparent);
+  }
+  .service-intro-visual::after {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(180deg, color-mix(in srgb, var(--black) 0%, transparent) 40%, color-mix(in srgb, var(--black) 55%, transparent) 100%);
+  }
+
+  /* Bloques con divisor hairline editorial */
+  .service-block { padding: clamp(3rem, 6vw, 6rem) 4vw; max-width: 1320px; border-top: 1px solid color-mix(in srgb, var(--slate) 16%, transparent); }
+  .block-head { margin-bottom: clamp(1.5rem, 3vw, 3rem); }
+
+  /* Lo que incluye — filas con índice (counter), sin tarjetas */
+  .incluye-list { list-style: none; margin: 0; padding: 0; counter-reset: inc; }
+  .incluye-row {
+    counter-increment: inc; display: grid; grid-template-columns: 3rem minmax(0, 20ch) 1fr;
+    gap: 1.5rem; align-items: baseline; padding: 1.6rem 0; border-top: 1px solid color-mix(in srgb, var(--slate) 16%, transparent);
+  }
+  .incluye-row:first-child { border-top: none; }
+  .incluye-row::before {
+    content: counter(inc, decimal-leading-zero); color: var(--orange);
+    font-family: var(--font-playfair), serif; font-size: 1rem;
+  }
+  .incluye-row h3 { font-family: var(--font-playfair), serif; font-weight: 400; font-size: clamp(1.2rem, 1.8vw, 1.7rem); color: var(--paper); }
+  .incluye-row p { color: var(--slate); line-height: 1.55; max-width: 52ch; }
+
+  /* Ejemplos — imagen con zoom en hover + ↗ */
+  .ejemplos-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: clamp(1.25rem, 2.5vw, 2.5rem); }
+  .ejemplo-img { position: relative; aspect-ratio: 16/11; overflow: hidden; }
+  .ejemplo-img img { transition: transform 0.7s cubic-bezier(0.2,0.8,0.2,1); }
+  .ejemplo-card:hover .ejemplo-img img { transform: scale(1.06); }
+  .ejemplo-card h3 { font-family: var(--font-playfair), serif; font-weight: 400; font-size: 1.4rem; color: var(--paper); margin: 1rem 0 0.5rem; display: flex; align-items: center; gap: 0.5rem; }
+  .ejemplo-card p { color: var(--slate); line-height: 1.55; }
+  .ejemplo-arrow { color: var(--orange); transition: transform 0.3s ease; }
+  .ejemplo-card:hover .ejemplo-arrow { transform: translate(3px, -3px); }
+
+  /* Testimonios — citas editoriales */
+  .testimonios-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: clamp(2rem, 4vw, 4rem); }
+  .testimonio p { font-family: var(--font-playfair), serif; font-style: italic; font-size: clamp(1.3rem, 2vw, 1.7rem); line-height: 1.45; color: var(--paper); }
+  .testimonio footer { margin-top: 1.25rem; color: var(--slate); font-size: 0.8rem; letter-spacing: 0.18em; text-transform: uppercase; }
+  .testimonio .t-autor { color: var(--paper); }
+
+  /* Planes — el del medio destacado en naranja */
+  .planes-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: clamp(1rem, 2vw, 1.75rem); align-items: start; }
+  .plan-card { border: 1px solid color-mix(in srgb, var(--slate) 18%, transparent); padding: clamp(1.75rem, 2.5vw, 2.5rem); display: flex; flex-direction: column; gap: 1rem; }
+  .plan-card h3 { font-family: var(--font-playfair), serif; font-weight: 400; font-size: 1.6rem; color: var(--paper); }
+  .plan-tagline { color: var(--orange); font-style: italic; font-family: var(--font-playfair), serif; }
+  .plan-card ul { list-style: none; padding: 0; margin: 0.5rem 0 1.5rem; display: grid; gap: 0.6rem; color: var(--slate); flex: 1; }
+  .plan-card li { padding-left: 1.25rem; position: relative; }
+  .plan-card li::before { content: '—'; position: absolute; left: 0; color: var(--orange); }
+  .plan-featured { background: var(--orange); border-color: var(--orange); }
+  .plan-featured h3, .plan-featured .plan-tagline, .plan-featured ul, .plan-featured li { color: var(--black); }
+  .plan-featured .plan-tagline { opacity: 0.8; }
+  .plan-featured li::before { color: var(--black); }
+  .planes-nota { margin-top: 2.5rem; color: var(--slate); max-width: 64ch; line-height: 1.6; }
+
+  /* Cierre */
+  .service-cierre { padding: clamp(4rem, 8vw, 7rem) 4vw; border-top: 1px solid color-mix(in srgb, var(--slate) 16%, transparent); }
+  .service-cierre h2 { font-family: var(--font-playfair), serif; font-weight: 400; font-size: clamp(2.2rem, 4vw, 3.6rem); color: var(--paper); margin-bottom: 1.75rem; max-width: 16ch; }
+
+  @media (max-width: 900px) {
+    .ejemplos-grid { grid-template-columns: 1fr 1fr; }
+    .testimonios-grid, .planes-grid { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 720px) {
+    .service-view { padding-top: 6.5rem; }
+    .service-intro { grid-template-columns: 1fr; }
+    .ejemplos-grid { grid-template-columns: 1fr; }
+    .incluye-row { grid-template-columns: 2rem 1fr; }
+    .incluye-row p { grid-column: 2 / -1; }
+  }
+
