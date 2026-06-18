@@ -26,6 +26,19 @@ La landing actual posiciona a Zakumi como **"estudio de marca & software"** (tit
 | Canal de contacto | **WhatsApp principal**; **Telegram preparado pero apagado** (flag) hasta que exista |
 | Proyectos | **Placeholders elegantes** por ahora |
 
+### Refinamientos del grilling (2026-06-17)
+
+| Tema | Resolución |
+|---|---|
+| WhatsApp | El número `+57 313 4276879` **enruta al bot "Zak" vivo** → la demo es real |
+| Demo del agente (§④) | **Conversación guionizada** (mensajes hardcodeados) animada con GSAP; **no** conexión en vivo. CTA → WhatsApp real |
+| CRM con IA (§③) | Es un **servicio a medida** ("construimos tu CRM con IA"), **no** producto empaquetado. Mockup **ilustrativo** |
+| Hero (§①) | **Carrusel** de 2-3 fotos nuevas **+ burbuja de chat** animada encima |
+| Arquitectura | **Extraer secciones a componentes**; GSAP centralizado (la animación es por selector → bajo riesgo) |
+| Stats (§⑥) | **Conservar estilo retórico**, refrescado a IA |
+| Entrega | **Todo junto** en la rama → review gstack (qa + design-review) → **un solo lanzamiento** |
+| Email | `zakumiestudio@gmail.com` (sin cambios) |
+
 ## 3. Reglas globales (aplican a todo)
 
 1. **Idioma:** 100% español (es-CO). Si algún día se traduce, **todo** pasa a inglés; nunca mezclar.
@@ -65,15 +78,17 @@ Navegación → anclas: `Agentes`→`#demo-agente` · `Servicios`→`#servicios`
 - **GSAP:** entrada en *stagger* al hacer scroll; leve *tilt*/elevación en hover.
 
 ### ③ CRM con IA (sección producto destacada, acento naranja)
+- **Es un servicio a medida, no un producto empaquetado.** El copy enmarca "**construimos tu CRM con IA**" (lo desarrollamos para cada cliente). El mockup es **ilustrativo** (armado en código), no capturas de un producto real.
 - **Titular:** *Un CRM que piensa.*
-- **Copy:** "Anthropic, Gemini y OpenAI trabajando para tu equipo de ventas — cada modelo en lo que mejor hace." Clasifica leads, responde, resume conversaciones, agenda y escala a humano cuando hay intención real.
+- **Copy:** "Te construimos un CRM con Anthropic, Gemini y OpenAI trabajando para tu equipo de ventas — cada modelo en lo que mejor hace." Clasifica leads, responde, resume conversaciones, agenda y escala a humano cuando hay intención real.
 - **GSAP:** mockup de panel construido en código que se **ensambla** al entrar (tarjetas que llegan y encajan) + contador "leads atendidos".
 - **Imagen:** ver §7 — CRM (16:10).
 
 ### ④ Demo del agente (pieza estrella — construida en código, sin imagen)
 - Ventana de chat estilo WhatsApp: un cliente pregunta, el agente responde y **cierra una venta**.
+- **Conversación guionizada por nosotros** (mensajes hardcodeados en un array), **no** conectada en vivo al bot. El guion debe sonar como Zak y mostrar un caso de venta realista.
 - **GSAP:** timeline secuencial de mensajes (typing dots → mensaje), disparado por ScrollTrigger al entrar; loop sutil opcional.
-- **CTA:** "Pruébalo tú mismo →" → `WHATSAPP_URL` (mismo agente real).
+- **CTA:** "Pruébalo tú mismo →" → `WHATSAPP_URL` (ahí sí está el agente real).
 
 ### ⑤ Proyectos + "Con qué construimos" (reemplaza "02 / Selección")
 - Showcase de proyectos (placeholders elegantes), cada uno etiquetado por rol: plataforma / CRM / agente / web.
@@ -81,8 +96,8 @@ Navegación → anclas: `Agentes`→`#demo-agente` · `Servicios`→`#servicios`
 - **GSAP:** marquee infinito + reveal de proyectos al scroll.
 - **Imagen:** ver §7 — Proyectos (3:2), reemplazables.
 
-### ⑥ Cómo trabajamos (stats — se mantiene)
-- Stats actualizados: "3 disciplinas, un equipo" · "24/7 — tus agentes no duermen" · "Multi-modelo de IA" · "Hecho por nosotros, no plantillas".
+### ⑥ Cómo trabajamos (stats — se mantiene, estilo retórico)
+- Conservar el estilo conceptual/retórico actual (no métricas duras), refrescado a IA: **"3 — disciplinas, un equipo"** (IA·Software·Marca) · **"24/7 — tus agentes no duermen"** · **"0 — plantillas"** · **"∞ — iteraciones"**.
 - **GSAP:** contadores animados (existente).
 
 ### ⑦ Filosofía (se mantiene, copy ajustado)
@@ -115,6 +130,7 @@ Mantiene el bloque de palabras animadas; texto ajustado a "IA con criterio human
 
 ## 8. Supuestos y defaults
 
+- **El agente "Zak" ya está desplegado y vivo** (Flask + Claude `claude-haiku-4-5`, en Railway), y el número de WhatsApp de la landing **enruta a ese bot** (confirmado en el grilling). El CTA "Habla con nuestro agente" conecta con un agente real existente, no es una promesa futura.
 - WhatsApp: `+57 313 4276879` (sin cambios).
 - Email: `zakumiestudio@gmail.com` (sin cambios).
 - Telegram: aún no existe → infraestructura lista, render apagado.
