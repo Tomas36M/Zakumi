@@ -1906,57 +1906,238 @@
   .agent-demo {
     padding: 8rem 4vw;
     border-top: 1px solid color-mix(in srgb, var(--slate) 18%, transparent);
-    display: flex;
-    flex-direction: column;
+  }
+
+  .agent-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: clamp(2rem, 6vw, 6rem);
     align-items: center;
-    text-align: center;
+    max-width: 1180px;
+    margin: 0 auto;
   }
-
-  .agent-demo .section-num {
-    margin-bottom: 1.25rem;
+  .agent-intro .section-num { margin-bottom: 1.1rem; }
+  .agent-intro .section-title { margin-bottom: 1.5rem; }
+  .agent-lead {
+    font-size: clamp(0.95rem, 1.2vw, 1.1rem);
+    line-height: 1.65;
+    color: var(--slate);
+    max-width: 42ch;
+    margin-bottom: 1.6rem;
   }
-
-  .agent-demo .section-title {
-    margin-bottom: 3.5rem;
-  }
-
-  /* Phone/WhatsApp frame */
-  .agent-phone {
-    width: 100%;
-    max-width: 380px;
-    background: color-mix(in srgb, var(--navy) 25%, var(--black));
-    border: 1px solid color-mix(in srgb, var(--slate) 20%, transparent);
-    border-top: 3px solid color-mix(in srgb, var(--slate) 40%, transparent);
-    border-radius: 18px;
-    padding: 1.25rem 1rem;
+  .agent-points {
+    list-style: none;
     display: flex;
     flex-direction: column;
-    gap: 0;
-    min-height: 260px;
-    position: relative;
-    overflow: hidden;
-    margin-bottom: 3rem;
-    box-shadow: 0 24px 60px color-mix(in srgb, var(--black) 60%, transparent);
+    gap: 0.6rem;
+    margin-bottom: 2rem;
   }
-
-  .agent-phone::before {
+  .agent-points li {
+    font-size: 0.9rem;
+    color: var(--paper);
+    padding-left: 1.4rem;
+    position: relative;
+  }
+  .agent-points li::before {
     content: '';
     position: absolute;
-    inset: 0;
+    left: 0;
+    top: 0.55em;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--orange);
+  }
+  .agent-stage {
+    display: flex;
+    justify-content: center;
+    position: relative;
+  }
+  .agent-stage::before {
+    content: '';
+    position: absolute;
+    inset: -12% -8%;
     background: radial-gradient(
-      ellipse at 50% 0%,
-      color-mix(in srgb, var(--navy) 30%, transparent) 0%,
-      transparent 70%
+      ellipse at 50% 42%,
+      color-mix(in srgb, var(--orange) 9%, transparent) 0%,
+      transparent 65%
     );
     pointer-events: none;
   }
 
-  .agent-chat {
+  /* ——— iPhone realista ——— */
+  .agent-phone {
+    width: 300px;
+    max-width: 82vw;
+    aspect-ratio: 300 / 620;
+    padding: 11px;
+    border-radius: 46px;
+    position: relative;
+    background: linear-gradient(
+      155deg,
+      color-mix(in srgb, var(--charcoal) 85%, var(--paper)) 0%,
+      color-mix(in srgb, var(--charcoal) 55%, var(--black)) 32%,
+      var(--black) 100%
+    );
+    box-shadow:
+      0 50px 90px -34px color-mix(in srgb, var(--black) 92%, transparent),
+      0 0 0 1px color-mix(in srgb, var(--paper) 7%, transparent),
+      inset 0 0 1px 1px color-mix(in srgb, var(--paper) 10%, transparent);
+  }
+  .agent-phone::before {
+    content: '';
+    position: absolute;
+    right: -2px;
+    top: 34%;
+    width: 3px;
+    height: 56px;
+    border-radius: 0 3px 3px 0;
+    background: color-mix(in srgb, var(--charcoal) 70%, var(--black));
+  }
+  .agent-phone::after {
+    content: '';
+    position: absolute;
+    left: -2px;
+    top: 25%;
+    width: 3px;
+    height: 40px;
+    border-radius: 3px 0 0 3px;
+    background: color-mix(in srgb, var(--charcoal) 70%, var(--black));
+    box-shadow: 0 56px 0 color-mix(in srgb, var(--charcoal) 70%, var(--black));
+  }
+  .agent-phone-island {
+    position: absolute;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 86px;
+    height: 24px;
+    border-radius: 999px;
+    background: #05060a;
+    z-index: 6;
+  }
+  .agent-screen {
+    height: 100%;
+    border-radius: 36px;
+    overflow: hidden;
+    background: color-mix(in srgb, var(--navy) 14%, var(--black));
     display: flex;
     flex-direction: column;
-    gap: 0.6rem;
     position: relative;
-    z-index: 1;
+  }
+
+  /* status bar */
+  .agent-status {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 13px 24px 5px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--paper);
+    font-variant-numeric: tabular-nums;
+    flex-shrink: 0;
+  }
+  .agent-status-r { display: inline-flex; align-items: center; gap: 6px; color: var(--paper); }
+  .agent-sig { display: inline-flex; align-items: flex-end; gap: 2px; height: 11px; }
+  .agent-sig i { width: 3px; border-radius: 1px; background: var(--paper); }
+  .agent-sig i:nth-child(1) { height: 4px; }
+  .agent-sig i:nth-child(2) { height: 6px; }
+  .agent-sig i:nth-child(3) { height: 8px; }
+  .agent-sig i:nth-child(4) { height: 11px; }
+  .agent-wifi { color: var(--paper); }
+  .agent-batt {
+    width: 22px;
+    height: 11px;
+    border-radius: 3px;
+    border: 1px solid color-mix(in srgb, var(--paper) 55%, transparent);
+    padding: 1.5px;
+    position: relative;
+  }
+  .agent-batt::after {
+    content: '';
+    position: absolute;
+    right: -3px;
+    top: 3px;
+    width: 2px;
+    height: 4px;
+    border-radius: 0 1px 1px 0;
+    background: color-mix(in srgb, var(--paper) 55%, transparent);
+  }
+  .agent-batt i { display: block; width: 70%; height: 100%; border-radius: 1px; background: var(--orange); }
+
+  /* header WhatsApp */
+  .agent-wa-head {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    padding: 0.45rem 0.7rem 0.5rem;
+    background: color-mix(in srgb, var(--charcoal) 32%, var(--black));
+    border-bottom: 1px solid color-mix(in srgb, var(--slate) 14%, transparent);
+    flex-shrink: 0;
+  }
+  .agent-wa-back { color: var(--slate); font-size: 1.3rem; line-height: 1; }
+  .agent-wa-av {
+    width: 30px;
+    height: 30px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.82rem;
+    color: var(--paper);
+    font-family: var(--font-playfair), 'Playfair Display', serif;
+    background: color-mix(in srgb, var(--orange) 40%, var(--navy));
+    border: 1px solid color-mix(in srgb, var(--slate) 22%, transparent);
+  }
+  .agent-wa-meta { display: flex; flex-direction: column; line-height: 1.25; min-width: 0; }
+  .agent-wa-name { font-size: 0.8rem; font-weight: 500; color: var(--paper); white-space: nowrap; }
+  .agent-wa-status { font-size: 0.62rem; color: color-mix(in srgb, var(--orange) 72%, var(--paper)); }
+  .agent-wa-icons { margin-left: auto; display: inline-flex; gap: 0.7rem; color: var(--slate); flex-shrink: 0; }
+
+  /* chat scrollable */
+  .agent-chat {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 0.85rem 0.8rem;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
+  /* input bar */
+  .agent-input {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.65rem 0.7rem;
+    background: color-mix(in srgb, var(--charcoal) 24%, var(--black));
+    border-top: 1px solid color-mix(in srgb, var(--slate) 12%, transparent);
+    flex-shrink: 0;
+  }
+  .agent-input-box {
+    flex: 1;
+    padding: 0.45rem 0.85rem;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--slate) 14%, transparent);
+    font-size: 0.74rem;
+    color: var(--slate);
+  }
+  .agent-input-send {
+    width: 30px;
+    height: 30px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--black);
+    background: var(--orange);
   }
 
   /* Message bubbles */
@@ -2027,9 +2208,9 @@
   /* Message text bubble */
   .agent-msg .agent-text {
     display: none;
-    padding: 0.6rem 0.85rem;
-    font-size: 0.88rem;
-    line-height: 1.45;
+    padding: 0.5rem 0.72rem;
+    font-size: 0.8rem;
+    line-height: 1.4;
     border-radius: 16px;
   }
 
@@ -2069,13 +2250,19 @@
     }
   }
 
+  @media (max-width: 860px) {
+    .agent-grid {
+      grid-template-columns: 1fr;
+      gap: 3rem;
+      justify-items: center;
+    }
+    .agent-intro { max-width: 560px; }
+  }
+
   @media (max-width: 720px) {
     .agent-demo {
       padding-top: 5rem !important;
       padding-bottom: 5rem !important;
-    }
-    .agent-phone {
-      max-width: 100%;
     }
   }
 
