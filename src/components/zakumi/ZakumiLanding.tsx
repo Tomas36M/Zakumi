@@ -13,6 +13,7 @@ import ScrollToPlugin from "gsap/ScrollToPlugin";
 import { Hero } from "./sections/Hero";
 import { Servicios } from "./sections/Servicios";
 import { CrmIA } from "./sections/CrmIA";
+import { AgentDemo } from "./sections/AgentDemo";
 import { ComoTrabajamos } from "./sections/ComoTrabajamos";
 import { Filosofia } from "./sections/Filosofia";
 import { Contacto } from "./sections/Contacto";
@@ -556,6 +557,34 @@ export function ZakumiLanding() {
         },
       );
 
+      // ——— Demo del agente: chat guionizado con typing → texto ———
+      const mmAgent = gsap.matchMedia();
+      mmAgent.add("(prefers-reduced-motion: no-preference)", () => {
+        const msgs = gsap.utils.toArray<HTMLElement>(".agent-demo .agent-msg");
+        if (!msgs.length) return;
+        const tl = gsap.timeline({
+          scrollTrigger: { trigger: ".agent-demo", start: "top 65%", once: true },
+        });
+        msgs.forEach((msg) => {
+          const typing = msg.querySelector(".agent-typing");
+          const text = msg.querySelector(".agent-text") as HTMLElement | null;
+          tl.set(msg, { autoAlpha: 1 })
+            .from(msg, {
+              y: 14,
+              scale: 0.96,
+              transformOrigin: msg.classList.contains("is-cliente")
+                ? "right bottom"
+                : "left bottom",
+              duration: 0.3,
+              ease: "power3.out",
+            })
+            .to({}, { duration: 0.7 })           // "escribiendo…"
+            .set(typing, { display: "none" })
+            .set(text, { display: "block" })
+            .from(text, { autoAlpha: 0, duration: 0.25, ease: "power2.out" });
+        });
+      });
+
       ScrollTrigger.refresh();
     });
 
@@ -799,6 +828,8 @@ export function ZakumiLanding() {
         />
 
         <CrmIA />
+
+        <AgentDemo />
 
         <section className="showcase" id="seleccion">
           <div className="section-num">02 / Selección</div>

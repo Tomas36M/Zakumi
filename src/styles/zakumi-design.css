@@ -1694,3 +1694,180 @@
     }
   }
 
+  /* ——— Demo del agente (chat guionizado) ——— */
+  .agent-demo {
+    padding: 8rem 4vw;
+    border-top: 1px solid color-mix(in srgb, var(--slate) 18%, transparent);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  .agent-demo .section-num {
+    margin-bottom: 1.25rem;
+  }
+
+  .agent-demo .section-title {
+    margin-bottom: 3.5rem;
+  }
+
+  /* Phone/WhatsApp frame */
+  .agent-phone {
+    width: 100%;
+    max-width: 380px;
+    background: color-mix(in srgb, var(--navy) 25%, var(--black));
+    border: 1px solid color-mix(in srgb, var(--slate) 20%, transparent);
+    border-top: 3px solid color-mix(in srgb, var(--slate) 40%, transparent);
+    border-radius: 18px;
+    padding: 1.25rem 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    min-height: 260px;
+    position: relative;
+    overflow: hidden;
+    margin-bottom: 3rem;
+    box-shadow: 0 24px 60px color-mix(in srgb, var(--black) 60%, transparent);
+  }
+
+  .agent-phone::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(
+      ellipse at 50% 0%,
+      color-mix(in srgb, var(--navy) 30%, transparent) 0%,
+      transparent 70%
+    );
+    pointer-events: none;
+  }
+
+  .agent-chat {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Message bubbles */
+  .agent-msg {
+    opacity: 0;
+    display: flex;
+    max-width: 80%;
+    will-change: transform, opacity;
+  }
+
+  .agent-msg.is-cliente {
+    align-self: flex-end;
+    justify-content: flex-end;
+  }
+
+  .agent-msg.is-agente {
+    align-self: flex-start;
+    justify-content: flex-start;
+  }
+
+  /* Typing indicator dots */
+  .agent-msg .agent-typing {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 0.6rem 0.85rem;
+    border-radius: 16px;
+    min-height: 2.2rem;
+  }
+
+  .agent-msg.is-cliente .agent-typing {
+    background: color-mix(in srgb, var(--orange) 75%, var(--black));
+    border-radius: 16px 16px 4px 16px;
+  }
+
+  .agent-msg.is-agente .agent-typing {
+    background: color-mix(in srgb, var(--slate) 20%, var(--black));
+    border: 1px solid color-mix(in srgb, var(--slate) 25%, transparent);
+    border-radius: 16px 16px 16px 4px;
+  }
+
+  .agent-msg .agent-typing i {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    display: inline-block;
+    animation: agent-dot-pulse 1.2s ease-in-out infinite;
+  }
+
+  .agent-msg.is-cliente .agent-typing i {
+    background: var(--paper);
+    opacity: 0.75;
+  }
+
+  .agent-msg.is-agente .agent-typing i {
+    background: var(--slate);
+    opacity: 0.8;
+  }
+
+  .agent-msg .agent-typing i:nth-child(2) { animation-delay: 0.2s; }
+  .agent-msg .agent-typing i:nth-child(3) { animation-delay: 0.4s; }
+
+  @keyframes agent-dot-pulse {
+    0%, 60%, 100% { transform: translateY(0); opacity: 0.5; }
+    30% { transform: translateY(-4px); opacity: 1; }
+  }
+
+  /* Message text bubble */
+  .agent-msg .agent-text {
+    display: none;
+    padding: 0.6rem 0.85rem;
+    font-size: 0.88rem;
+    line-height: 1.45;
+    border-radius: 16px;
+  }
+
+  .agent-msg.is-cliente .agent-text {
+    background: color-mix(in srgb, var(--orange) 75%, var(--black));
+    color: var(--paper);
+    border-radius: 16px 16px 4px 16px;
+    text-align: left;
+  }
+
+  .agent-msg.is-agente .agent-text {
+    background: color-mix(in srgb, var(--slate) 20%, var(--black));
+    border: 1px solid color-mix(in srgb, var(--slate) 25%, transparent);
+    color: var(--paper);
+    border-radius: 16px 16px 16px 4px;
+    text-align: left;
+  }
+
+  /* CTA below the chat */
+  .agent-demo > .cta {
+    margin-top: 0;
+  }
+
+  /* Reduced motion: show all text immediately, no typing dots */
+  @media (prefers-reduced-motion: reduce) {
+    .agent-msg {
+      opacity: 1;
+    }
+    .agent-msg .agent-text {
+      display: block;
+    }
+    .agent-msg .agent-typing {
+      display: none;
+    }
+    .agent-msg .agent-typing i {
+      animation: none;
+    }
+  }
+
+  @media (max-width: 720px) {
+    .agent-demo {
+      padding-top: 5rem !important;
+      padding-bottom: 5rem !important;
+    }
+    .agent-phone {
+      max-width: 100%;
+    }
+  }
+
