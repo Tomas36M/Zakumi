@@ -1567,7 +1567,7 @@
     grid-template-columns: 1fr 1fr;
     gap: 6rem;
     align-items: center;
-    border-top: 1px solid rgba(118, 130, 142, 0.18);
+    border-top: 1px solid color-mix(in srgb, var(--slate) 18%, transparent);
   }
 
   .crm-sub {
@@ -1621,7 +1621,7 @@
     gap: 0.85rem;
     padding: 2rem;
     background: color-mix(in srgb, var(--navy) 30%, var(--black));
-    border: 1px solid rgba(118, 130, 142, 0.2);
+    border: 1px solid color-mix(in srgb, var(--slate) 20%, transparent);
     border-top: 2px solid var(--orange);
     position: relative;
     overflow: hidden;
@@ -1642,7 +1642,7 @@
   .crm-card {
     padding: 0.9rem 1.1rem;
     background: color-mix(in srgb, var(--black) 70%, transparent);
-    border: 1px solid rgba(118, 130, 142, 0.22);
+    border: 1px solid color-mix(in srgb, var(--slate) 22%, transparent);
     border-left: 3px solid color-mix(in srgb, var(--orange) 60%, transparent);
     font-size: 0.85rem;
     color: var(--slate);
