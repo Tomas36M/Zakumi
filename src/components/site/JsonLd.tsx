@@ -17,7 +17,7 @@ export function JsonLd() {
         foundingDate: "2026",
         slogan: "Creamos marcas. Desarrollamos el futuro.",
         description:
-          "Estudio de marca y software a medida en Colombia: identidad visual, producto digital y código end-to-end. Recibiendo nuevos proyectos.",
+          "Estudio de marca, agentes de IA y software a medida en Colombia: identidad visual, agentes para WhatsApp y Telegram, CRM con IA, y producto digital end-to-end. Recibiendo nuevos proyectos.",
         email: "zakumiestudio@gmail.com",
         telephone: phone,
         address: {

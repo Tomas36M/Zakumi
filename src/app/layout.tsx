@@ -69,9 +69,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "ZAKUMI — Marca & software a medida desde Colombia",
+    title: "ZAKUMI — Agentes de IA y software a medida desde Colombia",
     description:
-      "Diseño y código en un mismo estudio. Identidad de marca y producto digital end-to-end.",
+      "Agentes de IA para WhatsApp y Telegram, CRM con IA y software a medida en Colombia. Identidad de marca y producto digital end-to-end.",
     images: ["/og.jpg"],
   },
   icons: {
