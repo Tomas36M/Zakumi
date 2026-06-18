@@ -152,27 +152,6 @@ export function ZakumiLanding() {
           "<+0.1",
         )
         .to(
-          ".meta-block",
-          {
-            opacity: 1,
-            y: 0,
-            stagger: 0.1,
-            duration: 0.8,
-            ease: "power3.out",
-          },
-          "-=0.7",
-        )
-        .from(
-          ".meta-block",
-          {
-            y: 16,
-            duration: 0.8,
-            stagger: 0.1,
-            ease: "power3.out",
-          },
-          "<",
-        )
-        .to(
           ".hero-deco, .scroll-indicator",
           {
             opacity: 1,

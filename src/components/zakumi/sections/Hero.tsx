@@ -149,17 +149,13 @@ export function Hero() {
       </div>
 
       <div className="hero-meta">
-        <div className="meta-block">
-          <div className="label">Disciplinas</div>
-          <div className="val">IA · Software · Marca</div>
-        </div>
-        <div className="meta-block">
-          <div className="label">Sede</div>
-          <div className="val">Colombia · Toda LatAm en remoto</div>
-        </div>
-        <div className="meta-block">
-          <div className="label">Estatus</div>
-          <div className="val">Agenda abierta 2026 · Cupos limitados</div>
+        <div className="hero-meta-inner" key={slide.id}>
+          {slide.meta.map((m) => (
+            <div className="meta-block" key={m.label}>
+              <div className="label">{m.label}</div>
+              <div className="val">{m.val}</div>
+            </div>
+          ))}
         </div>
       </div>
 

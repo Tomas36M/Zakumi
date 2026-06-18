@@ -279,7 +279,7 @@
     display: flex;
     align-items: center;
     gap: 1rem;
-    font-size: 0.7rem;
+    font-size: 0.74rem;
     letter-spacing: 0.4em;
     text-transform: uppercase;
     color: var(--slate);
@@ -292,7 +292,7 @@
     font-family: var(--font-playfair), 'Playfair Display', serif;
     font-weight: 400;
     /* Tamaño responsive y contenido: siempre 2 líneas (una por frase), sin saltos entre slides */
-    font-size: clamp(2rem, 3.1vw, 3.25rem);
+    font-size: clamp(2.2rem, 3.4vw, 3.5rem);
     line-height: 1.04;
     letter-spacing: -0.02em;
     max-width: none;
@@ -314,7 +314,7 @@
   }
 
   /* ——— Hero slider: copy por slide + navegación ——— */
-  .hero-copy-stable { position: relative; z-index: 2; max-width: 760px; }
+  .hero-copy-stable { position: relative; z-index: 2; max-width: 880px; }
   .hero-ctas { display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; }
   .hero-copy > .hero-tag,
   .hero-copy > h1,
@@ -366,9 +366,19 @@
     max-width: 720px;
     flex-wrap: wrap;
   }
-  .meta-block { opacity: 0; }
+  /* el wrapper keyed por slide no afecta el layout flex; los bloques siguen siendo flex-items */
+  .hero-meta-inner { display: contents; }
+  .hero-meta .meta-block {
+    animation: heroIn 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+    animation-delay: 0.42s;
+  }
+  .hero-meta .meta-block:nth-child(2) { animation-delay: 0.5s; }
+  .hero-meta .meta-block:nth-child(3) { animation-delay: 0.58s; }
+  @media (prefers-reduced-motion: reduce) {
+    .hero-meta .meta-block { animation: none; }
+  }
   .meta-block .label {
-    font-size: 0.8rem;
+    font-size: 0.82rem;
     letter-spacing: 0.32em;
     text-transform: uppercase;
     color: var(--slate);
@@ -377,13 +387,13 @@
   .meta-block .val {
     font-family: var(--font-playfair), 'Playfair Display', serif;
     font-style: italic;
-    font-size: clamp(1.1rem, 1.1vw, 1.35rem);
+    font-size: clamp(1.18rem, 1.2vw, 1.45rem);
     line-height: 1.2;
     color: var(--paper);
   }
 
   .hero-sub {
-    font-size: clamp(0.9rem, 1.1vw, 1.05rem);
+    font-size: clamp(0.95rem, 1.25vw, 1.15rem);
     line-height: 1.6;
     color: var(--slate);
     max-width: 50ch;

@@ -22,6 +22,7 @@ export type HeroSlide = {
   waMsg: string;
   img: string;
   bubble?: boolean;
+  meta: { label: string; val: string }[];
 };
 
 // Hero como carrusel de los 3 servicios (primera vista: lo que vendemos).
@@ -36,6 +37,11 @@ export const HERO_SLIDES: HeroSlide[] = [
     waMsg: "Hola Zakumi, quiero un agente de IA para mi WhatsApp.",
     img: "/work/zk-hero-foto.webp",
     bubble: true,
+    meta: [
+      { label: "Canales", val: "WhatsApp · Telegram · Redes" },
+      { label: "Atiende", val: "24/7, sin que tú estés" },
+      { label: "Responde", val: "En segundos" },
+    ],
   },
   {
     id: "desarrollo",
@@ -46,6 +52,11 @@ export const HERO_SLIDES: HeroSlide[] = [
     cta: "Cuéntanos tu proyecto",
     waMsg: "Hola Zakumi, quiero desarrollar un proyecto de software.",
     img: "/work/zk-software-foto.webp",
+    meta: [
+      { label: "Tecnología", val: "Next.js · React · Postgres" },
+      { label: "Entregamos", val: "Web · Apps · Plataformas" },
+      { label: "Enfoque", val: "A medida, sin plantillas" },
+    ],
   },
   {
     id: "marca",
@@ -56,6 +67,11 @@ export const HERO_SLIDES: HeroSlide[] = [
     cta: "Activa tu marca",
     waMsg: "Hola Zakumi, quiero impulsar mi marca y mis redes.",
     img: "/work/zk-brand-foto2.webp",
+    meta: [
+      { label: "Incluye", val: "Identidad · Contenido · Redes" },
+      { label: "Publica", val: "Automático, a diario" },
+      { label: "Resultado", val: "Marca siempre presente" },
+    ],
   },
 ];
 
