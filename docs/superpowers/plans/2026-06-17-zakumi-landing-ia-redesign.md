@@ -421,7 +421,6 @@ Dentro de `<figure className="hero-visual">`, después del carrusel:
 Dentro del `gsap.context(() => { ... })`, junto a las demás animaciones del hero:
 ```ts
 const bubble = document.querySelector(".hero-chat-bubble");
-if (bubble && !gsap.matchMedia) { /* fallback */ }
 const mm = gsap.matchMedia();
 mm.add("(prefers-reduced-motion: no-preference)", () => {
   const typing = bubble?.querySelector(".hero-chat-typing");
