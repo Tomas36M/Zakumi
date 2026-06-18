@@ -603,24 +603,22 @@
   }
   .stats-inner {
     width: 100%;
-    max-width: 1040px;
-    margin: 0 auto;
   }
   .stats-section .section-num {
-    justify-content: center;
+    justify-content: flex-start;
     margin-bottom: 1.25rem;
   }
   .stats-section .section-num::after { display: none; }
 
   .stats-intro {
-    text-align: center;
-    margin: 0 auto 2.5rem;
-    max-width: 40rem;
+    text-align: left;
+    margin: 0 0 2.5rem;
+    max-width: 54rem;
   }
   .stats-intro .section-title {
-    margin: 0 auto 1.25rem;
+    margin: 0 0 1.25rem;
     max-width: none;
-    text-align: center;
+    text-align: left;
   }
   .stats-intro .lead {
     font-family: var(--font-inter), 'Inter', sans-serif;
@@ -629,8 +627,8 @@
     line-height: 1.65;
     letter-spacing: 0;
     color: var(--slate);
-    max-width: 36rem;
-    margin: 0 auto;
+    max-width: 48rem;
+    margin: 0;
   }
   .stats-intro .lead em { font-style: italic; color: var(--orange); }
 
