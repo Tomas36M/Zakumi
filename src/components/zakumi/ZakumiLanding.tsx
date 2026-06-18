@@ -421,20 +421,6 @@ export function ZakumiLanding() {
         });
       });
 
-      // ——— Burbuja de chat: animación de escritura ———
-      const bubble = document.querySelector(".hero-chat-bubble");
-      const mm = gsap.matchMedia();
-      mm.add("(prefers-reduced-motion: no-preference)", () => {
-        const typing = bubble?.querySelector(".hero-chat-typing");
-        const text = bubble?.querySelector(".hero-chat-text") as HTMLElement | null;
-        if (!typing || !text) return;
-        const tl = gsap.timeline({ delay: 1.6 });
-        tl.to(typing, { duration: 1.1 })          // "escribe"
-          .set(typing, { display: "none" })
-          .set(text, { display: "inline" })
-          .from(text, { autoAlpha: 0, y: 6, duration: 0.4 });
-      });
-
       // ——— CRM con IA: ensamblado de tarjetas + contador ———
       const mmCrm = gsap.matchMedia();
       mmCrm.add(

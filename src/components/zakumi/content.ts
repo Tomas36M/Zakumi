@@ -21,7 +21,6 @@ export type HeroSlide = {
   cta: string;
   waMsg: string;
   img: string;
-  bubble?: boolean;
   meta: { label: string; val: string }[];
 };
 
@@ -36,7 +35,6 @@ export const HERO_SLIDES: HeroSlide[] = [
     cta: "Habla con nuestro agente",
     waMsg: "Hola Zakumi, quiero un agente de IA para mi WhatsApp.",
     img: "/work/zk-hero-foto.webp",
-    bubble: true,
     meta: [
       { label: "Canales", val: "WhatsApp · Telegram · Redes" },
       { label: "Atiende", val: "24/7, sin que tú estés" },

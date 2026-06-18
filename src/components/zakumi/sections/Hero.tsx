@@ -5,7 +5,7 @@ import Image from "next/image";
 import { HERO_SLIDES } from "../content";
 import { waLink, TELEGRAM_ENABLED, TELEGRAM_URL } from "../contact";
 
-const AUTO_MS = 6500;
+const AUTO_MS = 4500;
 
 export function Hero() {
   const [active, setActive] = useState(0);
@@ -53,17 +53,6 @@ export function Hero() {
           ))}
         </div>
         <span className="hero-visual-frame" />
-
-        {slide.bubble && (
-          <div className="hero-chat-bubble" aria-hidden>
-            <span className="hero-chat-typing">
-              <i></i>
-              <i></i>
-              <i></i>
-            </span>
-            <span className="hero-chat-text">¿Hacen tiendas con pago en línea?</span>
-          </div>
-        )}
       </figure>
 
       <button
