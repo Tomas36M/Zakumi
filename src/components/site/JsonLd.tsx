@@ -56,6 +56,42 @@ export function JsonLd() {
                 "Producto digital end-to-end, del prototipo a producción. Diseño y código bajo el mismo techo.",
             },
           },
+          {
+            "@type": "Offer",
+            itemOffered: {
+              "@type": "Service",
+              name: "Agentes de IA para WhatsApp y Telegram",
+              description:
+                "Agentes de venta y atención al cliente que responden 24/7 por WhatsApp y Telegram: califican leads, resuelven preguntas y cierran negocios de forma autónoma.",
+            },
+          },
+          {
+            "@type": "Offer",
+            itemOffered: {
+              "@type": "Service",
+              name: "CRM con IA",
+              description:
+                "CRM a medida construido con Anthropic, Gemini y OpenAI que clasifica, prioriza y atiende leads de manera automática, sin intervención manual.",
+            },
+          },
+          {
+            "@type": "Offer",
+            itemOffered: {
+              "@type": "Service",
+              name: "Automatización e integraciones",
+              description:
+                "Conectamos el agente con CRM, n8n y APIs externas para automatizar flujos de venta, notificaciones y seguimiento de clientes.",
+            },
+          },
+          {
+            "@type": "Offer",
+            itemOffered: {
+              "@type": "Service",
+              name: "Manejo de redes y contenido",
+              description:
+                "Gestión de redes sociales y creación de contenido alineado a la marca: publicaciones, historias y estrategia editorial orientada a conversión.",
+            },
+          },
         ],
       },
       {

@@ -23,11 +23,11 @@ const playfair = Playfair_Display({
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: "ZAKUMI — Estudio de marca & software en Colombia",
+    default: "ZAKUMI — IA, agentes y software a medida en Colombia",
     template: "%s · ZAKUMI",
   },
   description:
-    "Estudio de marca y software a medida desde Colombia. Creamos identidad visual y producto digital end-to-end: diseño y código bajo el mismo techo. Recibiendo nuevos proyectos.",
+    "Estudio de marca, agentes de IA y software a medida desde Colombia. Creamos agentes para WhatsApp y Telegram, CRM con IA, identidad visual y producto digital end-to-end. Recibiendo nuevos proyectos.",
   applicationName: "ZAKUMI",
   authors: [{ name: "ZAKUMI Studio" }],
   creator: "ZAKUMI Studio",
@@ -42,13 +42,18 @@ export const metadata: Metadata = {
     "producto digital",
     "desarrollo de aplicaciones",
     "branding y diseño",
+    "agentes de IA WhatsApp Colombia",
+    "chatbot de ventas con IA",
+    "automatización de ventas con IA",
+    "CRM con inteligencia artificial",
+    "desarrollo de software Colombia",
   ],
   alternates: { canonical: "/" },
   formatDetection: { email: false, address: false, telephone: false },
   openGraph: {
-    title: "ZAKUMI — Marca & software a medida desde Colombia",
+    title: "ZAKUMI — IA, agentes y software a medida desde Colombia",
     description:
-      "Identidad de marca y producto digital end-to-end. Diseño y código en un mismo estudio. Recibiendo nuevos proyectos.",
+      "Agentes de IA para WhatsApp y Telegram, CRM con IA y software a medida en Colombia. Identidad de marca y producto digital end-to-end. Recibiendo nuevos proyectos.",
     locale: "es_CO",
     type: "website",
     url: siteUrl,
