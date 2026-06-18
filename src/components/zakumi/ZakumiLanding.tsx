@@ -727,10 +727,10 @@ export function ZakumiLanding() {
     };
   }, []);
 
-  const philosophyLine1 = "Diseñamos como si el código importara.".split(" ");
-  const philosophyLine2 = ["Programamos", "como", "si", "el"];
-  const philosophyEm = ["diseño"];
-  const philosophyLine3 = ["fuera", "ley."];
+  const philosophyLine1 = "IA con criterio humano:".split(" ");
+  const philosophyLine2 = ["diseño", "y", "código", "bajo", "el", "mismo"];
+  const philosophyEm = ["techo."];
+  const philosophyLine3 = ["Sin", "intermediarios."];
 
   return (
     <>

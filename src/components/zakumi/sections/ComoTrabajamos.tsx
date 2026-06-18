@@ -1,3 +1,5 @@
+import { STATS } from "../content";
+
 export function ComoTrabajamos() {
   return (
     <section className="stats-section" id="datos">
@@ -5,54 +7,38 @@ export function ComoTrabajamos() {
         <div className="section-num">03 / Cómo trabajamos</div>
         <div className="stats-intro">
           <h2 className="section-title">
-            Sin letra chica.
+            Tres disciplinas,
             <br />
-            <em>Solo compromisos.</em>
+            <em>un equipo.</em>
           </h2>
           <p className="lead">
-            Somos un estudio joven, y eso es una ventaja: trabajamos con{" "}
-            <em>obsesión</em>, sin <em>plantillas</em> y cuidamos cada
-            proyecto como si fuera el nuestro.
+            IA · Software · Marca bajo el mismo techo. Sin intermediarios entre
+            quien diseña, quien programa y quien despliega los agentes que{" "}
+            <em>trabajan por ti 24/7</em>.
           </p>
         </div>
 
         <div className="stats-grid">
-          <div className="stat">
-            <div className="num" data-num="2">
-              <span data-target="2">0</span>
-            </div>
-            <div className="stat-label">Disciplinas, un equipo</div>
-            <div className="stat-desc">
-              Marca y software bajo un mismo techo. Sin intermediarios entre
-              quien diseña y quien programa.
-            </div>
-          </div>
-          <div className="stat">
-            <div className="num" data-num="100">
-              <span data-target="100">0</span>
-              <span className="acc">%</span>
-            </div>
-            <div className="stat-label">Hecho por nosotros</div>
-            <div className="stat-desc">
-              Diseño y código propios, de principio a fin. Nada tercerizado.
-            </div>
-          </div>
-          <div className="stat">
-            <div className="num">0</div>
-            <div className="stat-label">Plantillas</div>
-            <div className="stat-desc">
-              Cada proyecto se construye a la medida, desde cero. Nunca un
-              molde reutilizado.
-            </div>
-          </div>
-          <div className="stat">
-            <div className="num">∞</div>
-            <div className="stat-label">Iteraciones</div>
-            <div className="stat-desc">
-              Ajustamos las veces que haga falta, hasta que cada detalle quede
-              exacto.
-            </div>
-          </div>
+          {STATS.map((stat) => {
+            const isNumeric = /^\d+$/.test(stat.num);
+            return (
+              <div className="stat" key={stat.label}>
+                {isNumeric ? (
+                  <div className="num" data-num={stat.num}>
+                    <span data-target={stat.num}>0</span>
+                    {stat.acc && <span className="acc">{stat.acc}</span>}
+                  </div>
+                ) : (
+                  <div className="num">
+                    {stat.num}
+                    {stat.acc && <span className="acc">{stat.acc}</span>}
+                  </div>
+                )}
+                <div className="stat-label">{stat.label}</div>
+                <div className="stat-desc">{stat.desc}</div>
+              </div>
+            );
+          })}
         </div>
       </div>
     </section>
