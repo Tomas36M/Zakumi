@@ -12,6 +12,53 @@ export const HERO = {
   ctaSecundario: "o escríbenos por Telegram",
 };
 
+export type HeroSlide = {
+  id: string;
+  tag: string;
+  titulo1: string;
+  tituloEm: string;
+  sub: string;
+  cta: string;
+  waMsg: string;
+  img: string;
+  bubble?: boolean;
+};
+
+// Hero como carrusel de los 3 servicios (primera vista: lo que vendemos).
+export const HERO_SLIDES: HeroSlide[] = [
+  {
+    id: "agentes",
+    tag: "Agentes de IA · WhatsApp & Telegram",
+    titulo1: "Tu mejor vendedor",
+    tituloEm: "es inteligencia artificial.",
+    sub: "Atiende, responde y cierra ventas 24/7 — sin que tú estés. El mismo agente que pondríamos a trabajar para ti.",
+    cta: "Habla con nuestro agente",
+    waMsg: "Hola Zakumi, quiero un agente de IA para mi WhatsApp.",
+    img: "/work/zk-hero-foto.webp",
+    bubble: true,
+  },
+  {
+    id: "desarrollo",
+    tag: "Software & plataformas a medida",
+    titulo1: "Construimos el software",
+    tituloEm: "que sostiene tu crecimiento.",
+    sub: "Web, apps y sistemas hechos a tu medida con Next.js, React y datos serios. Del prototipo a producción — nada de plantillas.",
+    cta: "Cuéntanos tu proyecto",
+    waMsg: "Hola Zakumi, quiero desarrollar un proyecto de software.",
+    img: "/work/zk-software-foto.webp",
+  },
+  {
+    id: "marca",
+    tag: "Marca · Contenido · Redes 24/7",
+    titulo1: "Tu marca, viva.",
+    tituloEm: "Tus redes, en automático.",
+    sub: "Identidad con criterio + contenido y publicación automatizada. Presencia todos los días, sin que tengas que estar pendiente.",
+    cta: "Activa tu marca",
+    waMsg: "Hola Zakumi, quiero impulsar mi marca y mis redes.",
+    img: "/work/zk-brand-foto2.webp",
+  },
+];
+
 export const PILARES: Pilar[] = [
   {
     num: "— I.",

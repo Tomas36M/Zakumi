@@ -1,5 +1,29 @@
 import Image from "next/image";
+import {
+  siNextdotjs,
+  siReact,
+  siTypescript,
+  siPostgresql,
+  siTailwindcss,
+  siGreensock,
+  siAnthropic,
+  siGooglegemini,
+  siN8n,
+} from "simple-icons";
 import { PROYECTOS, TECNOLOGIAS } from "../content";
+
+// Logos monocromáticos por tecnología (OpenAI no está en simple-icons → solo texto).
+const LOGOS: Record<string, { path: string } | undefined> = {
+  "Next.js": siNextdotjs,
+  React: siReact,
+  TypeScript: siTypescript,
+  Postgres: siPostgresql,
+  Tailwind: siTailwindcss,
+  GSAP: siGreensock,
+  Anthropic: siAnthropic,
+  Gemini: siGooglegemini,
+  n8n: siN8n,
+};
 
 export function Proyectos() {
   return (
@@ -26,14 +50,27 @@ export function Proyectos() {
         ))}
       </div>
       <div className="tecnologias">
-        <div className="small">— con qué construimos —</div>
+        <div className="small">Con qué construimos</div>
         <div className="marquee">
           <div className="marquee-track tecnologias-track">
-            {[...TECNOLOGIAS, ...TECNOLOGIAS].map((t, i) => (
-              <span className="marquee-item" key={i}>
-                {t}
-              </span>
-            ))}
+            {[...TECNOLOGIAS, ...TECNOLOGIAS].map((t, i) => {
+              const logo = LOGOS[t];
+              return (
+                <span className="tech-chip" key={i}>
+                  {logo && (
+                    <svg
+                      className="tech-logo"
+                      role="img"
+                      viewBox="0 0 24 24"
+                      aria-hidden
+                    >
+                      <path d={logo.path} />
+                    </svg>
+                  )}
+                  <span className="tech-name">{t}</span>
+                </span>
+              );
+            })}
           </div>
         </div>
       </div>

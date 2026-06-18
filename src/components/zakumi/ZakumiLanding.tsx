@@ -39,8 +39,6 @@ const NAV_ITEMS = [
   { href: "#contacto", label: "Contacto" },
 ] as const;
 
-const HERO_INTERVAL = 5000;
-
 export function ZakumiLanding() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [activeService, setActiveService] = useState<number | null>(null);
@@ -153,32 +151,6 @@ export function ZakumiLanding() {
           },
           "<+0.1",
         )
-        .to(".hero-tag", { opacity: 1, duration: 0.5 }, "-=0.6")
-        .to(
-          ".hero-tag .line",
-          { scaleX: 1, duration: 0.8, ease: "expo.out" },
-          "<",
-        )
-        .to(
-          ".hero-tag .dot",
-          {
-            keyframes: [{ scale: 1.4 }, { scale: 1 }],
-            duration: 0.8,
-            ease: "power2.inOut",
-          },
-          "<",
-        )
-        .from(
-          ".hero h1 .word",
-          {
-            yPercent: 110,
-            rotate: 4,
-            stagger: 0.06,
-            duration: 1.05,
-            ease: "expo.out",
-          },
-          "-=0.5",
-        )
         .to(
           ".meta-block",
           {
@@ -196,24 +168,6 @@ export function ZakumiLanding() {
             y: 16,
             duration: 0.8,
             stagger: 0.1,
-            ease: "power3.out",
-          },
-          "<",
-        )
-        .to(
-          ".hero .cta",
-          {
-            opacity: 1,
-            duration: 0.6,
-            ease: "power3.out",
-          },
-          "-=0.5",
-        )
-        .from(
-          ".hero .cta",
-          {
-            y: 18,
-            duration: 0.7,
             ease: "power3.out",
           },
           "<",
@@ -240,8 +194,8 @@ export function ZakumiLanding() {
         scrollTrigger: { start: 0, end: "max", scrub: 0.2 },
       });
 
-      gsap.to(".hero h1", {
-        yPercent: -12,
+      gsap.to(".hero-copy-stable", {
+        yPercent: -10,
         ease: "none",
         scrollTrigger: {
           trigger: ".hero",
@@ -655,74 +609,6 @@ export function ZakumiLanding() {
         el.removeEventListener("mouseenter", enter);
         el.removeEventListener("mouseleave", leave);
       });
-    };
-  }, []);
-
-  useEffect(() => {
-    const slides = gsap.utils.toArray(".hero-slide") as HTMLElement[];
-    if (slides.length === 0) return;
-    const dots = gsap.utils.toArray(".hero-dot") as HTMLElement[];
-
-    const zoom = (el: HTMLElement, secs: number, loop = false) => {
-      const img = el.querySelector("img");
-      if (!img) return;
-      gsap.killTweensOf(img);
-      if (loop) {
-        gsap.fromTo(
-          img,
-          { scale: 1.0 },
-          { scale: 1.12, duration: secs, ease: "sine.inOut", yoyo: true, repeat: -1 },
-        );
-      } else {
-        gsap.fromTo(img, { scale: 1.0 }, { scale: 1.12, duration: secs, ease: "none" });
-      }
-    };
-
-    slides.forEach((s, i) => gsap.set(s, { opacity: i === 0 ? 1 : 0 }));
-
-    // Una sola imagen: zoom lento continuo (movimiento sutil)
-    if (slides.length < 2) {
-      zoom(slides[0], 14, true);
-      return;
-    }
-
-    let current = 0;
-    zoom(slides[0], HERO_INTERVAL / 1000 + 1.5);
-
-    const go = (next: number) => {
-      if (next === current) return;
-      gsap.to(slides[current], { opacity: 0, duration: 1.2, ease: "power2.inOut" });
-      gsap.to(slides[next], { opacity: 1, duration: 1.2, ease: "power2.inOut" });
-      zoom(slides[next], HERO_INTERVAL / 1000 + 1.5);
-      dots[current]?.classList.remove("is-active");
-      dots[next]?.classList.add("is-active");
-      current = next;
-    };
-
-    let timer = window.setInterval(
-      () => go((current + 1) % slides.length),
-      HERO_INTERVAL,
-    );
-    const restart = () => {
-      window.clearInterval(timer);
-      timer = window.setInterval(
-        () => go((current + 1) % slides.length),
-        HERO_INTERVAL,
-      );
-    };
-
-    const handlers = dots.map((d, i) => {
-      const h = () => {
-        go(i);
-        restart();
-      };
-      d.addEventListener("click", h);
-      return h;
-    });
-
-    return () => {
-      window.clearInterval(timer);
-      dots.forEach((d, i) => d.removeEventListener("click", handlers[i]));
     };
   }, []);
 
