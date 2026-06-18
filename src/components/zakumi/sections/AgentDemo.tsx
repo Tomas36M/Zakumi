@@ -14,8 +14,6 @@ const INBOX = [
   { ini: "C", name: "Camilo Ortiz", snippet: "Listo, ya pagué.", cls: "is-won" },
 ];
 
-const SPARK = [40, 55, 48, 62, 58, 72, 60, 78, 70, 86, 76, 92];
-
 export function AgentDemo() {
   return (
     <section className="agent-demo" id="demo-agente">
@@ -100,41 +98,6 @@ export function AgentDemo() {
                         Intención: compra · 3 unidades · Próximo paso: pago
                       </span>
                     </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Tablet: métricas */}
-            <div className="agent-tablet" aria-hidden>
-              <div className="agent-tablet-screen">
-                <div className="agent-tb-bar">
-                  <span className="agent-tb-dots">
-                    <i />
-                    <i />
-                    <i />
-                  </span>
-                  <span className="agent-tb-title">Rendimiento · hoy</span>
-                </div>
-                <div className="agent-tb-metrics">
-                  <div className="agent-tb-kpi">
-                    <span className="agent-tb-kpi-label">Leads</span>
-                    <span className="agent-tb-kpi-num">128</span>
-                  </div>
-                  <div className="agent-tb-kpi">
-                    <span className="agent-tb-kpi-label">Conversión</span>
-                    <span className="agent-tb-kpi-num">
-                      31<i>%</i>
-                    </span>
-                  </div>
-                  <div className="agent-tb-spark">
-                    {SPARK.map((h, i) => (
-                      <i
-                        key={i}
-                        className={i >= SPARK.length - 3 ? "hi" : ""}
-                        style={{ height: `${h}%` }}
-                      />
-                    ))}
                   </div>
                 </div>
               </div>
