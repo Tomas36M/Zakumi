@@ -34,9 +34,10 @@ const TWEAK_DEFAULTS: {
 };
 
 const NAV_ITEMS = [
+  { href: "#demo-agente", label: "Agentes" },
   { href: "#servicios", label: "Servicios" },
-  { href: "#seleccion", label: "Selección" },
-  { href: "#datos", label: "Cómo trabajamos" },
+  { href: "#crm", label: "CRM" },
+  { href: "#proyectos", label: "Proyectos" },
   { href: "#contacto", label: "Contacto" },
 ] as const;
 
