@@ -89,12 +89,12 @@ export function Hero() {
               <span style={{ height: "45%" }} />
               <span style={{ height: "100%" }} />
             </div>
-            <span className="strip-card-sub">Dashboard · MVP · App</span>
+            <span className="strip-card-sub">Agente · CRM · Dashboard</span>
           </div>
           <div className="strip-card strip-card-web">
             <span className="strip-url">tumarca.com</span>
             <span className="strip-cta">Cotizar →</span>
-            <span className="strip-card-sub">Landing · E-commerce</span>
+            <span className="strip-card-sub">WhatsApp · Bot · Web</span>
           </div>
         </div>
       </div>
@@ -102,7 +102,7 @@ export function Hero() {
       <div className="hero-meta">
         <div className="meta-block">
           <div className="label">Disciplinas</div>
-          <div className="val">Marca · Producto · Código</div>
+          <div className="val">IA · Software · Marca</div>
         </div>
         <div className="meta-block">
           <div className="label">Sede</div>
