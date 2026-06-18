@@ -10,11 +10,11 @@ import Image from "next/image";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import ScrollToPlugin from "gsap/ScrollToPlugin";
-import {
-  EMAIL, WHATSAPP_URL, INSTAGRAM_HANDLE, INSTAGRAM_URL,
-  TELEGRAM_ENABLED, TELEGRAM_URL,
-} from "./contact";
-import { HERO_IMAGES } from "./content";
+import { Hero } from "./sections/Hero";
+import { Servicios } from "./sections/Servicios";
+import { ComoTrabajamos } from "./sections/ComoTrabajamos";
+import { Filosofia } from "./sections/Filosofia";
+import { Contacto } from "./sections/Contacto";
 
 gsap.registerPlugin(ScrollTrigger, ScrollToPlugin);
 
@@ -726,103 +726,10 @@ export function ZakumiLanding() {
           </div>
         </div>
 
-        <section className="hero" id="hero">
-          <figure className="hero-visual" aria-hidden>
-            <div className="hero-carousel">
-              {HERO_IMAGES.map((src, i) => (
-                <div
-                  className={`hero-slide${i === 0 ? " is-active" : ""}`}
-                  data-slide={i}
-                  key={src}
-                >
-                  <Image
-                    src={src}
-                    alt=""
-                    fill
-                    priority={i === 0}
-                    sizes="(max-width: 1100px) 100vw, 40vw"
-                    style={{ objectFit: "cover" }}
-                  />
-                </div>
-              ))}
-            </div>
-            <span className="hero-visual-frame" />
-          </figure>
-
-          {HERO_IMAGES.length > 1 && (
-            <div className="hero-dots" role="tablist" aria-label="Galería del estudio">
-              {HERO_IMAGES.map((src, i) => (
-                <button
-                  type="button"
-                  key={`dot-${src}`}
-                  className={`hero-dot${i === 0 ? " is-active" : ""}`}
-                  data-dot={i}
-                  aria-label={`Ver imagen ${i + 1}`}
-                />
-              ))}
-            </div>
-          )}
-
-          <div className="hero-tag">
-            <span className="line" />
-            <span className="dot" />
-            <span>Estudio · Marca &amp; Software · 2026</span>
-          </div>
-
-          <h1 key={TWEAK_DEFAULTS.headline}>{renderHeadline()}</h1>
-
-          <div className="hero-strip" aria-hidden>
-            <div className="hero-strip-track">
-              <div className="strip-card strip-card-brand">
-                <span className="strip-card-logo">
-                  ZAKUMI<span className="dot">.</span>
-                </span>
-                <span className="strip-card-sub">Manual · Logo · Papelería</span>
-              </div>
-              <div className="strip-card strip-card-ui">
-                <div className="strip-bars">
-                  <span style={{ height: "55%" }} />
-                  <span style={{ height: "80%" }} />
-                  <span style={{ height: "45%" }} />
-                  <span style={{ height: "100%" }} />
-                </div>
-                <span className="strip-card-sub">Dashboard · MVP · App</span>
-              </div>
-              <div className="strip-card strip-card-web">
-                <span className="strip-url">tumarca.com</span>
-                <span className="strip-cta">Cotizar →</span>
-                <span className="strip-card-sub">Landing · E-commerce</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="hero-meta">
-            <div className="meta-block">
-              <div className="label">Disciplinas</div>
-              <div className="val">Marca · Producto · Código</div>
-            </div>
-            <div className="meta-block">
-              <div className="label">Sede</div>
-              <div className="val">Colombia · Toda LatAm en remoto</div>
-            </div>
-            <div className="meta-block">
-              <div className="label">Estatus</div>
-              <div className="val">Agenda abierta 2026 · Cupos limitados</div>
-            </div>
-          </div>
-
-          <a href="#contacto" className="cta">
-            <span>Hablemos de tu proyecto</span>
-            <span className="arrow">→</span>
-          </a>
-
-          <div className="hero-deco">EST. 2026 — ZKM ·</div>
-
-          <div className="scroll-indicator">
-            <span>scroll</span>
-            <span className="bar" />
-          </div>
-        </section>
+        <Hero
+          renderHeadline={renderHeadline}
+          headlineKey={TWEAK_DEFAULTS.headline}
+        />
 
         <div className="marquee">
           <div className="marquee-track">
@@ -845,114 +752,11 @@ export function ZakumiLanding() {
           </div>
         </div>
 
-        <section id="servicios" className="zakumi-servicios-section">
-          <div className="servicios-head">
-            <div className="servicios-head-text">
-              <div className="section-num">01 / Servicios</div>
-              <h2 className="section-title">
-                Dos caminos.
-                <br />
-                <em>Un estudio.</em>
-              </h2>
-              <p className="servicios-lead">
-                No hacemos de todo. Hacemos dos cosas — y las hacemos bien:{" "}
-                <em>marcas que se recuerdan</em> y <em>software que funciona</em>.
-                Bajo el mismo techo, el mismo equipo, sin traspasos perdidos
-                entre el diseño y el código.
-              </p>
-              <ul className="servicios-tags">
-                <li>Identidad</li>
-                <li>Estrategia</li>
-                <li>Diseño de producto</li>
-                <li>Frontend</li>
-                <li>Backend</li>
-                <li>Sin handoffs</li>
-              </ul>
-            </div>
-            <figure className="servicios-visual">
-              <div className="servicios-visual-frame">
-                <Image
-                  src="/work/zk-servicios.webp"
-                  alt="Marca y software en un mismo escritorio: identidad impresa junto a una laptop con código"
-                  fill
-                  sizes="(max-width: 900px) 100vw, 46vw"
-                  style={{ objectFit: "cover" }}
-                />
-              </div>
-              <figcaption>Marca a un lado. Software al otro. El mismo equipo.</figcaption>
-            </figure>
-          </div>
-
-          <div className="services">
-            <div
-              className={`service${activeService === 0 ? " active" : ""}`}
-              onMouseEnter={() => setActiveService(0)}
-              onMouseLeave={() => setActiveService(null)}
-            >
-              <div className="service-arrow">↗</div>
-              <div>
-                <div className="service-num">— I.</div>
-                <h3>
-                  Identidad
-                  <br />
-                  <em>de marca.</em>
-                </h3>
-                <p>
-                  Construimos marcas que se reconocen en una sola línea. Sistemas visuales precisos:
-                  tipografía, color, voz, aplicación. Lo justo. Nada más.
-                </p>
-              </div>
-              <div className="service-meta">
-                <div className="service-meta-row">
-                  <span className="k">Entregables</span>
-                  <span className="v">Sistema · Manual · Activos</span>
-                </div>
-                <div className="service-meta-row">
-                  <span className="k">Equipo</span>
-                  <span className="v">Diseño + dirección dedicada</span>
-                </div>
-                <div className="service-meta-row">
-                  <span className="k">Inversión</span>
-                  <span className="v">A medida · Propuesta sin compromiso</span>
-                </div>
-              </div>
-            </div>
-
-            <div
-              className={`service${activeService === 1 ? " active" : ""}`}
-              onMouseEnter={() => setActiveService(1)}
-              onMouseLeave={() => setActiveService(null)}
-            >
-              <div className="service-arrow">↗</div>
-              <div>
-                <div className="service-num">— II.</div>
-                <h3>
-                  Software
-                  <br />
-                  <em>a medida.</em>
-                </h3>
-                <p>
-                  Producto digital end-to-end. Desde el primer prototipo hasta la versión 3.0. Diseño y
-                  código bajo el mismo techo, sin handoffs perdidos.
-                </p>
-              </div>
-              <div className="service-meta">
-                <div className="service-meta-row">
-                  <span className="k">Stack</span>
-                  <span className="v">React · TypeScript · Postgres</span>
-                </div>
-                <div className="service-meta-row">
-                  <span className="k">Equipo</span>
-                  <span className="v">Diseño y código, mismo techo</span>
-                </div>
-                <div className="service-meta-row">
-                  <span className="k">Inversión</span>
-                  <span className="v">A medida · Propuesta sin compromiso</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
+        <Servicios
+          activeService={activeService}
+          onMouseEnter={setActiveService}
+          onMouseLeave={() => setActiveService(null)}
+        />
 
         <section className="showcase" id="seleccion">
           <div className="section-num">02 / Selección</div>
@@ -1029,148 +833,16 @@ export function ZakumiLanding() {
           </div>
         </section>
 
-        <section className="stats-section" id="datos">
-          <div className="stats-inner">
-            <div className="section-num">03 / Cómo trabajamos</div>
-            <div className="stats-intro">
-              <h2 className="section-title">
-                Sin letra chica.
-                <br />
-                <em>Solo compromisos.</em>
-              </h2>
-              <p className="lead">
-                Somos un estudio joven, y eso es una ventaja: trabajamos con{" "}
-                <em>obsesión</em>, sin <em>plantillas</em> y cuidamos cada
-                proyecto como si fuera el nuestro.
-              </p>
-            </div>
+        <ComoTrabajamos />
 
-            <div className="stats-grid">
-            <div className="stat">
-              <div className="num" data-num="2">
-                <span data-target="2">0</span>
-              </div>
-              <div className="stat-label">Disciplinas, un equipo</div>
-              <div className="stat-desc">
-                Marca y software bajo un mismo techo. Sin intermediarios entre
-                quien diseña y quien programa.
-              </div>
-            </div>
-            <div className="stat">
-              <div className="num" data-num="100">
-                <span data-target="100">0</span>
-                <span className="acc">%</span>
-              </div>
-              <div className="stat-label">Hecho por nosotros</div>
-              <div className="stat-desc">
-                Diseño y código propios, de principio a fin. Nada tercerizado.
-              </div>
-            </div>
-            <div className="stat">
-              <div className="num">0</div>
-              <div className="stat-label">Plantillas</div>
-              <div className="stat-desc">
-                Cada proyecto se construye a la medida, desde cero. Nunca un
-                molde reutilizado.
-              </div>
-            </div>
-            <div className="stat">
-              <div className="num">∞</div>
-              <div className="stat-label">Iteraciones</div>
-              <div className="stat-desc">
-                Ajustamos las veces que haga falta, hasta que cada detalle quede
-                exacto.
-              </div>
-            </div>
-            </div>
-          </div>
-        </section>
+        <Filosofia
+          line1={philosophyLine1}
+          line2={philosophyLine2}
+          em={philosophyEm}
+          line3={philosophyLine3}
+        />
 
-        <section className="philosophy" id="filosofia">
-          <div className="small">— filosofía —</div>
-          <p className="big">
-            {philosophyLine1.map((w, i) => (
-              <React.Fragment key={`a${i}`}>
-                <span className="phil-word">{w}</span>{" "}
-              </React.Fragment>
-            ))}
-            <br />
-            {philosophyLine2.map((w, i) => (
-              <React.Fragment key={`b${i}`}>
-                <span className="phil-word">{w}</span>{" "}
-              </React.Fragment>
-            ))}
-            <em>
-              <span className="phil-word">{philosophyEm[0]}</span>
-            </em>{" "}
-            {philosophyLine3.map((w, i) => (
-              <React.Fragment key={`c${i}`}>
-                <span className="phil-word">{w}</span>
-                {i < philosophyLine3.length - 1 ? " " : ""}
-              </React.Fragment>
-            ))}
-          </p>
-          <p className="signature">— ZKM Studio</p>
-        </section>
-
-        <section className="outro" id="contacto">
-          <h2>
-            ¿Tienes una visión?
-            <br />
-            <em>Empecemos hoy.</em>
-          </h2>
-          <div className="right">
-            <p>
-              Estamos recibiendo nuevos proyectos. Cuéntanos qué quieres construir
-              y empecemos la conversación — sin formularios eternos. La primera
-              llamada es gratis y sin compromiso.
-            </p>
-            <div className="contact-actions">
-              <a
-                href={WHATSAPP_URL}
-                className="cta"
-                style={{ opacity: 1 }}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <span className="wa-icon" aria-hidden>
-                  <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
-                    <path d="M17.5 14.4c-.3-.2-1.8-.9-2-1-.3-.1-.5-.2-.7.1-.2.3-.7 1-.9 1.2-.2.2-.3.2-.6.1-.3-.2-1.3-.5-2.4-1.5-.9-.8-1.5-1.8-1.7-2.1-.2-.3 0-.5.1-.6.1-.1.3-.4.4-.5.1-.2.2-.3.3-.5.1-.2 0-.4 0-.5-.1-.2-.7-1.6-.9-2.2-.2-.6-.5-.5-.7-.5h-.6c-.2 0-.5.1-.8.4-.3.3-1 1-1 2.5s1.1 2.9 1.2 3.1c.2.2 2.1 3.2 5 4.5.7.3 1.3.5 1.7.6.7.2 1.3.2 1.8.1.6-.1 1.8-.7 2-1.4.3-.7.3-1.3.2-1.4-.1-.1-.3-.2-.6-.4zM12 2a10 10 0 0 0-8.6 15l-1.3 4.8 4.9-1.3A10 10 0 1 0 12 2zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2z" />
-                  </svg>
-                </span>
-                <span>Escríbenos por WhatsApp</span>
-                <span className="arrow">→</span>
-              </a>
-              <a
-                href={`mailto:${EMAIL}`}
-                className="cta cta-ghost"
-                style={{ opacity: 1 }}
-              >
-                <span>{EMAIL}</span>
-                <span className="arrow">→</span>
-              </a>
-            </div>
-          </div>
-        </section>
-
-        <footer>
-          <div>© 2026 ZAKUMI Studio · Colombia</div>
-          <a
-            className="footer-social"
-            href={INSTAGRAM_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label="Síguenos en Instagram — @zakumiestudio"
-          >
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
-              <rect x="2" y="2" width="20" height="20" rx="5" />
-              <circle cx="12" cy="12" r="4" />
-              <circle cx="17.5" cy="6.5" r="1.1" fill="currentColor" stroke="none" />
-            </svg>
-            <span className="footer-handle">@{INSTAGRAM_HANDLE}</span>
-          </a>
-          <div>v.02 — gsap</div>
-        </footer>
+        <Contacto />
       </div>
     </>
   );
