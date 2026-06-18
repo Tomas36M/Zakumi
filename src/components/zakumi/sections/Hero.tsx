@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { HERO_SLIDES } from "../content";
-import { waLink, TELEGRAM_ENABLED, TELEGRAM_URL } from "../contact";
+import Link from "next/link";
+import { TELEGRAM_ENABLED, TELEGRAM_URL } from "../contact";
 
 const AUTO_MS = 4500;
 
@@ -110,17 +111,15 @@ export function Hero() {
           <p className="hero-sub">{slide.sub}</p>
 
           <div className="hero-ctas">
-            <a
-              href={waLink(slide.waMsg)}
+            <Link
               className="cta"
-              target="_blank"
-              rel="noopener noreferrer"
+              href={slide.href}
               style={{ opacity: 1 }}
-              aria-label={`${slide.cta} por WhatsApp`}
+              aria-label={`${slide.cta} — ${slide.tag}`}
             >
               <span>{slide.cta}</span>
               <span className="arrow">→</span>
-            </a>
+            </Link>
             {TELEGRAM_ENABLED && (
               <a
                 href={TELEGRAM_URL}

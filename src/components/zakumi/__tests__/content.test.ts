@@ -1,12 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { PILARES, STATS, CHAT_GUION, TECNOLOGIAS, HERO, CRM, CONTACTO, PROYECTOS } from "../content";
+import { STATS, CHAT_GUION, TECNOLOGIAS, HERO, CRM, CONTACTO, PROYECTOS } from "../content";
+import { HERO_SLIDES } from "../content";
 
-const allCopy = JSON.stringify([PILARES, STATS, CHAT_GUION, TECNOLOGIAS, HERO, CRM, CONTACTO, PROYECTOS]);
+const allCopy = JSON.stringify([STATS, CHAT_GUION, TECNOLOGIAS, HERO, CRM, CONTACTO, PROYECTOS]);
 
 describe("content", () => {
-  it("hay exactamente 3 pilares y 4 stats", () => {
-    expect(PILARES).toHaveLength(3);
+  it("hay exactamente 4 stats", () => {
     expect(STATS).toHaveLength(4);
+  });
+  it("cada slide del hero enlaza a una ruta de servicio", () => {
+    expect(HERO_SLIDES.map((s) => s.href)).toEqual(["/agentes-ia", "/software", "/marca"]);
   });
   it("el guion del chat incluye cliente y agente", () => {
     expect(CHAT_GUION.some((m) => m.from === "cliente")).toBe(true);
