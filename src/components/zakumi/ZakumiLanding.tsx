@@ -10,6 +10,10 @@ import Image from "next/image";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import ScrollToPlugin from "gsap/ScrollToPlugin";
+import {
+  EMAIL, WHATSAPP_URL, INSTAGRAM_HANDLE, INSTAGRAM_URL,
+  TELEGRAM_ENABLED, TELEGRAM_URL,
+} from "./contact";
 
 gsap.registerPlugin(ScrollTrigger, ScrollToPlugin);
 
@@ -32,16 +36,6 @@ const NAV_ITEMS = [
   { href: "#datos", label: "Cómo trabajamos" },
   { href: "#contacto", label: "Contacto" },
 ] as const;
-
-const EMAIL = "zakumiestudio@gmail.com";
-const WHATSAPP_NUMBER = "573134276879";
-const WHATSAPP_MESSAGE =
-  "Hola Zakumi, vi su sitio y quiero hablar sobre un proyecto.";
-const WHATSAPP_URL = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(
-  WHATSAPP_MESSAGE,
-)}`;
-const INSTAGRAM_HANDLE = "zakumiestudio";
-const INSTAGRAM_URL = `https://www.instagram.com/${INSTAGRAM_HANDLE}/`;
 
 /** Imágenes del carrusel del hero. Para añadir más, sube el .webp a
  *  /public/work y agrega su ruta aquí. */
