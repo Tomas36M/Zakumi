@@ -1976,8 +1976,8 @@
   .agent-devices {
     position: relative;
     width: 100%;
-    max-width: 720px;
-    aspect-ratio: 1 / 0.78;
+    max-width: 760px;
+    aspect-ratio: 1 / 0.86;
     margin: 0 auto;
   }
   /* Marco compartido de las pantallas de fondo (desktop + tablet) */
@@ -1995,10 +1995,10 @@
       0 44px 80px -38px color-mix(in srgb, var(--black) 92%, transparent),
       0 0 0 1px color-mix(in srgb, var(--paper) 6%, transparent);
   }
-  /* Desktop (consola) — capa de fondo, izquierda */
-  .agent-desktop { top: 3%; left: 0; width: 52%; border-radius: 14px; z-index: 1; }
-  /* Tablet (métricas) — capa de fondo, derecha-abajo */
-  .agent-tablet { right: 0; bottom: 2%; width: 42%; border-radius: 18px; z-index: 2; }
+  /* Desktop (consola) — grande, abajo-izquierda */
+  .agent-desktop { bottom: 0; left: 0; width: 68%; border-radius: 14px; z-index: 1; }
+  /* Tablet (métricas) — arriba-derecha (elevada) */
+  .agent-tablet { top: 0; right: 0; width: 44%; border-radius: 18px; z-index: 2; }
 
   /* Atenúa las pantallas de fondo para que el celular resalte */
   .agent-dt-screen,
@@ -2008,7 +2008,7 @@
     content: '';
     position: absolute;
     inset: 0;
-    background: color-mix(in srgb, var(--black) 32%, transparent);
+    background: color-mix(in srgb, var(--black) 18%, transparent);
     pointer-events: none;
     z-index: 4;
   }
