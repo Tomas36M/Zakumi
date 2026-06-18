@@ -63,7 +63,7 @@ export const metadata: Metadata = {
         url: "/og.jpg",
         width: 1200,
         height: 630,
-        alt: "ZAKUMI — Creamos marcas. Desarrollamos el futuro.",
+        alt: "ZAKUMI — Agentes de IA y software a medida desde Colombia.",
       },
     ],
   },

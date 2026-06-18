@@ -15,7 +15,7 @@ export function JsonLd() {
         image: `${siteUrl}/icon.svg`,
         sameAs: ["https://www.instagram.com/zakumiestudio/"],
         foundingDate: "2026",
-        slogan: "Creamos marcas. Desarrollamos el futuro.",
+        slogan: "Agentes de IA que venden. Software que perdura.",
         description:
           "Estudio de marca, agentes de IA y software a medida en Colombia: identidad visual, agentes para WhatsApp y Telegram, CRM con IA, y producto digital end-to-end. Recibiendo nuevos proyectos.",
         email: "zakumiestudio@gmail.com",

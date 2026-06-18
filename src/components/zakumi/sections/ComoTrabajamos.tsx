@@ -4,7 +4,7 @@ export function ComoTrabajamos() {
   return (
     <section className="stats-section" id="datos">
       <div className="stats-inner">
-        <div className="section-num">03 / Cómo trabajamos</div>
+        <div className="section-num">04 / Cómo trabajamos</div>
         <div className="stats-intro">
           <h2 className="section-title">
             Tres disciplinas,

@@ -24,12 +24,10 @@ gsap.registerPlugin(ScrollTrigger, ScrollToPlugin);
 const TWEAK_DEFAULTS: {
   heroSize: number;
   bgMode: "full" | "mix";
-  headline: string;
   accent: string;
 } = {
   heroSize: 8.5,
   bgMode: "full",
-  headline: "Creamos marcas. Desarrollamos el futuro.",
   accent: "#DB5227",
 };
 
