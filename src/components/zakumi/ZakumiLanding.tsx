@@ -14,6 +14,7 @@ import {
   EMAIL, WHATSAPP_URL, INSTAGRAM_HANDLE, INSTAGRAM_URL,
   TELEGRAM_ENABLED, TELEGRAM_URL,
 } from "./contact";
+import { HERO_IMAGES } from "./content";
 
 gsap.registerPlugin(ScrollTrigger, ScrollToPlugin);
 
@@ -37,14 +38,6 @@ const NAV_ITEMS = [
   { href: "#contacto", label: "Contacto" },
 ] as const;
 
-/** Imágenes del carrusel del hero. Para añadir más, sube el .webp a
- *  /public/work y agrega su ruta aquí. */
-const HERO_IMAGES = [
-  "/work/zk-hero-foto.webp",
-  "/work/zk-hero-2.webp",
-  "/work/zk-hero-3.webp",
-  "/work/zk-hero-4.webp",
-];
 const HERO_INTERVAL = 5000;
 
 export function ZakumiLanding() {
