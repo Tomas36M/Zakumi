@@ -9,6 +9,7 @@ import { AgentDemo } from "./sections/AgentDemo";
 import { ComoTrabajamos } from "./sections/ComoTrabajamos";
 import { Filosofia } from "./sections/Filosofia";
 import { Proyectos } from "./sections/Proyectos";
+import { ContactoSection } from "./sections/ContactoSection";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -367,6 +368,7 @@ export function ZakumiHome() {
       <Proyectos />
       <ComoTrabajamos />
       <Filosofia line1={philosophyLine1} line2={philosophyLine2} em={philosophyEm} line3={philosophyLine3} />
+      <ContactoSection />
     </>
   );
 }
