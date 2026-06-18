@@ -1906,6 +1906,7 @@
   .agent-demo {
     padding: 8rem 4vw;
     border-top: 1px solid color-mix(in srgb, var(--slate) 18%, transparent);
+    overflow-x: clip;
   }
 
   /* mobile-first: una columna; llena el ancho como las demás secciones (sin centrar) */
@@ -1922,26 +1923,27 @@
     }
   }
   .agent-intro .section-num { margin-bottom: 1.1rem; }
-  .agent-intro .section-title { margin-bottom: 1.5rem; }
+  .agent-intro .section-title { margin-bottom: 1.6rem; }
   .agent-lead {
-    font-size: clamp(0.95rem, 1.2vw, 1.1rem);
-    line-height: 1.65;
+    font-size: clamp(1.05rem, 1.45vw, 1.32rem);
+    line-height: 1.7;
     color: var(--slate);
-    max-width: 42ch;
-    margin-bottom: 1.6rem;
+    max-width: 46ch;
+    margin-bottom: 2.2rem;
   }
   .agent-points {
     list-style: none;
     display: flex;
     flex-direction: column;
-    gap: 0.6rem;
-    margin-bottom: 2rem;
+    gap: 1rem;
+    margin-bottom: 2.4rem;
   }
   .agent-points li {
-    font-size: 0.9rem;
+    font-size: clamp(1rem, 1.1vw, 1.12rem);
     color: var(--paper);
-    padding-left: 1.4rem;
+    padding-left: 1.6rem;
     position: relative;
+    line-height: 1.4;
   }
   .agent-points li::before {
     content: '';
@@ -1968,6 +1970,128 @@
       transparent 65%
     );
     pointer-events: none;
+  }
+
+  /* ——— Composición tablet + iPhone ——— */
+  .agent-devices {
+    position: relative;
+    width: 100%;
+    max-width: 600px;
+    aspect-ratio: 1 / 0.9;
+    margin: 0 auto;
+  }
+  /* Tablet horizontal (consola) — capa de fondo */
+  .agent-tablet {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 82%;
+    z-index: 1;
+    padding: 9px;
+    border-radius: 22px;
+    background: linear-gradient(
+      150deg,
+      color-mix(in srgb, var(--charcoal) 80%, var(--paper)) 0%,
+      color-mix(in srgb, var(--charcoal) 50%, var(--black)) 34%,
+      var(--black) 100%
+    );
+    box-shadow:
+      0 40px 70px -34px color-mix(in srgb, var(--black) 90%, transparent),
+      0 0 0 1px color-mix(in srgb, var(--paper) 6%, transparent);
+  }
+  .agent-tablet-screen {
+    border-radius: 13px;
+    overflow: hidden;
+    background: color-mix(in srgb, var(--navy) 16%, var(--black));
+    aspect-ratio: 16 / 10.6;
+    display: flex;
+    flex-direction: column;
+  }
+  .agent-tb-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 0.6rem;
+    background: color-mix(in srgb, var(--black) 45%, transparent);
+    border-bottom: 1px solid color-mix(in srgb, var(--slate) 14%, transparent);
+    flex-shrink: 0;
+  }
+  .agent-tb-dots { display: inline-flex; gap: 4px; }
+  .agent-tb-dots i { width: 7px; height: 7px; border-radius: 50%; background: color-mix(in srgb, var(--slate) 38%, transparent); }
+  .agent-tb-dots i:first-child { background: color-mix(in srgb, var(--orange) 72%, transparent); }
+  .agent-tb-title { font-size: 0.6rem; color: var(--slate); letter-spacing: 0.02em; white-space: nowrap; }
+  .agent-tb-live { margin-left: auto; display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.52rem; text-transform: uppercase; letter-spacing: 0.1em; color: color-mix(in srgb, var(--paper) 70%, transparent); }
+  .agent-tb-live i { width: 5px; height: 5px; border-radius: 50%; background: var(--orange); }
+  .agent-tb-body { flex: 1; display: grid; grid-template-columns: 38% 1fr; min-height: 0; }
+  .agent-tb-list {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-right: 1px solid color-mix(in srgb, var(--slate) 12%, transparent);
+  }
+  .agent-tb-conv {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.4rem 0.45rem;
+    border-bottom: 1px solid color-mix(in srgb, var(--slate) 8%, transparent);
+  }
+  .agent-tb-conv.is-active { background: color-mix(in srgb, var(--orange) 10%, transparent); }
+  .agent-tb-av {
+    width: 19px;
+    height: 19px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.52rem;
+    font-weight: 600;
+    color: var(--paper);
+    background: color-mix(in srgb, var(--orange) 30%, var(--navy));
+  }
+  .agent-tb-conv-meta { display: flex; flex-direction: column; min-width: 0; line-height: 1.2; }
+  .agent-tb-conv-name { font-size: 0.56rem; color: var(--paper); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .agent-tb-conv-snippet { font-size: 0.5rem; color: var(--slate); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .agent-tb-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; margin-left: auto; }
+  .agent-tb-dot.is-ia { background: var(--orange); }
+  .agent-tb-dot.is-cita { background: color-mix(in srgb, var(--navy) 50%, var(--paper)); }
+  .agent-tb-dot.is-nuevo { background: color-mix(in srgb, var(--slate) 50%, transparent); }
+  .agent-tb-dot.is-won { background: color-mix(in srgb, var(--orange) 90%, var(--paper)); }
+  .agent-tb-main { display: flex; flex-direction: column; padding: 0.5rem 0.55rem; gap: 0.4rem; min-width: 0; }
+  .agent-tb-main-head { display: flex; align-items: center; gap: 0.35rem; padding-bottom: 0.4rem; border-bottom: 1px solid color-mix(in srgb, var(--slate) 10%, transparent); }
+  .agent-tb-main-name { font-size: 0.58rem; color: var(--paper); font-weight: 500; }
+  .agent-tb-badge { margin-left: auto; font-size: 0.46rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--orange); background: color-mix(in srgb, var(--orange) 14%, transparent); border: 1px solid color-mix(in srgb, var(--orange) 32%, transparent); border-radius: 999px; padding: 0.1rem 0.34rem; }
+  .agent-tb-thread { display: flex; flex-direction: column; gap: 0.3rem; }
+  .agent-tb-msg { font-size: 0.54rem; line-height: 1.3; padding: 0.3rem 0.45rem; border-radius: 8px; max-width: 90%; }
+  .agent-tb-msg.in { align-self: flex-start; background: color-mix(in srgb, var(--slate) 16%, var(--black)); color: var(--paper); border-radius: 8px 8px 8px 2px; }
+  .agent-tb-msg.out { align-self: flex-end; background: color-mix(in srgb, var(--orange) 72%, var(--black)); color: var(--paper); border-radius: 8px 8px 2px 8px; }
+  .agent-tb-summary { margin-top: auto; display: flex; flex-direction: column; gap: 0.15rem; padding: 0.4rem 0.5rem; border-radius: 8px; background: color-mix(in srgb, var(--navy) 28%, transparent); border: 1px solid color-mix(in srgb, var(--slate) 14%, transparent); }
+  .agent-tb-summary-label { font-size: 0.46rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--orange); }
+  .agent-tb-summary-text { font-size: 0.52rem; color: var(--paper); line-height: 1.3; }
+
+  /* iPhone delante, montado sobre la tablet */
+  .agent-devices .agent-phone {
+    position: absolute;
+    right: 3%;
+    bottom: 0;
+    width: 224px;
+    max-width: none;
+    z-index: 4;
+  }
+
+  @media (max-width: 860px) {
+    .agent-devices {
+      max-width: 320px;
+      aspect-ratio: auto;
+    }
+    .agent-tablet { display: none; }
+    .agent-devices .agent-phone {
+      position: static;
+      width: 300px;
+      max-width: 82vw;
+      margin: 0 auto;
+    }
   }
 
   /* ——— iPhone realista ——— */
