@@ -43,3 +43,6 @@ next-env.d.ts
 # Agent / editor
 .claude/
 .cursor/
+
+# Visual brainstorm companion
+.superpowers/

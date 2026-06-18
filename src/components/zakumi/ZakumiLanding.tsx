@@ -40,6 +40,8 @@ const WHATSAPP_MESSAGE =
 const WHATSAPP_URL = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(
   WHATSAPP_MESSAGE,
 )}`;
+const INSTAGRAM_HANDLE = "zakumiestudio";
+const INSTAGRAM_URL = `https://www.instagram.com/${INSTAGRAM_HANDLE}/`;
 
 /** Imágenes del carrusel del hero. Para añadir más, sube el .webp a
  *  /public/work y agrega su ruta aquí. */
@@ -1166,7 +1168,20 @@ export function ZakumiLanding() {
 
         <footer>
           <div>© 2026 ZAKUMI Studio · Colombia</div>
-          <div>Diseño · Código · Marca</div>
+          <a
+            className="footer-social"
+            href={INSTAGRAM_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Síguenos en Instagram — @zakumiestudio"
+          >
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
+              <rect x="2" y="2" width="20" height="20" rx="5" />
+              <circle cx="12" cy="12" r="4" />
+              <circle cx="17.5" cy="6.5" r="1.1" fill="currentColor" stroke="none" />
+            </svg>
+            <span className="footer-handle">@{INSTAGRAM_HANDLE}</span>
+          </a>
           <div>v.02 — gsap</div>
         </footer>
       </div>

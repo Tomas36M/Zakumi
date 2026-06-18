@@ -764,6 +764,16 @@
     text-transform: uppercase;
     color: var(--slate);
   }
+  .footer-social {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--slate);
+    transition: color 0.3s ease;
+  }
+  .footer-social:hover { color: var(--orange); }
+  .footer-social svg { display: block; flex-shrink: 0; }
+  .footer-handle { text-transform: none; letter-spacing: 0.05em; }
 
   /* Marquee */
   .marquee {

@@ -13,6 +13,7 @@ export function JsonLd() {
         url: siteUrl,
         logo: `${siteUrl}/icon.svg`,
         image: `${siteUrl}/icon.svg`,
+        sameAs: ["https://www.instagram.com/zakumiestudio/"],
         foundingDate: "2026",
         slogan: "Creamos marcas. Desarrollamos el futuro.",
         description:
