@@ -1,3 +1,5 @@
+import { SERVICIOS, SERVICE_SLUGS } from "@/components/zakumi/services";
+
 /** Datos estructurados para Colombia (schema.org) — mejora cómo Google entiende la marca */
 export function JsonLd() {
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://zakumistudio.com";
@@ -102,6 +104,25 @@ export function JsonLd() {
         inLanguage: "es-CO",
         publisher: { "@id": `${siteUrl}/#organization` },
       },
+      ...SERVICE_SLUGS.map((slug) => {
+        const servicio = SERVICIOS[slug];
+        const serviceTypeMap: Record<typeof slug, string> = {
+          "agentes-ia": "Agentes de Inteligencia Artificial",
+          software: "Desarrollo de Software a Medida",
+          marca: "Diseño de Marca y Gestión de Redes",
+        };
+        return {
+          "@type": "Service",
+          "@id": `${siteUrl}/${slug}/#service`,
+          name: servicio.seo.title,
+          description: servicio.seo.description,
+          serviceType: serviceTypeMap[slug],
+          provider: { "@id": `${siteUrl}/#organization` },
+          areaServed: "CO",
+          url: `${siteUrl}/${slug}`,
+          inLanguage: "es-CO",
+        };
+      }),
     ],
   };
 
