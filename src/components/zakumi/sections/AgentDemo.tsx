@@ -14,6 +14,8 @@ const INBOX = [
   { ini: "C", name: "Camilo Ortiz", snippet: "Listo, ya pagué.", cls: "is-won" },
 ];
 
+const SPARK = [40, 55, 48, 62, 58, 72, 60, 78, 70, 86, 76, 92];
+
 export function AgentDemo() {
   return (
     <section className="agent-demo" id="demo-agente">
@@ -48,22 +50,22 @@ export function AgentDemo() {
 
         <div className="agent-stage">
           <div className="agent-devices">
-            {/* Tablet horizontal: consola de agentes */}
-            <div className="agent-tablet" aria-hidden>
-              <div className="agent-tablet-screen">
-                <div className="agent-tb-bar">
+            {/* Desktop: navegador con la consola */}
+            <div className="agent-desktop" aria-hidden>
+              <div className="agent-dt-screen">
+                <div className="agent-dt-bar">
                   <span className="agent-tb-dots">
                     <i />
                     <i />
                     <i />
                   </span>
-                  <span className="agent-tb-title">Consola Zakumi · Agentes IA</span>
+                  <span className="agent-dt-url">app.zakumi.studio · consola</span>
                   <span className="agent-tb-live">
                     <i />
                     12 activas
                   </span>
                 </div>
-                <div className="agent-tb-body">
+                <div className="agent-dt-body">
                   <div className="agent-tb-list">
                     {INBOX.map((c) => (
                       <div
@@ -103,7 +105,42 @@ export function AgentDemo() {
               </div>
             </div>
 
-            {/* iPhone: chat en vivo */}
+            {/* Tablet: métricas */}
+            <div className="agent-tablet" aria-hidden>
+              <div className="agent-tablet-screen">
+                <div className="agent-tb-bar">
+                  <span className="agent-tb-dots">
+                    <i />
+                    <i />
+                    <i />
+                  </span>
+                  <span className="agent-tb-title">Rendimiento · hoy</span>
+                </div>
+                <div className="agent-tb-metrics">
+                  <div className="agent-tb-kpi">
+                    <span className="agent-tb-kpi-label">Leads</span>
+                    <span className="agent-tb-kpi-num">128</span>
+                  </div>
+                  <div className="agent-tb-kpi">
+                    <span className="agent-tb-kpi-label">Conversión</span>
+                    <span className="agent-tb-kpi-num">
+                      31<i>%</i>
+                    </span>
+                  </div>
+                  <div className="agent-tb-spark">
+                    {SPARK.map((h, i) => (
+                      <i
+                        key={i}
+                        className={i >= SPARK.length - 3 ? "hi" : ""}
+                        style={{ height: `${h}%` }}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* iPhone: chat en vivo (héroe) */}
             <div className="agent-phone">
               <span className="agent-phone-island" aria-hidden />
               <div className="agent-screen">
