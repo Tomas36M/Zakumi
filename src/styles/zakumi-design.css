@@ -291,12 +291,13 @@
   .hero h1 {
     font-family: var(--font-playfair), 'Playfair Display', serif;
     font-weight: 400;
-    /* En escritorio --hero-size (p. ej. 8.5rem) viene de JS; en móvil se quita JS y manda el clamp */
-    font-size: var(--hero-size, clamp(3rem, 9vw, 8.5rem));
-    line-height: 0.95;
+    /* Tamaño responsive y contenido: siempre 2 líneas (una por frase), sin saltos entre slides */
+    font-size: clamp(2rem, 3.1vw, 3.25rem);
+    line-height: 1.04;
     letter-spacing: -0.02em;
-    max-width: 16ch;
-    margin-bottom: 2rem;
+    max-width: none;
+    min-height: 2.18em; /* reserva 2 líneas → el sub y el CTA no saltan */
+    margin-bottom: 1.4rem;
     color: var(--paper);
   }
   .hero h1 em { font-style: italic; color: var(--orange); }
@@ -385,7 +386,8 @@
     font-size: clamp(0.9rem, 1.1vw, 1.05rem);
     line-height: 1.6;
     color: var(--slate);
-    max-width: 52ch;
+    max-width: 50ch;
+    min-height: 6.4em; /* reserva el alto del sub más largo → el CTA no salta entre slides */
     margin-bottom: 2rem;
   }
 
