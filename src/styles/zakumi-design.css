@@ -1545,6 +1545,69 @@
     .tile-ink { aspect-ratio: 4 / 3; }
   }
 
+  /* ——— Proyectos: grid de 3 columnas (override del bento de 4 columnas) ——— */
+  .showcase#proyectos .showcase-grid {
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: minmax(200px, 28vw);
+    grid-template-areas: none;
+  }
+  @media (max-width: 860px) {
+    .showcase#proyectos .showcase-grid {
+      grid-template-columns: 1fr;
+      grid-template-rows: auto;
+      grid-template-areas: none;
+    }
+    .showcase#proyectos .show-tile {
+      aspect-ratio: 16 / 9;
+    }
+  }
+
+  /* ——— Tecnologías: marquee "con qué construimos" ——— */
+  .tecnologias {
+    margin-top: 4rem;
+    border-top: 1px solid color-mix(in srgb, var(--slate) 25%, transparent);
+    padding-top: 2rem;
+  }
+  .tecnologias > .small {
+    font-size: 0.7rem;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: color-mix(in srgb, var(--paper) 45%, transparent);
+    margin-bottom: 1.25rem;
+    text-align: center;
+  }
+  .tecnologias .marquee {
+    border-top: none;
+    border-bottom: none;
+    padding: 0.75rem 0;
+  }
+  .tecnologias .marquee-item {
+    font-family: var(--font-inter), sans-serif;
+    font-style: normal;
+    font-size: clamp(0.85rem, 1.5vw, 1rem);
+    letter-spacing: 0.08em;
+    color: color-mix(in srgb, var(--paper) 65%, transparent);
+    gap: 2.5rem;
+    padding: 0 2rem;
+  }
+  .tecnologias .marquee-item + .marquee-item {
+    border-left: 1px solid color-mix(in srgb, var(--slate) 20%, transparent);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .tecnologias .marquee-track {
+      animation: none;
+      /* show first half only as a static row */
+      width: 100%;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 1rem 2rem;
+      transform: none !important;
+    }
+  }
+  @media (max-width: 720px) {
+    .tecnologias { margin-top: 2.5rem; }
+  }
+
   /* ——— Hero: burbuja de chat animada ——— */
   .hero-chat-bubble {
     position: absolute; left: 8%; bottom: 12%;

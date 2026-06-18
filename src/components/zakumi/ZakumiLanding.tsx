@@ -6,7 +6,6 @@ import React, {
   useRef,
   useState,
 } from "react";
-import Image from "next/image";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import ScrollToPlugin from "gsap/ScrollToPlugin";
@@ -17,6 +16,7 @@ import { AgentDemo } from "./sections/AgentDemo";
 import { ComoTrabajamos } from "./sections/ComoTrabajamos";
 import { Filosofia } from "./sections/Filosofia";
 import { Contacto } from "./sections/Contacto";
+import { Proyectos } from "./sections/Proyectos";
 
 gsap.registerPlugin(ScrollTrigger, ScrollToPlugin);
 
@@ -557,6 +557,20 @@ export function ZakumiLanding() {
         },
       );
 
+      // ——— Marquee "con qué construimos" ———
+      const mmTech = gsap.matchMedia();
+      mmTech.add("(prefers-reduced-motion: no-preference)", () => {
+        const techTrack = document.querySelector(".tecnologias-track");
+        if (techTrack) {
+          gsap.to(techTrack, {
+            xPercent: -50,
+            duration: 18,
+            ease: "none",
+            repeat: -1,
+          });
+        }
+      });
+
       // ——— Demo del agente: chat guionizado con typing → texto ———
       const mmAgent = gsap.matchMedia();
       mmAgent.add("(prefers-reduced-motion: no-preference)", () => {
@@ -831,80 +845,7 @@ export function ZakumiLanding() {
 
         <AgentDemo />
 
-        <section className="showcase" id="seleccion">
-          <div className="section-num">02 / Selección</div>
-          <h2 className="section-title">
-            Marca y producto,
-            <br />
-            <em>con intención.</em>
-          </h2>
-
-          <div className="showcase-grid">
-            <figure className="show-tile tile-brand">
-              <div className="show-mock">
-                <Image
-                  src="/work/zk-brand-foto2.webp"
-                  alt="Sistema de identidad de marca Zakumi: papelería, tarjeta y paleta"
-                  fill
-                  className="show-img"
-                  sizes="(max-width: 720px) 100vw, 50vw"
-                />
-              </div>
-              <figcaption>
-                <span className="show-tag">Identidad</span>
-                <span className="show-title">Sistemas de marca</span>
-              </figcaption>
-            </figure>
-
-            <figure className="show-tile tile-soft">
-              <div className="show-mock">
-                <Image
-                  src="/work/zk-software-foto.webp"
-                  alt="Dashboard de producto Zakumi con métricas de ingresos y conversión"
-                  fill
-                  className="show-img"
-                  sizes="(max-width: 720px) 100vw, 50vw"
-                />
-              </div>
-              <figcaption>
-                <span className="show-tag">Producto</span>
-                <span className="show-title">Interfaces que venden</span>
-              </figcaption>
-            </figure>
-
-            <figure className="show-tile tile-form">
-              <div className="show-mock">
-                <Image
-                  src="/work/zk-form-foto.webp"
-                  alt="Landing page de alta conversión diseñada por Zakumi"
-                  fill
-                  className="show-img"
-                  sizes="(max-width: 720px) 100vw, 25vw"
-                />
-              </div>
-              <figcaption>
-                <span className="show-tag">Web</span>
-                <span className="show-title">Landings que convierten</span>
-              </figcaption>
-            </figure>
-
-            <figure className="show-tile tile-ink">
-              <div className="show-mock">
-                <Image
-                  src="/work/zk-ink-foto.webp"
-                  alt="Código de producción en Next.js y TypeScript por Zakumi"
-                  fill
-                  className="show-img"
-                  sizes="(max-width: 720px) 100vw, 25vw"
-                />
-              </div>
-              <figcaption>
-                <span className="show-tag">Código</span>
-                <span className="show-title">Listo para producción</span>
-              </figcaption>
-            </figure>
-          </div>
-        </section>
+        <Proyectos />
 
         <ComoTrabajamos />
 
