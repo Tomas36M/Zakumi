@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, Playfair_Display } from "next/font/google";
 import { JsonLd } from "@/components/site/JsonLd";
+import { SiteShell } from "@/components/site/SiteShell";
 import "./globals.css";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://zakumistudio.com";
@@ -107,7 +108,7 @@ export default function RootLayout({
     <html lang="es-CO" className={`${inter.variable} ${playfair.variable} h-full`}>
       <body className="min-h-full antialiased">
         <JsonLd />
-        {children}
+        <SiteShell>{children}</SiteShell>
       </body>
     </html>
   );

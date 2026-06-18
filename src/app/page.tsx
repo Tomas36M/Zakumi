@@ -1,5 +1,5 @@
-import { ZakumiLanding } from "@/components/zakumi/ZakumiLanding";
+import { ZakumiHome } from "@/components/zakumi/ZakumiHome";
 
 export default function Home() {
-  return <ZakumiLanding />;
+  return <ZakumiHome />;
 }
