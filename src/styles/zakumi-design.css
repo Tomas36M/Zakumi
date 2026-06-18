@@ -1548,9 +1548,9 @@
   /* ——— Hero: burbuja de chat animada ——— */
   .hero-chat-bubble {
     position: absolute; left: 8%; bottom: 12%;
-    background: rgba(20,22,25,.92); border: 1px solid rgba(255,107,53,.4);
+    background: color-mix(in srgb, var(--black) 92%, transparent); border: 1px solid color-mix(in srgb, var(--orange) 40%, transparent);
     border-radius: 14px 14px 14px 4px; padding: 10px 14px; max-width: 240px;
-    font-size: .85rem; color: #f4f1ea; backdrop-filter: blur(6px);
+    font-size: .85rem; color: var(--paper); backdrop-filter: blur(6px);
     z-index: 2;
   }
   .hero-chat-typing { display: inline-flex; gap: 4px; }
