@@ -2571,7 +2571,7 @@
   }
   .service-intro-visual::after {
     content: ''; position: absolute; inset: 0;
-    background: linear-gradient(180deg, color-mix(in srgb, var(--black) 0%, transparent) 40%, color-mix(in srgb, var(--black) 55%, transparent) 100%);
+    background: linear-gradient(180deg, transparent 40%, color-mix(in srgb, var(--black) 55%, transparent) 100%);
   }
 
   /* Bloques con divisor hairline editorial */
@@ -2601,6 +2601,9 @@
   .ejemplo-card p { color: var(--slate); line-height: 1.55; }
   .ejemplo-arrow { color: var(--orange); transition: transform 0.3s ease; }
   .ejemplo-card:hover .ejemplo-arrow { transform: translate(3px, -3px); }
+  @media (prefers-reduced-motion: reduce) {
+    .ejemplo-img img, .ejemplo-arrow { transition: none; }
+  }
 
   /* Testimonios — citas editoriales */
   .testimonios-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: clamp(2rem, 4vw, 4rem); }
