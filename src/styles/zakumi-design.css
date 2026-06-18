@@ -1188,7 +1188,7 @@
   }
 
   /* ——— Showcase / Selección (bento) ——— */
-  .showcase { padding: 8rem 4vw; }
+  .showcase { padding: 4rem 4vw 8rem; }
   .showcase-grid {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
@@ -1904,7 +1904,7 @@
 
   /* ——— Demo del agente (chat guionizado) ——— */
   .agent-demo {
-    padding: 8rem 4vw;
+    padding: 8rem 4vw 4rem;
     border-top: 1px solid color-mix(in srgb, var(--slate) 18%, transparent);
     overflow-x: clip;
   }
@@ -1999,8 +1999,8 @@
   .agent-desktop {
     top: 50%;
     left: 0;
-    transform: translateY(-50%);
-    width: 66%;
+    transform: translateY(-40%);
+    width: 90%;
     border-radius: 14px;
     z-index: 1;
   }
