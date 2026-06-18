@@ -170,6 +170,10 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
             );
           }
         }
+      } else {
+        // Deep-link a una vista interna: marca la cortina como "ya mostrada"
+        // para que un regreso a home por navegación SPA no la dispare.
+        curtainPlayed = true;
       }
 
       ScrollTrigger.create({
