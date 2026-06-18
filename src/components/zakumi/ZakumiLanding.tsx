@@ -12,6 +12,7 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import ScrollToPlugin from "gsap/ScrollToPlugin";
 import { Hero } from "./sections/Hero";
 import { Servicios } from "./sections/Servicios";
+import { CrmIA } from "./sections/CrmIA";
 import { ComoTrabajamos } from "./sections/ComoTrabajamos";
 import { Filosofia } from "./sections/Filosofia";
 import { Contacto } from "./sections/Contacto";
@@ -501,6 +502,60 @@ export function ZakumiLanding() {
           .from(text, { autoAlpha: 0, y: 6, duration: 0.4 });
       });
 
+      // ——— CRM con IA: ensamblado de tarjetas + contador ———
+      const mmCrm = gsap.matchMedia();
+      mmCrm.add(
+        {
+          motion: "(prefers-reduced-motion: no-preference)",
+          reduced: "(prefers-reduced-motion: reduce)",
+        },
+        (context) => {
+          const { reduced } = context.conditions as { motion: boolean; reduced: boolean };
+          const crmCards = gsap.utils.toArray<HTMLElement>(".crm-mock .crm-card");
+          const counterEl = document.querySelector(".crm-counter [data-target]") as HTMLElement | null;
+
+          if (reduced) {
+            // Estado final inmediato: tarjetas visibles, número en valor final
+            if (crmCards.length) gsap.set(crmCards, { autoAlpha: 1, y: 0 });
+            if (counterEl) {
+              const target = Number(counterEl.getAttribute("data-target"));
+              counterEl.textContent = String(target);
+            }
+            return;
+          }
+
+          if (crmCards.length) {
+            gsap.from(crmCards, {
+              scrollTrigger: { trigger: ".crm-mock", start: "top 75%", once: true },
+              y: 24,
+              autoAlpha: 0,
+              stagger: 0.12,
+              duration: 0.5,
+              ease: "power3.out",
+            });
+          }
+
+          if (counterEl) {
+            const target = Number(counterEl.getAttribute("data-target"));
+            const obj = { v: 0 };
+            ScrollTrigger.create({
+              trigger: ".crm-counter",
+              start: "top 80%",
+              once: true,
+              onEnter: () =>
+                gsap.to(obj, {
+                  v: target,
+                  duration: 1.4,
+                  ease: "power1.out",
+                  onUpdate: () => {
+                    counterEl.textContent = String(Math.round(obj.v));
+                  },
+                }),
+            });
+          }
+        },
+      );
+
       ScrollTrigger.refresh();
     });
 
@@ -742,6 +797,8 @@ export function ZakumiLanding() {
           onMouseEnter={setActiveService}
           onMouseLeave={() => setActiveService(null)}
         />
+
+        <CrmIA />
 
         <section className="showcase" id="seleccion">
           <div className="section-num">02 / Selección</div>
