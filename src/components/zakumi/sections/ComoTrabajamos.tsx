@@ -20,7 +20,7 @@ export function ComoTrabajamos() {
 
         <div className="stats-grid">
           {STATS.map((stat) => {
-            const isNumeric = /^\d+$/.test(stat.num);
+            const isNumeric = /^\d+$/.test(stat.num) && Number(stat.num) > 0;
             return (
               <div className="stat" key={stat.label}>
                 {isNumeric ? (
