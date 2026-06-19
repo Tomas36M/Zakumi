@@ -125,7 +125,7 @@
     font-size: 0.75rem;
     letter-spacing: 0.25em;
     text-transform: uppercase;
-    color: var(--slate);
+    color: var(--paper);
   }
   .nav-links a {
     color: inherit; text-decoration: none;
@@ -824,7 +824,7 @@
     /* Hero móvil: altura por contenido, sin forzar viewport completo */
     .hero {
       justify-content: flex-start;
-      padding-top: calc(env(safe-area-inset-top, 0px) + 5rem);
+      padding-top: calc(env(safe-area-inset-top, 0px) + 7rem);
       padding-right: 5vw;
       padding-bottom: 2rem;
       padding-left: 5vw;
@@ -931,6 +931,24 @@
     from { transform: scale(1.02); }
     to { transform: scale(1.12); }
   }
+  /* Chat de Agentes: estático, un poco más alejado (zoom out) y corrido un
+     poquito a la derecha, para que el celular se vea entero. */
+  .hero-active-agentes .hero-slide.is-active img {
+    animation: none;
+    transform: translateY(56px) translateX(4%);
+  }
+  /* Landing de Software: estática, corrida un poco a la derecha para no chocar
+     con el titular (la laptop va al centro-derecha). */
+  .hero-active-desarrollo .hero-slide.is-active img {
+    animation: none;
+    transform: translateX(4%);
+  }
+  /* Marca: el celular va centro-derecha; lo corro un poco a la derecha y lo bajo
+     un toque para que el navbar no toque el top. */
+  .hero-active-marca .hero-slide.is-active img {
+    animation: none;
+    transform: translateY(40px) translateX(3%);
+  }
   @media (prefers-reduced-motion: reduce) {
     .hero-slide { transition: none; }
     .hero-slide.is-active img { animation: none; }
@@ -993,6 +1011,84 @@
     }
     .hero-visual-frame { border-left: 1px solid rgba(118, 130, 142, 0.18); }
     .hero-strip { display: none; }
+  }
+  /* Slide "Agentes": el chat va a sangre completa en escritorio para que el
+     celular se vea entero (más pequeño) y un poco corrido a la izquierda.
+     Los demás slides siguen como franja lateral derecha. */
+  @media (min-width: 1100px) {
+    .hero-active-agentes .hero-visual { left: 0; right: 0; width: 100%; }
+    .hero-active-agentes .hero-visual img { object-position: center top; }
+    .hero-active-agentes .hero-visual-frame { border-left: none; }
+    .hero-active-agentes .hero-visual::after {
+      background: linear-gradient(
+        90deg,
+        var(--black) 0%,
+        rgba(10, 12, 18, 0.94) 28%,
+        rgba(10, 12, 18, 0.55) 54%,
+        rgba(10, 12, 18, 0.12) 100%
+      );
+    }
+  }
+  /* Slide "Software": la landing va a sangre completa, con scrim a la izquierda
+     para que el titular sea legible sobre la laptop (la laptop va centro-derecha). */
+  @media (min-width: 1100px) {
+    .hero-active-desarrollo .hero-visual { left: 0; right: 0; width: 100%; }
+    .hero-active-desarrollo .hero-visual img { object-position: center; }
+    .hero-active-desarrollo .hero-visual-frame { border-left: none; }
+    .hero-active-desarrollo .hero-visual::after {
+      background: linear-gradient(
+        90deg,
+        var(--black) 0%,
+        rgba(10, 12, 18, 0.95) 30%,
+        rgba(10, 12, 18, 0.6) 46%,
+        rgba(10, 12, 18, 0.15) 100%
+      );
+    }
+  }
+  /* Slide "Marca": el feed de Instagram va a sangre completa, con scrim a la
+     izquierda para el titular (el celular va centro-derecha). */
+  @media (min-width: 1100px) {
+    .hero-active-marca .hero-visual { left: 0; right: 0; width: 100%; }
+    .hero-active-marca .hero-visual img { object-position: center; }
+    .hero-active-marca .hero-visual-frame { border-left: none; }
+    .hero-active-marca .hero-visual::after {
+      background: linear-gradient(
+        90deg,
+        var(--black) 0%,
+        rgba(10, 12, 18, 0.95) 30%,
+        rgba(10, 12, 18, 0.6) 46%,
+        rgba(10, 12, 18, 0.15) 100%
+      );
+    }
+  }
+
+  /* Móvil/tablet: a pantalla completa las imágenes del hero (chat, landing, feed)
+     compiten con el texto. Las difuminamos, oscurecemos y reforzamos el scrim
+     para que el titular y el párrafo se lean bien. También reseteamos los
+     transforms de escritorio (no aplican en móvil). */
+  @media (max-width: 1099px) {
+    .hero-active-agentes .hero-slide.is-active img,
+    .hero-active-desarrollo .hero-slide.is-active img,
+    .hero-active-marca .hero-slide.is-active img {
+      object-position: center;
+      transform: scale(1.1);
+      filter: blur(3px) brightness(0.65);
+    }
+    .hero-visual::after {
+      background:
+        linear-gradient(
+          180deg,
+          rgba(10, 12, 18, 0.6) 0%,
+          rgba(10, 12, 18, 0.62) 45%,
+          rgba(10, 12, 18, 0.96) 100%
+        ),
+        linear-gradient(
+          90deg,
+          var(--black) 0%,
+          rgba(10, 12, 18, 0.72) 55%,
+          rgba(10, 12, 18, 0.4) 100%
+        );
+    }
   }
 
   /* Banda editorial: previews de entregables (< 1100px) */
@@ -1060,9 +1156,11 @@
   }
   @media (max-width: 1099px) {
     .hero-strip { display: none; }
+    /* Hero móvil/tablet: contenido arriba y altura por contenido (no forzar
+       viewport completo) para no dejar hueco muerto en la parte superior. */
     .hero {
-      justify-content: flex-end;
-      min-height: 100vh;
+      justify-content: flex-start;
+      min-height: auto;
     }
   }
 

@@ -26,7 +26,7 @@ export function Hero() {
 
   return (
     <section
-      className="hero"
+      className={`hero hero-active-${slide.id}`}
       id="hero"
       onMouseEnter={() => {
         pausedRef.current = true;

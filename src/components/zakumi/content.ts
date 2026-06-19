@@ -28,14 +28,14 @@ export type HeroSlide = {
 export const HERO_SLIDES: HeroSlide[] = [
   {
     id: "agentes",
-    tag: "Agentes de IA · WhatsApp & Telegram",
-    titulo1: "Tu mejor vendedor",
-    tituloEm: "es inteligencia artificial.",
-    sub: "Atiende, responde y cierra ventas 24/7 — sin que tú estés. El mismo agente que pondríamos a trabajar para ti.",
+    tag: "Agentes de IA para WhatsApp & Telegram",
+    titulo1: "Deja de perder ventas",
+    tituloEm: "por no responder a tiempo.",
+    sub: "Convierte tu chat en una máquina de conversión automatizada. Tu nuevo agente de IA atiende, persuade y cierra tratos las 24 horas del día, los 7 días de la semana. Tú te encargas de entregar; la IA se encarga de vender.",
     cta: "Habla con nuestro agente",
     waMsg: "Hola Zakumi, quiero un agente de IA para mi WhatsApp.",
     href: "/agentes-ia",
-    img: "/work/zk-hero-foto.webp",
+    img: "/work/zk-hero-agentes-chat-v4.webp",
     meta: [
       { label: "Canales", val: "WhatsApp · Telegram · Redes" },
       { label: "Atiende", val: "24/7, sin que tú estés" },
@@ -45,13 +45,13 @@ export const HERO_SLIDES: HeroSlide[] = [
   {
     id: "desarrollo",
     tag: "Software & plataformas a medida",
-    titulo1: "Construimos el software",
-    tituloEm: "que sostiene tu crecimiento.",
-    sub: "Web, apps y sistemas hechos a tu medida con Next.js, React y datos serios. Del prototipo a producción — nada de plantillas.",
+    titulo1: "Tu negocio es demasiado complejo",
+    tituloEm: "para depender de un Excel.",
+    sub: "Automatizamos el caos. Si tus procesos internos son manuales, lentos y propensos a errores humanos, construimos el software que los resuelve. Sistemas web a la medida desde cero, respaldados por bases de datos serias en PostgreSQL.",
     cta: "Cuéntanos tu proyecto",
     waMsg: "Hola Zakumi, quiero desarrollar un proyecto de software.",
     href: "/software",
-    img: "/work/zk-software-foto.webp",
+    img: "/work/zk-hero-software-v1.webp",
     meta: [
       { label: "Tecnología", val: "Next.js · React · Postgres" },
       { label: "Entregamos", val: "Web · Apps · Plataformas" },
@@ -60,14 +60,14 @@ export const HERO_SLIDES: HeroSlide[] = [
   },
   {
     id: "marca",
-    tag: "Marca · Contenido · Redes 24/7",
-    titulo1: "Tu marca, viva.",
-    tituloEm: "Tus redes, en automático.",
-    sub: "Identidad con criterio + contenido y publicación automatizada. Presencia todos los días, sin que tengas que estar pendiente.",
+    tag: "Marca & automatización de redes",
+    titulo1: "Deja de abandonar tus redes",
+    tituloEm: "cada vez que tienes mucho trabajo.",
+    sub: "Sabemos que no tienes tiempo para publicar todos los días. Construimos una identidad visual imponente y automatizamos todo tu contenido para que tu marca siga vendiendo y generando autoridad, incluso cuando estás ocupado operando tu negocio.",
     cta: "Activa tu marca",
     waMsg: "Hola Zakumi, quiero impulsar mi marca y mis redes.",
     href: "/marca",
-    img: "/work/zk-brand-foto2.webp",
+    img: "/work/zk-hero-marca-v1.webp",
     meta: [
       { label: "Incluye", val: "Identidad · Contenido · Redes" },
       { label: "Publica", val: "Automático, a diario" },
@@ -123,10 +123,3 @@ export const CONTACTO = {
   tituloEm: "ahora.",
   sub: "Es el mismo agente de IA que pondríamos a trabajar para ti. Escríbele por WhatsApp y ve cómo atiende — sin formularios eternos, sin compromiso.",
 };
-
-// Mantener los nombres de archivo existentes (zk-hero-2/3 ya existen); el usuario reemplaza el contenido in situ.
-export const HERO_IMAGES = [
-  "/work/zk-hero-foto.webp",
-  "/work/zk-hero-2.webp",
-  "/work/zk-hero-3.webp",
-];
