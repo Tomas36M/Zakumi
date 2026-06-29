@@ -4,9 +4,9 @@ import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { HERO_SLIDES } from "../content";
 import Link from "next/link";
-import { TELEGRAM_ENABLED, TELEGRAM_URL } from "../contact";
+import { TELEGRAM_ENABLED, TELEGRAM_URL, waLink } from "../contact";
 
-const AUTO_MS = 4500;
+const AUTO_MS = 9000;
 
 export function Hero() {
   const [active, setActive] = useState(0);
@@ -111,15 +111,29 @@ export function Hero() {
           <p className="hero-sub">{slide.sub}</p>
 
           <div className="hero-ctas">
-            <Link
-              className="cta"
-              href={slide.href}
-              style={{ opacity: 1 }}
-              aria-label={`${slide.cta} — ${slide.tag}`}
-            >
-              <span>{slide.cta}</span>
-              <span className="arrow">→</span>
-            </Link>
+            {slide.ctaWa ? (
+              <a
+                className="cta"
+                href={waLink(slide.waMsg)}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ opacity: 1 }}
+                aria-label={`${slide.cta} — ${slide.tag}`}
+              >
+                <span>{slide.cta}</span>
+                <span className="arrow">→</span>
+              </a>
+            ) : (
+              <Link
+                className="cta"
+                href={slide.href}
+                style={{ opacity: 1 }}
+                aria-label={`${slide.cta} — ${slide.tag}`}
+              >
+                <span>{slide.cta}</span>
+                <span className="arrow">→</span>
+              </Link>
+            )}
             {TELEGRAM_ENABLED && (
               <a
                 href={TELEGRAM_URL}

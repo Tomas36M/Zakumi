@@ -1612,40 +1612,87 @@
     .tecnologias { margin-top: 2.5rem; }
   }
 
-  /* ——— CRM con IA ——— */
-  .crm {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 6rem;
-    align-items: center;
+  /* ——— Producto: showcase (pin + crossfade) ——— */
+  .products {
+    padding: 0;
     border-top: 1px solid color-mix(in srgb, var(--slate) 18%, transparent);
   }
 
-  .crm-sub {
+  .product-stage {
+    box-sizing: border-box;
+    min-height: 100vh;
+    padding: clamp(5rem, 9vh, 7.5rem) 4vw;
+    display: flex;
+    flex-direction: column;
+    gap: clamp(1.5rem, 3vh, 2.5rem);
+  }
+
+  .product-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  .product-dots { display: inline-flex; gap: 0.55rem; }
+  .product-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--slate) 38%, transparent);
+    transition: background 0.4s ease, transform 0.4s ease;
+  }
+  .product-dot.is-active {
+    background: var(--orange);
+    transform: scale(1.35);
+  }
+
+  .product-track { position: relative; flex: 1; }
+
+  .product-block {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: clamp(2rem, 5vw, 5rem);
+    align-items: center;
+    opacity: 0;
+    visibility: hidden;
+    will-change: opacity;
+  }
+  .product-block.is-active { opacity: 1; visibility: visible; }
+
+  .product-idx {
+    display: inline-block;
+    font-size: 0.78rem;
+    letter-spacing: 0.18em;
+    color: color-mix(in srgb, var(--orange) 80%, var(--paper));
+    margin-bottom: 1.1rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .product-sub {
     font-size: clamp(0.95rem, 1.2vw, 1.1rem);
     line-height: 1.65;
     color: var(--slate);
     max-width: 46ch;
-    margin-bottom: 2rem;
+    margin: 1rem 0 2rem;
   }
 
-  .crm-features {
+  .product-features {
     list-style: none;
     display: flex;
     flex-direction: column;
     gap: 0.75rem;
-    margin-bottom: 1.75rem;
   }
-
-  .crm-features li {
+  .product-features li {
     font-size: 0.9rem;
     color: var(--paper);
     padding-left: 1.4rem;
     position: relative;
     line-height: 1.5;
   }
-
-  .crm-features li::before {
+  .product-features li::before {
     content: '';
     position: absolute;
     left: 0;
@@ -1656,238 +1703,71 @@
     background: var(--orange);
   }
 
-  .crm-nota {
-    font-family: var(--font-playfair), 'Playfair Display', serif;
-    font-style: italic;
-    font-size: 0.92rem;
-    color: var(--slate);
-    border-left: 2px solid color-mix(in srgb, var(--orange) 55%, transparent);
-    padding-left: 1rem;
-  }
-
-  /* ——— Mockup dashboard del CRM ——— */
-  .crm-mock { position: relative; will-change: transform; }
-  .crm-card { will-change: transform, opacity; }
-
-  .crm-win {
-    background: linear-gradient(
-      168deg,
-      color-mix(in srgb, var(--navy) 24%, var(--black)) 0%,
-      var(--black) 72%
-    );
-    border: 1px solid color-mix(in srgb, var(--slate) 20%, transparent);
+  .product-img-wrap {
+    position: relative;
+    aspect-ratio: 4 / 3;
     border-radius: 14px;
     overflow: hidden;
-    box-shadow:
-      0 30px 70px -30px color-mix(in srgb, var(--black) 92%, transparent),
-      inset 0 1px 0 color-mix(in srgb, var(--paper) 6%, transparent);
+    border: 1px solid color-mix(in srgb, var(--slate) 16%, transparent);
+    box-shadow: 0 30px 70px -34px color-mix(in srgb, var(--black) 92%, transparent);
+    will-change: transform;
   }
+  .product-img { object-fit: cover; }
 
-  .crm-bar {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    padding: 0.7rem 1rem;
-    background: color-mix(in srgb, var(--black) 45%, transparent);
-    border-bottom: 1px solid color-mix(in srgb, var(--slate) 16%, transparent);
-  }
-  .crm-dots { display: inline-flex; gap: 5px; flex-shrink: 0; }
-  .crm-dots i {
-    width: 9px; height: 9px; border-radius: 50%;
-    background: color-mix(in srgb, var(--slate) 38%, transparent);
-  }
-  .crm-dots i:first-child { background: color-mix(in srgb, var(--orange) 75%, transparent); }
-  .crm-bar-title {
-    font-size: 0.72rem;
-    letter-spacing: 0.03em;
-    color: var(--slate);
-    font-variant-numeric: tabular-nums;
-  }
-  .crm-live {
-    margin-left: auto;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-    font-size: 0.6rem;
-    text-transform: uppercase;
-    letter-spacing: 0.18em;
-    color: color-mix(in srgb, var(--paper) 72%, transparent);
-  }
-  .crm-live i {
-    width: 6px; height: 6px; border-radius: 50%;
-    background: var(--orange);
-    animation: crmPulse 2.2s ease-out infinite;
-  }
-  @keyframes crmPulse {
-    0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--orange) 55%, transparent); }
-    70% { box-shadow: 0 0 0 7px transparent; }
-    100% { box-shadow: 0 0 0 0 transparent; }
-  }
-
-  .crm-body {
-    padding: 1.1rem;
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-  }
-
-  /* KPIs */
-  .crm-kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.65rem; }
-  .crm-kpi {
-    display: flex;
-    flex-direction: column;
-    gap: 0.3rem;
-    padding: 0.8rem 0.85rem;
-    background: color-mix(in srgb, var(--slate) 7%, transparent);
-    border: 1px solid color-mix(in srgb, var(--slate) 15%, transparent);
-    border-radius: 10px;
-  }
-  .crm-kpi-label {
-    font-size: 0.58rem;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    color: var(--slate);
-  }
-  .crm-kpi-num {
-    font-size: 1.55rem;
-    font-weight: 500;
-    color: var(--paper);
-    line-height: 1;
-    font-variant-numeric: tabular-nums;
-  }
-  .crm-kpi-num i { font-style: normal; font-size: 0.85rem; color: var(--slate); margin-left: 1px; }
-  .crm-kpi-trend { font-size: 0.6rem; color: var(--slate); letter-spacing: 0.02em; }
-  .crm-kpi-trend.up { color: color-mix(in srgb, var(--orange) 88%, var(--paper)); }
-
-  /* Tabla de leads */
-  .crm-table { display: flex; flex-direction: column; }
-  .crm-thead,
-  .crm-trow {
-    display: grid;
-    grid-template-columns: 1.7fr 1fr 0.9fr;
-    align-items: center;
-    gap: 0.5rem;
-  }
-  .crm-thead {
-    font-size: 0.56rem;
-    text-transform: uppercase;
-    letter-spacing: 0.14em;
-    color: color-mix(in srgb, var(--slate) 78%, transparent);
-    padding: 0 0.15rem 0.5rem;
-    border-bottom: 1px solid color-mix(in srgb, var(--slate) 14%, transparent);
-  }
-  .crm-trow {
-    padding: 0.55rem 0.15rem;
-    border-bottom: 1px solid color-mix(in srgb, var(--slate) 9%, transparent);
-    font-size: 0.78rem;
-    color: var(--paper);
-  }
-  .crm-trow:last-child { border-bottom: none; }
-  .crm-lead { display: inline-flex; align-items: center; gap: 0.55rem; min-width: 0; }
-  .crm-lead {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  .crm-av {
-    width: 24px; height: 24px; flex-shrink: 0;
-    border-radius: 50%;
-    display: inline-flex; align-items: center; justify-content: center;
-    font-size: 0.64rem; font-style: normal; font-weight: 600;
-    color: var(--paper);
-    background: color-mix(in srgb, var(--orange) 30%, var(--navy));
-    border: 1px solid color-mix(in srgb, var(--slate) 22%, transparent);
-  }
-  .crm-chan {
-    font-size: 0.72rem;
-    color: var(--slate);
-    display: inline-flex; align-items: center; gap: 0.4rem;
-  }
-  .crm-chan::before {
-    content: '';
-    width: 6px; height: 6px; border-radius: 50%;
-    flex-shrink: 0;
-    background: color-mix(in srgb, var(--slate) 55%, transparent);
-  }
-  .crm-chan.is-wa::before { background: color-mix(in srgb, var(--orange) 78%, transparent); }
-  .crm-chan.is-tg::before { background: color-mix(in srgb, var(--navy) 55%, var(--paper)); }
-
-  /* Pills de estado (solo naranja + slate, on-brand) */
-  .crm-pill {
-    justify-self: start;
-    font-size: 0.6rem;
-    padding: 0.22rem 0.6rem;
-    border-radius: 999px;
-    letter-spacing: 0.02em;
-    white-space: nowrap;
-    border: 1px solid transparent;
-  }
-  .crm-pill.is-nuevo {
-    color: var(--slate);
-    border-color: color-mix(in srgb, var(--slate) 34%, transparent);
-  }
-  .crm-pill.is-ia {
-    color: var(--orange);
-    background: color-mix(in srgb, var(--orange) 14%, transparent);
-    border-color: color-mix(in srgb, var(--orange) 38%, transparent);
-  }
-  .crm-pill.is-cita {
-    color: var(--paper);
-    background: color-mix(in srgb, var(--slate) 16%, transparent);
-    border-color: color-mix(in srgb, var(--slate) 28%, transparent);
-  }
-  .crm-pill.is-won {
-    color: var(--black);
-    background: var(--orange);
-    font-weight: 600;
-  }
-
-  /* Sparkline */
-  .crm-spark {
-    display: flex;
-    align-items: flex-end;
-    gap: 4px;
-    height: 40px;
-    padding-top: 0.5rem;
-    border-top: 1px solid color-mix(in srgb, var(--slate) 12%, transparent);
-  }
-  .crm-spark i {
-    flex: 1;
-    border-radius: 2px 2px 0 0;
-    background: color-mix(in srgb, var(--slate) 22%, transparent);
-  }
-  .crm-spark i.hi { background: color-mix(in srgb, var(--orange) 68%, transparent); }
-  .crm-spark-cap {
-    font-size: 0.56rem;
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
-    color: var(--slate);
-    margin-top: -0.4rem;
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .crm-live i { animation: none; }
-  }
-
-  @media (max-width: 860px) {
-    .crm {
-      grid-template-columns: 1fr;
-      gap: 3rem;
-    }
-  }
-
+  /* Móvil: mismo escenario fijado (pin) + crossfade que desktop, pero en una
+     sola columna y con tamaños que entran en el viewport. */
   @media (max-width: 720px) {
-    .crm {
-      padding-top: 4rem !important;
-      padding-bottom: 4rem !important;
+    .product-stage {
+      padding: clamp(4rem, 7vh, 5.5rem) 5vw clamp(2rem, 4vh, 3.25rem);
+      gap: clamp(1rem, 2.5vh, 1.75rem);
     }
-    .crm-body { padding: 0.85rem; gap: 0.85rem; }
-    .crm-kpis { gap: 0.45rem; }
-    .crm-kpi { padding: 0.6rem 0.55rem; }
-    .crm-kpi-num { font-size: 1.25rem; }
-    .crm-trow, .crm-thead { grid-template-columns: 1.5fr 0.8fr 0.95fr; }
-    .crm-av { width: 20px; height: 20px; font-size: 0.58rem; }
-    .crm-trow { font-size: 0.72rem; }
+    .product-head { margin-bottom: 0; }
+    .product-block {
+      grid-template-columns: 1fr;
+      grid-template-rows: auto minmax(0, 1fr);
+      gap: clamp(0.9rem, 2.5vh, 1.5rem);
+      align-content: stretch;
+    }
+    .product-block .section-title {
+      font-size: clamp(2rem, 9vw, 3rem);
+      margin-bottom: 0;
+    }
+    .product-idx { margin-bottom: 0.6rem; }
+    .product-sub {
+      margin: 0.75rem 0 1.1rem;
+      max-width: none;
+    }
+    .product-features { gap: 0.5rem; }
+    .product-img-wrap {
+      aspect-ratio: auto;
+      min-height: 0;
+      height: 100%;
+    }
+  }
+
+  /* Fallback sin movimiento: bloques apilados, sin pin. */
+  @media (prefers-reduced-motion: reduce) {
+    .product-stage {
+      min-height: 0;
+      display: block;
+      padding: 4.5rem 4vw;
+    }
+    .product-head { margin-bottom: 2.75rem; }
+    .product-dots { display: none; }
+    .product-track {
+      position: static;
+      display: flex;
+      flex-direction: column;
+      gap: 4rem;
+    }
+    .product-block {
+      position: static;
+      inset: auto;
+      grid-template-columns: 1fr;
+      gap: 1.75rem;
+      opacity: 1;
+      visibility: visible;
+    }
   }
 
   /* ——— Demo del agente (chat guionizado) ——— */
@@ -1968,160 +1848,214 @@
     aspect-ratio: 1 / 0.8;
     margin: 0 auto;
   }
-  /* Marco compartido de las pantallas de fondo (desktop + tablet) */
-  .agent-desktop,
-  .agent-tablet {
+  /* Marco de la consola CRM (pantalla de fondo) */
+  .agent-desktop {
     position: absolute;
+    top: 50%;
+    left: 0;
+    transform: translateY(-43%);
+    width: 92%;
     padding: 8px;
+    border-radius: 16px;
+    z-index: 1;
     background: linear-gradient(
       150deg,
-      color-mix(in srgb, var(--charcoal) 80%, var(--paper)) 0%,
-      color-mix(in srgb, var(--charcoal) 50%, var(--black)) 34%,
+      color-mix(in srgb, var(--charcoal) 78%, var(--paper)) 0%,
+      color-mix(in srgb, var(--charcoal) 46%, var(--black)) 34%,
       var(--black) 100%
     );
     box-shadow:
-      0 44px 80px -38px color-mix(in srgb, var(--black) 92%, transparent),
-      0 0 0 1px color-mix(in srgb, var(--paper) 6%, transparent);
+      0 48px 90px -40px color-mix(in srgb, var(--black) 94%, transparent),
+      0 0 0 1px color-mix(in srgb, var(--paper) 8%, transparent),
+      inset 0 1px 0 color-mix(in srgb, var(--paper) 10%, transparent);
   }
-  /* Desktop (consola) — grande, a la izquierda y centrada */
-  .agent-desktop {
-    top: 50%;
-    left: 0;
-    transform: translateY(-40%);
-    width: 90%;
-    border-radius: 14px;
-    z-index: 1;
+  /* Halo cálido detrás de la consola, como un render de producto */
+  .agent-desktop::before {
+    content: '';
+    position: absolute;
+    inset: -16% -12% -24%;
+    z-index: -1;
+    background: radial-gradient(
+      58% 68% at 36% 48%,
+      color-mix(in srgb, var(--orange) 24%, transparent) 0%,
+      transparent 70%
+    );
+    filter: blur(10px);
+    pointer-events: none;
   }
 
-  /* Atenúa las pantallas de fondo para que el celular resalte */
-  .agent-dt-screen,
-  .agent-tablet-screen { position: relative; }
-  .agent-dt-screen::after,
-  .agent-tablet-screen::after {
+  .agent-dt-screen {
+    position: relative;
+    border-radius: 10px;
+    overflow: hidden;
+    aspect-ratio: 16 / 10.7;
+    display: flex;
+    flex-direction: column;
+    background:
+      radial-gradient(130% 95% at 4% -2%, color-mix(in srgb, var(--navy) 34%, transparent) 0%, transparent 50%),
+      linear-gradient(162deg, color-mix(in srgb, var(--navy) 13%, var(--black)) 0%, var(--black) 72%);
+  }
+  /* Sombra diagonal para que el celular (abajo-derecha) resalte al frente */
+  .agent-dt-screen::after {
     content: '';
     position: absolute;
     inset: 0;
-    background: color-mix(in srgb, var(--black) 10%, transparent);
+    background: linear-gradient(108deg, transparent 50%, color-mix(in srgb, var(--black) 34%, transparent) 100%);
     pointer-events: none;
-    z-index: 4;
+    z-index: 6;
   }
-  .agent-tablet-screen {
-    border-radius: 11px;
-    overflow: hidden;
-    background: color-mix(in srgb, var(--navy) 16%, var(--black));
-    aspect-ratio: 16 / 11.4;
-    display: flex;
-    flex-direction: column;
-  }
-  .agent-dt-screen {
-    border-radius: 9px;
-    overflow: hidden;
-    background: color-mix(in srgb, var(--navy) 16%, var(--black));
-    aspect-ratio: 16 / 9.7;
-    display: flex;
-    flex-direction: column;
-  }
+
   .agent-dt-bar {
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    padding: 0.35rem 0.55rem;
-    background: color-mix(in srgb, var(--black) 45%, transparent);
-    border-bottom: 1px solid color-mix(in srgb, var(--slate) 14%, transparent);
+    padding: 0.34rem 0.62rem;
+    background: color-mix(in srgb, var(--black) 52%, transparent);
+    border-bottom: 1px solid color-mix(in srgb, var(--paper) 7%, transparent);
     flex-shrink: 0;
   }
+  .agent-tb-dots { display: inline-flex; gap: 5px; flex-shrink: 0; }
+  .agent-tb-dots i { width: 8px; height: 8px; border-radius: 50%; background: color-mix(in srgb, var(--slate) 32%, transparent); }
+  .agent-tb-dots i:first-child { background: color-mix(in srgb, var(--orange) 78%, transparent); }
   .agent-dt-url {
     flex: 1;
+    max-width: 240px;
+    margin: 0 auto;
     text-align: center;
     font-size: 0.52rem;
-    color: var(--slate);
-    background: color-mix(in srgb, var(--slate) 12%, transparent);
+    letter-spacing: 0.02em;
+    color: color-mix(in srgb, var(--paper) 56%, transparent);
+    background: color-mix(in srgb, var(--paper) 7%, transparent);
+    border: 1px solid color-mix(in srgb, var(--paper) 6%, transparent);
     border-radius: 999px;
-    padding: 0.12rem 0.5rem;
+    padding: 0.16rem 0.6rem;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
-  .agent-dt-body { flex: 1; display: grid; grid-template-columns: 34% 1fr; min-height: 0; }
+  .agent-tb-live { margin-left: auto; display: inline-flex; align-items: center; gap: 0.32rem; font-size: 0.5rem; text-transform: uppercase; letter-spacing: 0.12em; color: color-mix(in srgb, var(--paper) 62%, transparent); white-space: nowrap; flex-shrink: 0; }
+  .agent-tb-live i { width: 5px; height: 5px; border-radius: 50%; background: var(--orange); box-shadow: 0 0 6px color-mix(in srgb, var(--orange) 85%, transparent); }
 
-  /* Tablet — métricas */
-  .agent-tb-metrics { flex: 1; display: flex; flex-direction: column; padding: 0.5rem; gap: 0.4rem; }
-  .agent-tb-kpi {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    padding: 0.3rem 0.42rem;
-    border-radius: 7px;
-    background: color-mix(in srgb, var(--slate) 8%, transparent);
-  }
-  .agent-tb-kpi-label { font-size: 0.5rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--slate); }
-  .agent-tb-kpi-num { font-size: 0.95rem; font-weight: 600; color: var(--paper); font-variant-numeric: tabular-nums; }
-  .agent-tb-kpi-num i { font-style: normal; font-size: 0.6rem; color: var(--slate); }
-  .agent-tb-spark { margin-top: auto; display: flex; align-items: flex-end; gap: 2px; height: 30px; }
-  .agent-tb-spark i { flex: 1; border-radius: 1px 1px 0 0; background: color-mix(in srgb, var(--slate) 22%, transparent); }
-  .agent-tb-spark i.hi { background: color-mix(in srgb, var(--orange) 68%, transparent); }
-  .agent-tb-bar {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.4rem 0.6rem;
-    background: color-mix(in srgb, var(--black) 45%, transparent);
-    border-bottom: 1px solid color-mix(in srgb, var(--slate) 14%, transparent);
-    flex-shrink: 0;
-  }
-  .agent-tb-dots { display: inline-flex; gap: 4px; }
-  .agent-tb-dots i { width: 7px; height: 7px; border-radius: 50%; background: color-mix(in srgb, var(--slate) 38%, transparent); }
-  .agent-tb-dots i:first-child { background: color-mix(in srgb, var(--orange) 72%, transparent); }
-  .agent-tb-title { font-size: 0.6rem; color: var(--slate); letter-spacing: 0.02em; white-space: nowrap; }
-  .agent-tb-live { margin-left: auto; display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.52rem; text-transform: uppercase; letter-spacing: 0.1em; color: color-mix(in srgb, var(--paper) 70%, transparent); }
-  .agent-tb-live i { width: 5px; height: 5px; border-radius: 50%; background: var(--orange); }
-  .agent-tb-body { flex: 1; display: grid; grid-template-columns: 38% 1fr; min-height: 0; }
-  .agent-tb-list {
+  /* —— Cuerpo de la consola CRM —— */
+  .crm-body { flex: 1; display: grid; grid-template-columns: clamp(74px, 13.5%, 100px) 1fr; min-height: 0; }
+
+  .crm-side {
     display: flex;
     flex-direction: column;
-    overflow: hidden;
-    border-right: 1px solid color-mix(in srgb, var(--slate) 12%, transparent);
+    gap: 0.5rem;
+    padding: 0.6rem 0.45rem;
+    border-right: 1px solid color-mix(in srgb, var(--paper) 6%, transparent);
+    background: color-mix(in srgb, var(--black) 28%, transparent);
+    min-width: 0;
   }
-  .agent-tb-conv {
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-    padding: 0.4rem 0.45rem;
-    border-bottom: 1px solid color-mix(in srgb, var(--slate) 8%, transparent);
+  .crm-brand { display: inline-flex; align-items: center; gap: 0.36rem; padding: 0 0.2rem 0.25rem; }
+  .crm-brand-mark {
+    width: 18px; height: 18px; flex-shrink: 0; border-radius: 5px;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-family: var(--font-playfair), serif; font-size: 0.62rem; color: var(--paper);
+    background: linear-gradient(150deg, var(--orange), color-mix(in srgb, var(--orange) 45%, var(--navy)));
+    box-shadow: 0 0 10px color-mix(in srgb, var(--orange) 45%, transparent);
   }
-  .agent-tb-conv.is-active { background: color-mix(in srgb, var(--orange) 10%, transparent); }
-  .agent-tb-av {
-    width: 19px;
-    height: 19px;
-    flex-shrink: 0;
-    border-radius: 50%;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.52rem;
-    font-weight: 600;
+  .crm-brand-tx { font-size: 0.58rem; font-weight: 600; letter-spacing: 0.14em; color: var(--paper); }
+  .crm-nav { display: flex; flex-direction: column; gap: 0.12rem; }
+  .crm-nav-item {
+    display: flex; align-items: center; gap: 0.42rem;
+    padding: 0.32rem 0.42rem; border-radius: 7px;
+    font-size: 0.54rem; color: color-mix(in srgb, var(--paper) 50%, transparent);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .crm-nav-item svg { width: 12px; height: 12px; flex-shrink: 0; }
+  .crm-nav-item.is-active {
     color: var(--paper);
+    background: color-mix(in srgb, var(--orange) 16%, transparent);
+    box-shadow: inset 2px 0 0 var(--orange);
+  }
+  .crm-ia {
+    margin-top: auto; position: relative; overflow: hidden;
+    display: flex; flex-direction: column; gap: 0.1rem;
+    padding: 0.5rem 0.46rem; border-radius: 9px;
+    background: linear-gradient(150deg, color-mix(in srgb, var(--orange) 22%, transparent), color-mix(in srgb, var(--navy) 30%, transparent));
+    border: 1px solid color-mix(in srgb, var(--orange) 30%, transparent);
+  }
+  .crm-ia-mark {
+    width: 16px; height: 16px; border-radius: 5px; margin-bottom: 0.14rem;
+    background: radial-gradient(circle at 34% 30%, color-mix(in srgb, var(--orange) 92%, var(--paper)), var(--orange));
+    box-shadow: 0 0 12px color-mix(in srgb, var(--orange) 70%, transparent);
+  }
+  .crm-ia-label { font-size: 0.52rem; font-weight: 600; color: var(--paper); }
+  .crm-ia-sub { font-size: 0.45rem; line-height: 1.25; color: color-mix(in srgb, var(--paper) 64%, transparent); }
+
+  .crm-main { display: flex; flex-direction: column; gap: 0.42rem; padding: 0.58rem 0.62rem; min-width: 0; }
+  .crm-main-head { display: flex; align-items: center; gap: 0.4rem; }
+  .crm-title { font-size: 0.76rem; font-weight: 600; color: var(--paper); }
+  .crm-search {
+    margin-left: auto; font-size: 0.48rem; color: color-mix(in srgb, var(--paper) 42%, transparent);
+    background: color-mix(in srgb, var(--paper) 6%, transparent); border: 1px solid color-mix(in srgb, var(--paper) 6%, transparent);
+    border-radius: 999px; padding: 0.17rem 0.6rem; white-space: nowrap;
+  }
+  .crm-user {
+    width: 18px; height: 18px; flex-shrink: 0; border-radius: 50%;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 0.46rem; font-weight: 600; color: var(--paper);
+    background: color-mix(in srgb, var(--navy) 55%, var(--paper));
+  }
+
+  .crm-kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.42rem; }
+  .crm-kpi {
+    display: flex; flex-direction: column; gap: 0.02rem; min-width: 0;
+    padding: 0.42rem 0.48rem; border-radius: 9px;
+    background: linear-gradient(160deg, color-mix(in srgb, var(--paper) 8%, transparent), color-mix(in srgb, var(--paper) 2%, transparent));
+    border: 1px solid color-mix(in srgb, var(--paper) 7%, transparent);
+  }
+  .crm-kpi-label { font-size: 0.44rem; text-transform: uppercase; letter-spacing: 0.05em; color: color-mix(in srgb, var(--paper) 52%, transparent); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .crm-kpi-val { font-size: 0.94rem; font-weight: 600; color: var(--paper); font-variant-numeric: tabular-nums; line-height: 1.15; }
+  .crm-kpi-delta { font-size: 0.44rem; font-weight: 600; color: color-mix(in srgb, var(--orange) 88%, var(--paper)); }
+
+  .crm-pipe-head { display: flex; align-items: baseline; gap: 0.5rem; margin-top: 0.08rem; }
+  .crm-pipe-title { font-size: 0.62rem; font-weight: 600; color: var(--paper); white-space: nowrap; }
+  .crm-pipe-sum { font-size: 0.46rem; color: color-mix(in srgb, var(--paper) 46%, transparent); white-space: nowrap; }
+
+  .crm-pipe { flex: 1; display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.42rem; min-height: 0; }
+  .crm-col {
+    position: relative; overflow: hidden;
+    display: flex; flex-direction: column; gap: 0.32rem; min-width: 0;
+    padding: 0.44rem 0.42rem 0.46rem; border-radius: 9px;
+    background: color-mix(in srgb, var(--paper) 4%, transparent);
+    border: 1px solid color-mix(in srgb, var(--paper) 7%, transparent);
+  }
+  .crm-col-bar { position: absolute; top: 0; left: 0; right: 0; height: 2px; background: color-mix(in srgb, var(--slate) 48%, transparent); }
+  .crm-col.heat-1 .crm-col-bar { background: color-mix(in srgb, var(--orange) 42%, var(--slate)); }
+  .crm-col.heat-2 .crm-col-bar { background: color-mix(in srgb, var(--orange) 62%, var(--slate)); }
+  .crm-col.heat-3 .crm-col-bar { background: color-mix(in srgb, var(--orange) 82%, transparent); }
+  .crm-col.heat-4 .crm-col-bar { background: var(--orange); box-shadow: 0 0 8px color-mix(in srgb, var(--orange) 70%, transparent); }
+  .crm-col-head { display: flex; align-items: baseline; justify-content: space-between; gap: 0.2rem; }
+  .crm-col-stage { font-size: 0.5rem; font-weight: 600; color: var(--paper); white-space: nowrap; }
+  .crm-col-count { font-size: 0.48rem; color: var(--orange); font-variant-numeric: tabular-nums; }
+  .crm-col-money { font-size: 0.44rem; color: color-mix(in srgb, var(--paper) 46%, transparent); margin-top: -0.22rem; }
+  .crm-lead {
+    display: flex; align-items: center; gap: 0.3rem; min-width: 0;
+    padding: 0.27rem 0.32rem; border-radius: 6px;
+    background: color-mix(in srgb, var(--black) 38%, transparent);
+    border: 1px solid color-mix(in srgb, var(--paper) 5%, transparent);
+  }
+  .crm-lead-av {
+    width: 14px; height: 14px; flex-shrink: 0; border-radius: 50%;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 0.36rem; font-weight: 600; color: var(--paper);
     background: color-mix(in srgb, var(--orange) 30%, var(--navy));
   }
-  .agent-tb-conv-meta { display: flex; flex-direction: column; min-width: 0; line-height: 1.2; }
-  .agent-tb-conv-name { font-size: 0.56rem; color: var(--paper); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .agent-tb-conv-snippet { font-size: 0.5rem; color: var(--slate); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .agent-tb-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; margin-left: auto; }
-  .agent-tb-dot.is-ia { background: var(--orange); }
-  .agent-tb-dot.is-cita { background: color-mix(in srgb, var(--navy) 50%, var(--paper)); }
-  .agent-tb-dot.is-nuevo { background: color-mix(in srgb, var(--slate) 50%, transparent); }
-  .agent-tb-dot.is-won { background: color-mix(in srgb, var(--orange) 90%, var(--paper)); }
-  .agent-tb-main { display: flex; flex-direction: column; padding: 0.5rem 0.55rem; gap: 0.4rem; min-width: 0; }
-  .agent-tb-main-head { display: flex; align-items: center; gap: 0.35rem; padding-bottom: 0.4rem; border-bottom: 1px solid color-mix(in srgb, var(--slate) 10%, transparent); }
-  .agent-tb-main-name { font-size: 0.58rem; color: var(--paper); font-weight: 500; }
-  .agent-tb-badge { margin-left: auto; font-size: 0.46rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--orange); background: color-mix(in srgb, var(--orange) 14%, transparent); border: 1px solid color-mix(in srgb, var(--orange) 32%, transparent); border-radius: 999px; padding: 0.1rem 0.34rem; }
-  .agent-tb-thread { display: flex; flex-direction: column; gap: 0.3rem; }
-  .agent-tb-msg { font-size: 0.54rem; line-height: 1.3; padding: 0.3rem 0.45rem; border-radius: 8px; max-width: 90%; }
-  .agent-tb-msg.in { align-self: flex-start; background: color-mix(in srgb, var(--slate) 16%, var(--black)); color: var(--paper); border-radius: 8px 8px 8px 2px; }
-  .agent-tb-msg.out { align-self: flex-end; background: color-mix(in srgb, var(--orange) 72%, var(--black)); color: var(--paper); border-radius: 8px 8px 2px 8px; }
-  .agent-tb-summary { margin-top: auto; display: flex; flex-direction: column; gap: 0.15rem; padding: 0.4rem 0.5rem; border-radius: 8px; background: color-mix(in srgb, var(--navy) 28%, transparent); border: 1px solid color-mix(in srgb, var(--slate) 14%, transparent); }
-  .agent-tb-summary-label { font-size: 0.46rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--orange); }
-  .agent-tb-summary-text { font-size: 0.52rem; color: var(--paper); line-height: 1.3; }
+  .crm-lead-name { font-size: 0.44rem; color: color-mix(in srgb, var(--paper) 78%, transparent); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .crm-lead-val { margin-left: auto; font-size: 0.42rem; color: color-mix(in srgb, var(--paper) 56%, transparent); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+  .crm-ai-bar {
+    display: flex; align-items: center; gap: 0.42rem;
+    padding: 0.36rem 0.52rem; border-radius: 8px;
+    background: color-mix(in srgb, var(--orange) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--orange) 26%, transparent);
+  }
+  .crm-ai-dot { width: 6px; height: 6px; flex-shrink: 0; border-radius: 50%; background: var(--orange); box-shadow: 0 0 7px color-mix(in srgb, var(--orange) 85%, transparent); }
+  .crm-ai-tx { font-size: 0.48rem; color: color-mix(in srgb, var(--paper) 82%, transparent); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .crm-ai-tx b { color: var(--orange); font-weight: 700; }
 
   /* iPhone — héroe: al frente, a la derecha y el más grande */
   .agent-devices .agent-phone {
@@ -2265,34 +2199,69 @@
   }
   .agent-wa-back { color: var(--slate); font-size: 1.3rem; line-height: 1; }
   .agent-wa-av {
-    width: 30px;
-    height: 30px;
+    position: relative;
+    width: 31px;
+    height: 31px;
     flex-shrink: 0;
     border-radius: 50%;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    font-size: 0.82rem;
+    font-size: 0.84rem;
     color: var(--paper);
     font-family: var(--font-playfair), 'Playfair Display', serif;
-    background: color-mix(in srgb, var(--orange) 40%, var(--navy));
-    border: 1px solid color-mix(in srgb, var(--slate) 22%, transparent);
+    background: linear-gradient(150deg, color-mix(in srgb, var(--orange) 58%, var(--paper)), color-mix(in srgb, var(--orange) 35%, var(--navy)));
+    box-shadow: inset 0 1px 0 color-mix(in srgb, var(--paper) 30%, transparent), 0 0 10px -2px color-mix(in srgb, var(--orange) 50%, transparent);
+  }
+  .agent-wa-online {
+    position: absolute;
+    right: -1px;
+    bottom: -1px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #2ec27e;
+    border: 1.5px solid color-mix(in srgb, var(--charcoal) 32%, var(--black));
   }
   .agent-wa-meta { display: flex; flex-direction: column; line-height: 1.25; min-width: 0; }
   .agent-wa-name { font-size: 0.8rem; font-weight: 500; color: var(--paper); white-space: nowrap; }
   .agent-wa-status { font-size: 0.62rem; color: color-mix(in srgb, var(--orange) 72%, var(--paper)); }
   .agent-wa-icons { margin-left: auto; display: inline-flex; gap: 0.7rem; color: var(--slate); flex-shrink: 0; }
 
-  /* chat scrollable */
+  /* chat: superficie tipo app de mensajería, scroll oculto */
   .agent-chat {
     flex: 1;
     min-height: 0;
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
-    padding: 0.85rem 0.8rem;
+    gap: 0.42rem;
+    padding: 0.7rem 0.72rem 0.5rem;
     overflow-y: auto;
     overflow-x: hidden;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    background-color: color-mix(in srgb, var(--navy) 9%, var(--black));
+    background-image:
+      radial-gradient(95% 55% at 50% -8%, color-mix(in srgb, var(--navy) 28%, transparent) 0%, transparent 62%),
+      radial-gradient(color-mix(in srgb, var(--paper) 4%, transparent) 1px, transparent 1.5px);
+    background-size: auto, 18px 18px;
+  }
+  .agent-chat::-webkit-scrollbar { width: 0; height: 0; display: none; }
+
+  /* divisor de fecha tipo chat */
+  .agent-chat-day {
+    align-self: center;
+    margin: 0.05rem 0 0.35rem;
+    flex-shrink: 0;
+  }
+  .agent-chat-day span {
+    font-size: 0.58rem;
+    letter-spacing: 0.03em;
+    color: color-mix(in srgb, var(--paper) 58%, transparent);
+    background: color-mix(in srgb, var(--black) 42%, transparent);
+    border: 1px solid color-mix(in srgb, var(--paper) 7%, transparent);
+    border-radius: 999px;
+    padding: 0.14rem 0.62rem;
   }
 
   /* input bar */
@@ -2314,8 +2283,8 @@
     color: var(--slate);
   }
   .agent-input-send {
-    width: 30px;
-    height: 30px;
+    width: 31px;
+    height: 31px;
     flex-shrink: 0;
     border-radius: 50%;
     display: inline-flex;
@@ -2323,8 +2292,9 @@
     justify-content: center;
     font-size: 1rem;
     font-weight: 700;
-    color: var(--black);
-    background: var(--orange);
+    color: var(--paper);
+    background: linear-gradient(150deg, color-mix(in srgb, var(--orange) 88%, var(--paper)), var(--orange));
+    box-shadow: 0 3px 10px -3px color-mix(in srgb, var(--orange) 75%, transparent), inset 0 1px 0 color-mix(in srgb, var(--paper) 30%, transparent);
   }
 
   /* Message bubbles */
@@ -2356,14 +2326,16 @@
   }
 
   .agent-msg.is-cliente .agent-typing {
-    background: color-mix(in srgb, var(--orange) 75%, var(--black));
-    border-radius: 16px 16px 4px 16px;
+    background: linear-gradient(165deg, color-mix(in srgb, var(--orange) 86%, var(--paper)), color-mix(in srgb, var(--orange) 78%, var(--black)));
+    border-radius: 17px 17px 5px 17px;
+    box-shadow: 0 4px 12px -5px color-mix(in srgb, var(--orange) 70%, transparent);
   }
 
   .agent-msg.is-agente .agent-typing {
-    background: color-mix(in srgb, var(--slate) 20%, var(--black));
-    border: 1px solid color-mix(in srgb, var(--slate) 25%, transparent);
-    border-radius: 16px 16px 16px 4px;
+    background: linear-gradient(165deg, color-mix(in srgb, var(--navy) 26%, var(--black)), color-mix(in srgb, var(--navy) 12%, var(--black)));
+    border: 1px solid color-mix(in srgb, var(--paper) 9%, transparent);
+    border-radius: 17px 17px 17px 5px;
+    box-shadow: 0 4px 12px -6px color-mix(in srgb, var(--black) 85%, transparent);
   }
 
   .agent-msg .agent-typing i {

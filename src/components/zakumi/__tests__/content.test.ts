@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { STATS, CHAT_GUION, TECNOLOGIAS, HERO, CRM, CONTACTO, PROYECTOS } from "../content";
+import { STATS, CHAT_GUION, TECNOLOGIAS, HERO, CONTACTO, PROYECTOS } from "../content";
 import { HERO_SLIDES } from "../content";
 
-const allCopy = JSON.stringify([STATS, CHAT_GUION, TECNOLOGIAS, HERO, CRM, CONTACTO, PROYECTOS]);
+const allCopy = JSON.stringify([STATS, CHAT_GUION, TECNOLOGIAS, HERO, CONTACTO, PROYECTOS]);
 
 describe("content", () => {
   it("hay exactamente 4 stats", () => {

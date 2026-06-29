@@ -7,12 +7,92 @@ const PUNTOS = [
   "Agenda, cobra y cierra sin que tú estés",
 ];
 
-const INBOX = [
-  { ini: "M", name: "María Restrepo", snippet: "Perfecto, quiero 3.", cls: "is-ia", active: true },
-  { ini: "A", name: "Andrés Gómez", snippet: "¿Agendamos el jueves?", cls: "is-cita" },
-  { ini: "V", name: "Valentina Ríos", snippet: "¿Qué precios manejan?", cls: "is-nuevo" },
-  { ini: "C", name: "Camilo Ortiz", snippet: "Listo, ya pagué.", cls: "is-won" },
+// ——— Consola CRM: el producto que vive detrás del agente ———
+const NAV = [
+  { id: "resumen", label: "Resumen", active: true },
+  { id: "leads", label: "Leads" },
+  { id: "pipeline", label: "Pipeline" },
+  { id: "chats", label: "Chats" },
+  { id: "ajustes", label: "Ajustes" },
 ];
+
+const KPIS = [
+  { label: "Prospectos", val: "1,250", delta: "12.5" },
+  { label: "Calificados", val: "320", delta: "8.2" },
+  { label: "Oportunidades", val: "85", delta: "15.3" },
+  { label: "Conversión", val: "24.6%", delta: "6.1" },
+];
+
+const PIPELINE = [
+  { stage: "Nuevo", count: "250", money: "$125k", more: "7", leads: [
+    { ini: "TX", name: "Tienda XYZ", val: "$25k" },
+    { ini: "SA", name: "Soluciones ABC", val: "$15k" },
+  ] },
+  { stage: "Contactado", count: "180", money: "$90k", more: "5", leads: [
+    { ini: "IN", name: "Innovatech", val: "$20k" },
+    { ini: "CS", name: "Comercial Sur", val: "$18k" },
+  ] },
+  { stage: "Calificado", count: "120", money: "$60k", more: "3", leads: [
+    { ini: "DC", name: "DataCorp", val: "$25k" },
+    { ini: "OS", name: "Óptima Sol.", val: "$20k" },
+  ] },
+  { stage: "Propuesta", count: "60", money: "$45k", more: "2", leads: [
+    { ini: "NG", name: "Negocios G.", val: "$25k" },
+  ] },
+  { stage: "Ganado", count: "30", money: "$30k", more: "1", leads: [
+    { ini: "GE", name: "Grupo Éxito", val: "$20k" },
+  ] },
+];
+
+function NavIcon({ id }: { id: string }) {
+  const c = {
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: 1.7,
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+  };
+  switch (id) {
+    case "resumen":
+      return (
+        <svg viewBox="0 0 24 24" {...c}>
+          <rect x="3" y="3" width="7" height="7" rx="1.6" />
+          <rect x="14" y="3" width="7" height="7" rx="1.6" />
+          <rect x="3" y="14" width="7" height="7" rx="1.6" />
+          <rect x="14" y="14" width="7" height="7" rx="1.6" />
+        </svg>
+      );
+    case "leads":
+      return (
+        <svg viewBox="0 0 24 24" {...c}>
+          <circle cx="9" cy="8" r="3.2" />
+          <path d="M3.5 19a5.5 5.5 0 0 1 11 0" />
+          <path d="M16 5.5a3 3 0 0 1 0 5.8M20.5 19a5.2 5.2 0 0 0-3.4-4.7" />
+        </svg>
+      );
+    case "pipeline":
+      return (
+        <svg viewBox="0 0 24 24" {...c}>
+          <rect x="3" y="4" width="5" height="16" rx="1.4" />
+          <rect x="9.5" y="4" width="5" height="11" rx="1.4" />
+          <rect x="16" y="4" width="5" height="7" rx="1.4" />
+        </svg>
+      );
+    case "chats":
+      return (
+        <svg viewBox="0 0 24 24" {...c}>
+          <path d="M4 5.5h16v10H9.5L5 19v-3.5H4z" />
+        </svg>
+      );
+    default:
+      return (
+        <svg viewBox="0 0 24 24" {...c}>
+          <circle cx="12" cy="12" r="3.1" />
+          <path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1" />
+        </svg>
+      );
+  }
+}
 
 export function AgentDemo() {
   return (
@@ -48,7 +128,7 @@ export function AgentDemo() {
 
         <div className="agent-stage">
           <div className="agent-devices">
-            {/* Desktop: navegador con la consola */}
+            {/* Consola CRM — el software detrás del agente */}
             <div className="agent-desktop" aria-hidden>
               <div className="agent-dt-screen">
                 <div className="agent-dt-bar">
@@ -57,47 +137,86 @@ export function AgentDemo() {
                     <i />
                     <i />
                   </span>
-                  <span className="agent-dt-url">app.zakumi.studio · consola</span>
+                  <span className="agent-dt-url">app.zakumi.studio/crm</span>
                   <span className="agent-tb-live">
                     <i />
                     12 activas
                   </span>
                 </div>
-                <div className="agent-dt-body">
-                  <div className="agent-tb-list">
-                    {INBOX.map((c) => (
-                      <div
-                        className={`agent-tb-conv${c.active ? " is-active" : ""}`}
-                        key={c.name}
-                      >
-                        <span className="agent-tb-av">{c.ini}</span>
-                        <span className="agent-tb-conv-meta">
-                          <span className="agent-tb-conv-name">{c.name}</span>
-                          <span className="agent-tb-conv-snippet">{c.snippet}</span>
+
+                <div className="crm-body">
+                  <aside className="crm-side">
+                    <span className="crm-brand">
+                      <span className="crm-brand-mark">Z</span>
+                      <span className="crm-brand-tx">CRM</span>
+                    </span>
+                    <div className="crm-nav">
+                      {NAV.map((n) => (
+                        <span
+                          key={n.id}
+                          className={`crm-nav-item${n.active ? " is-active" : ""}`}
+                        >
+                          <NavIcon id={n.id} />
+                          <span>{n.label}</span>
                         </span>
-                        <span className={`agent-tb-dot ${c.cls}`} />
-                      </div>
-                    ))}
-                  </div>
-                  <div className="agent-tb-main">
-                    <div className="agent-tb-main-head">
-                      <span className="agent-tb-av sm">M</span>
-                      <span className="agent-tb-main-name">María Restrepo</span>
-                      <span className="agent-tb-badge">Atendido por IA</span>
+                      ))}
                     </div>
-                    <div className="agent-tb-thread">
-                      <span className="agent-tb-msg in">¿Tienen envío a Medellín?</span>
-                      <span className="agent-tb-msg out">
-                        ¡Claro! Envío gratis desde $150.000.
+                    <span className="crm-ia">
+                      <span className="crm-ia-mark" />
+                      <span className="crm-ia-label">Análisis de IA</span>
+                      <span className="crm-ia-sub">3 cierres sugeridos hoy</span>
+                    </span>
+                  </aside>
+
+                  <div className="crm-main">
+                    <div className="crm-main-head">
+                      <span className="crm-title">Resumen</span>
+                      <span className="crm-search">Buscar leads…</span>
+                      <span className="crm-user">CM</span>
+                    </div>
+
+                    <div className="crm-kpis">
+                      {KPIS.map((k) => (
+                        <span className="crm-kpi" key={k.label}>
+                          <span className="crm-kpi-label">{k.label}</span>
+                          <span className="crm-kpi-val">{k.val}</span>
+                          <span className="crm-kpi-delta">▲ {k.delta}%</span>
+                        </span>
+                      ))}
+                    </div>
+
+                    <div className="crm-pipe-head">
+                      <span className="crm-pipe-title">Pipeline de ventas</span>
+                      <span className="crm-pipe-sum">$350k · 640 leads</span>
+                    </div>
+                    <div className="crm-pipe">
+                      {PIPELINE.map((col, ci) => (
+                        <span className={`crm-col heat-${ci}`} key={col.stage}>
+                          <span className="crm-col-bar" />
+                          <span className="crm-col-head">
+                            <span className="crm-col-stage">{col.stage}</span>
+                            <span className="crm-col-count">{col.count}</span>
+                          </span>
+                          <span className="crm-col-money">{col.money}</span>
+                          {col.leads.map((l) => (
+                            <span className="crm-lead" key={l.name}>
+                              <span className="crm-lead-av">{l.ini}</span>
+                              <span className="crm-lead-name">{l.name}</span>
+                              <span className="crm-lead-val">{l.val}</span>
+                            </span>
+                          ))}
+                          <span className="crm-col-more">+{col.more} más</span>
+                        </span>
+                      ))}
+                    </div>
+
+                    <span className="crm-ai-bar">
+                      <span className="crm-ai-dot" />
+                      <span className="crm-ai-tx">
+                        <b>IA</b> · María Restrepo — intención de compra · 3 uds ·
+                        cierre hoy
                       </span>
-                      <span className="agent-tb-msg in">Perfecto, quiero 3.</span>
-                    </div>
-                    <div className="agent-tb-summary">
-                      <span className="agent-tb-summary-label">Resumen IA</span>
-                      <span className="agent-tb-summary-text">
-                        Intención: compra · 3 unidades · Próximo paso: pago
-                      </span>
-                    </div>
+                    </span>
                   </div>
                 </div>
               </div>
@@ -137,7 +256,9 @@ export function AgentDemo() {
 
                 <div className="agent-wa-head" aria-hidden>
                   <span className="agent-wa-back">‹</span>
-                  <span className="agent-wa-av">Z</span>
+                  <span className="agent-wa-av">
+                    Z<span className="agent-wa-online" />
+                  </span>
                   <span className="agent-wa-meta">
                     <span className="agent-wa-name">Zakumi · Agente IA</span>
                     <span className="agent-wa-status">en línea</span>
@@ -154,6 +275,9 @@ export function AgentDemo() {
                 </div>
 
                 <div className="agent-chat">
+                  <div className="agent-chat-day" aria-hidden>
+                    <span>Hoy</span>
+                  </div>
                   {CHAT_GUION.map((m, i) => (
                     <div className={`agent-msg is-${m.from}`} key={i}>
                       <span className="agent-typing" aria-hidden>

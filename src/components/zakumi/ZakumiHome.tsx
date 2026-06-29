@@ -4,7 +4,7 @@ import React, { useLayoutEffect } from "react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { Hero } from "./sections/Hero";
-import { CrmIA } from "./sections/CrmIA";
+import { ProductosShowcase } from "./sections/ProductosShowcase";
 import { AgentDemo } from "./sections/AgentDemo";
 import { ComoTrabajamos } from "./sections/ComoTrabajamos";
 import { Filosofia } from "./sections/Filosofia";
@@ -12,6 +12,10 @@ import { Proyectos } from "./sections/Proyectos";
 import { ContactoSection } from "./sections/ContactoSection";
 
 gsap.registerPlugin(ScrollTrigger);
+
+// En móvil, mostrar/ocultar la barra del navegador cambia el viewport y haría
+// recalcular (saltar) las secciones fijadas con pin. Lo ignoramos.
+ScrollTrigger.config({ ignoreMobileResize: true });
 
 export function ZakumiHome() {
   const philosophyLine1 = "IA con criterio humano:".split(" ");
@@ -245,55 +249,79 @@ export function ZakumiHome() {
         el.addEventListener("mouseleave", onLeave);
       });
 
-      // ——— CRM con IA: ensamblado de tarjetas + contador ———
-      const mmCrm = gsap.matchMedia();
-      mmCrm.add(
+      // ——— Producto: showcase con pin + crossfade (Landings · CRM · Ecommerce) ———
+      const mmProd = gsap.matchMedia();
+      mmProd.add(
         {
-          motion: "(prefers-reduced-motion: no-preference)",
-          reduced: "(prefers-reduced-motion: reduce)",
+          showcase: "(prefers-reduced-motion: no-preference)",
+          stacked: "(prefers-reduced-motion: reduce)",
         },
         (context) => {
-          const { reduced } = context.conditions as { motion: boolean; reduced: boolean };
-          const crmCards = gsap.utils.toArray<HTMLElement>(".crm-mock .crm-card");
-          const counterEl = document.querySelector(".crm-counter [data-target]") as HTMLElement | null;
+          const { showcase } = context.conditions as { showcase: boolean; stacked: boolean };
+          const blocks = gsap.utils.toArray<HTMLElement>(".products .product-block");
+          const dots = gsap.utils.toArray<HTMLElement>(".products .product-dot");
+          if (blocks.length < 2) return;
 
-          if (reduced) {
-            if (crmCards.length) gsap.set(crmCards, { autoAlpha: 1, y: 0 });
-            if (counterEl) {
-              const target = Number(counterEl.getAttribute("data-target"));
-              counterEl.textContent = String(target);
-            }
+          const setActive = (idx: number) => {
+            blocks.forEach((b, i) => b.classList.toggle("is-active", i === idx));
+            dots.forEach((d, i) => d.classList.toggle("is-active", i === idx));
+          };
+
+          // Apilado (solo reduced-motion): sin pin, cada bloque aparece al entrar.
+          if (!showcase) {
+            gsap.set(blocks, { autoAlpha: 1 });
+            blocks.forEach((b) => {
+              gsap.from(b, {
+                y: 40,
+                autoAlpha: 0,
+                duration: 0.9,
+                ease: "expo.out",
+                scrollTrigger: { trigger: b, start: "top 80%", once: true },
+              });
+            });
             return;
           }
 
-          if (crmCards.length) {
-            gsap.from(crmCards, {
-              scrollTrigger: { trigger: ".crm-mock", start: "top 75%", once: true },
-              y: 24,
-              autoAlpha: 0,
-              stagger: 0.12,
-              duration: 0.5,
-              ease: "power3.out",
-            });
-          }
+          // Showcase (móvil + desktop): escenario fijado + crossfade entre productos.
+          const n = blocks.length;
+          gsap.set(blocks, { autoAlpha: 0 });
+          gsap.set(blocks[0], { autoAlpha: 1 });
+          setActive(0);
 
-          if (counterEl) {
-            const target = Number(counterEl.getAttribute("data-target"));
-            const obj = { v: 0 };
-            ScrollTrigger.create({
-              trigger: ".crm-counter",
-              start: "top 80%",
-              once: true,
-              onEnter: () =>
-                gsap.to(obj, {
-                  v: target,
-                  duration: 1.4,
-                  ease: "power1.out",
-                  onUpdate: () => {
-                    counterEl.textContent = String(Math.round(obj.v));
-                  },
-                }),
-            });
+          const tl = gsap.timeline({
+            scrollTrigger: {
+              trigger: ".products",
+              start: "top top",
+              end: () => "+=" + window.innerHeight * (n - 1),
+              pin: ".product-stage",
+              scrub: 0.8,
+              snap: {
+                snapTo: 1 / (n - 1),
+                duration: { min: 0.2, max: 0.5 },
+                ease: "power1.inOut",
+              },
+              onUpdate: (self) => setActive(Math.round(self.progress * (n - 1))),
+            },
+          });
+
+          for (let i = 1; i < n; i++) {
+            const at = i - 1; // tiempo absoluto: una transición por unidad
+            tl.to(blocks[i - 1], { autoAlpha: 0, ease: "none", duration: 1 }, at)
+              .fromTo(
+                blocks[i],
+                { autoAlpha: 0 },
+                { autoAlpha: 1, ease: "none", duration: 1 },
+                at,
+              );
+            const img = blocks[i].querySelector<HTMLElement>(".product-img-wrap");
+            if (img) {
+              tl.fromTo(
+                img,
+                { yPercent: 8, scale: 1.05 },
+                { yPercent: 0, scale: 1, ease: "power1.out", duration: 1 },
+                at,
+              );
+            }
           }
         },
       );
@@ -363,7 +391,7 @@ export function ZakumiHome() {
           ))}
         </div>
       </div>
-      <CrmIA />
+      <ProductosShowcase />
       <AgentDemo />
       <Proyectos />
       <ComoTrabajamos />

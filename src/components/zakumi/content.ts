@@ -20,6 +20,8 @@ export type HeroSlide = {
   cta: string;
   waMsg: string;
   href: string;
+  /** Si es true, el CTA abre WhatsApp (con waMsg) en vez de navegar a href. */
+  ctaWa?: boolean;
   img: string;
   meta: { label: string; val: string }[];
 };
@@ -29,12 +31,13 @@ export const HERO_SLIDES: HeroSlide[] = [
   {
     id: "agentes",
     tag: "Agentes de IA para WhatsApp & Telegram",
-    titulo1: "Deja de perder ventas",
-    tituloEm: "por no responder a tiempo.",
-    sub: "Convierte tu chat en una máquina de conversión automatizada. Tu nuevo agente de IA atiende, persuade y cierra tratos las 24 horas del día, los 7 días de la semana. Tú te encargas de entregar; la IA se encarga de vender.",
+    titulo1: "Un agente de IA que",
+    tituloEm: "responde y vende por ti.",
+    sub: "Tu agente de IA atiende a cada cliente en WhatsApp y Telegram: responde dudas, toma pedidos y cierra ventas las 24 horas, los 7 días de la semana. Tú te encargas de entregar; la IA se encarga de vender, sin que tengas que estar pegado al celular.",
     cta: "Habla con nuestro agente",
     waMsg: "Hola Zakumi, quiero un agente de IA para mi WhatsApp.",
     href: "/agentes-ia",
+    ctaWa: true,
     img: "/work/zk-hero-agentes-chat-v4.webp",
     meta: [
       { label: "Canales", val: "WhatsApp · Telegram · Redes" },
@@ -45,9 +48,9 @@ export const HERO_SLIDES: HeroSlide[] = [
   {
     id: "desarrollo",
     tag: "Software & plataformas a medida",
-    titulo1: "Tu negocio es demasiado complejo",
-    tituloEm: "para depender de un Excel.",
-    sub: "Automatizamos el caos. Si tus procesos internos son manuales, lentos y propensos a errores humanos, construimos el software que los resuelve. Sistemas web a la medida desde cero, respaldados por bases de datos serias en PostgreSQL.",
+    titulo1: "Desarrollamos el software",
+    tituloEm: "que tu negocio necesita.",
+    sub: "Reemplazamos los Excel, los procesos manuales y las herramientas sueltas por un sistema web hecho a tu medida. Desde cero, rápido y confiable, con bases de datos serias en PostgreSQL que ordenan y automatizan la operación de tu negocio.",
     cta: "Cuéntanos tu proyecto",
     waMsg: "Hola Zakumi, quiero desarrollar un proyecto de software.",
     href: "/software",
@@ -61,9 +64,9 @@ export const HERO_SLIDES: HeroSlide[] = [
   {
     id: "marca",
     tag: "Marca & automatización de redes",
-    titulo1: "Deja de abandonar tus redes",
-    tituloEm: "cada vez que tienes mucho trabajo.",
-    sub: "Sabemos que no tienes tiempo para publicar todos los días. Construimos una identidad visual imponente y automatizamos todo tu contenido para que tu marca siga vendiendo y generando autoridad, incluso cuando estás ocupado operando tu negocio.",
+    titulo1: "Automatizamos tus",
+    tituloEm: "redes sociales.",
+    sub: "Identidad visual imponente y contenido publicado a diario, en automático. Tu marca sigue presente y vendiendo, sin que tengas que pensar en publicar.",
     cta: "Activa tu marca",
     waMsg: "Hola Zakumi, quiero impulsar mi marca y mis redes.",
     href: "/marca",
@@ -76,18 +79,61 @@ export const HERO_SLIDES: HeroSlide[] = [
   },
 ];
 
-export const CRM = {
-  titulo1: "Un CRM",
-  tituloEm: "que piensa.",
-  sub: "Te construimos un CRM con Anthropic, Gemini y OpenAI trabajando para tu equipo de ventas — cada modelo en lo que mejor hace.",
-  features: [
-    "Clasifica y prioriza tus leads",
-    "Responde y resume conversaciones",
-    "Agenda y da seguimiento solo",
-    "Escala a una persona cuando hay intención real",
-  ],
-  nota: "Lo desarrollamos a tu medida; no es una plantilla.",
+export type ProductoShowcase = {
+  idx: number;
+  titulo1: string;
+  tituloEm: string;
+  sub: string;
+  features: string[];
+  img: string;
+  alt: string;
 };
+
+// Showcase "02 / Producto": recorrido por scroll (pin + crossfade) entre 3 productos.
+export const PRODUCTOS_SHOWCASE: ProductoShowcase[] = [
+  {
+    idx: 1,
+    titulo1: "Landings",
+    tituloEm: "que convierten.",
+    sub: "Páginas de aterrizaje rápidas y a medida, pensadas para una sola cosa: volver visitas en clientes.",
+    features: [
+      "Diseño a medida, no plantillas",
+      "Carga veloz y SEO técnico",
+      "Copy y CTAs que guían a la acción",
+      "Medición y A/B para subir conversión",
+    ],
+    img: "/work/zk-prod-landing.webp",
+    alt: "Render de una landing page de alto impacto diseñada por Zakumi",
+  },
+  {
+    idx: 2,
+    titulo1: "Un CRM",
+    tituloEm: "que piensa.",
+    sub: "Te construimos un CRM con Anthropic, Gemini y OpenAI trabajando para tu equipo de ventas — cada modelo en lo que mejor hace.",
+    features: [
+      "Clasifica y prioriza tus leads",
+      "Responde y resume conversaciones",
+      "Agenda y da seguimiento solo",
+      "Escala a una persona cuando hay intención real",
+    ],
+    img: "/work/zk-prod-crm.webp",
+    alt: "Dashboard de un CRM con IA multimodelo construido por Zakumi",
+  },
+  {
+    idx: 3,
+    titulo1: "Ecommerce",
+    tituloEm: "que vende solo.",
+    sub: "Tiendas online completas: catálogo, carrito y pagos — con un agente de IA que asesora y cierra la venta por ti.",
+    features: [
+      "Catálogo, carrito y checkout listos",
+      "Pasarela de pagos integrada",
+      "Agente de IA que asesora y vende",
+      "Inventario y pedidos en un panel",
+    ],
+    img: "/work/zk-prod-ecommerce.webp",
+    alt: "Render de una tienda online a medida desarrollada por Zakumi",
+  },
+];
 
 // Guion de la demo del agente (mensajes hardcodeados, no conexión en vivo).
 export const CHAT_GUION: ChatMsg[] = [
