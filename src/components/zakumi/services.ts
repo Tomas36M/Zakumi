@@ -36,11 +36,23 @@ export type Signature =
   | { kind: "producto"; titulo: string; tituloEm: string; sub: string; puntos: string[] }
   | { kind: "marca"; titulo: string; tituloEm: string; sub: string; puntos: string[] };
 
+/**
+ * Beat de manifiesto: el mismo gesto de la sección de filosofía de la home
+ * (palabras que se encienden con el scroll), con una frase por servicio. Rompe
+ * la sucesión de bloques informativos y le da a la página un momento de voz.
+ */
+export type Manifiesto = { line1: string; line2: string; em: string; line3: string };
+
 export type Service = {
   slug: "agentes-ia" | "software" | "marca";
-  num: string;
   nav: string;
   tag: string;
+  /**
+   * Acento propio del servicio. Se inyecta como --accent-svc y tiñe eyebrows,
+   * numerales y barras. El naranja de marca sigue siendo el ancla del sitio;
+   * esto da identidad a cada ruta sin partir el sistema.
+   */
+  accent: string;
   titulo1: string;
   tituloEm: string;
   intro: string;
@@ -54,10 +66,13 @@ export type Service = {
   incluye: Capacidad[];
   incluyeImg: string;
   signature: Signature;
+  manifiesto: Manifiesto;
   ejemplos: ServiceExample[];
   proceso: ProcesoPaso[];
   tech: { titulo: string; nota: string; items: string[] };
   porQue: Garantia[];
+  /** Imagen del tile dominante del bento de "por qué". */
+  porQueImg: string;
   planes: Plan[];
   faq: FaqItem[];
   seo: { title: string; description: string };
@@ -68,8 +83,8 @@ export const SERVICE_SLUGS: Service["slug"][] = ["agentes-ia", "software", "marc
 export const SERVICIOS: Record<Service["slug"], Service> = {
   "agentes-ia": {
     slug: "agentes-ia",
-    num: "— I.",
     nav: "Agentes IA",
+    accent: "#E8894A",
     tag: "Agentes de IA · WhatsApp & Telegram",
     titulo1: "Agentes de IA que atienden",
     tituloEm: "y venden por ti.",
@@ -128,6 +143,12 @@ export const SERVICIOS: Record<Service["slug"], Service> = {
         { from: "agente", text: "¡Genial! Son $76.000 con envío gratis. Te paso el link de pago y apenas confirmes lo despacho hoy ✅" },
       ],
     },
+    manifiesto: {
+      line1: "Un agente que vende no improvisa:",
+      line2: "sabe tu catálogo, tu tono y tu",
+      em: "criterio.",
+      line3: "Lo demás es un bot.",
+    },
     ejemplos: [
       { titulo: "Tienda que vende por WhatsApp", desc: "El agente atiende el catálogo, arma el carrito y pasa el pago.", img: "/work/zk-software-foto.webp", cat: "Retail" },
       { titulo: "Agenda de citas", desc: "Clínicas y salones: agenda, recuerda y reprograma sin llamadas.", img: "/work/zk-form-foto.webp", cat: "Servicios" },
@@ -150,6 +171,7 @@ export const SERVICIOS: Record<Service["slug"], Service> = {
       { titulo: "Tú ves todo", desc: "Reportes claros de qué preguntan y qué compran. Nada de caja negra." },
       { titulo: "Un solo equipo", desc: "IA, software y marca sin intermediarios entre quien diseña, programa y conecta." },
     ],
+    porQueImg: "/work/zk-brand-foto2.webp",
     planes: [
       { nombre: "Esencial", tagline: "Para empezar a no perder clientes.", incluye: ["Un canal (WhatsApp)", "Preguntas frecuentes + catálogo", "Flujo de ventas básico"] },
       { nombre: "Crecimiento", tagline: "Cuando el volumen aprieta.", incluye: ["Multicanal", "Integración con CRM y pagos", "Automatizaciones y reportes"], destacado: true },
@@ -169,7 +191,7 @@ export const SERVICIOS: Record<Service["slug"], Service> = {
 
   software: {
     slug: "software",
-    num: "— II.",
+    accent: "#5B8CB8",
     nav: "Software",
     tag: "Software & plataformas a medida",
     titulo1: "Software a medida",
@@ -220,6 +242,12 @@ export const SERVICIOS: Record<Service["slug"], Service> = {
         "Desplegado y monitoreado",
       ],
     },
+    manifiesto: {
+      line1: "El código que te entregamos",
+      line2: "es tuyo, y está escrito para",
+      em: "durar.",
+      line3: "Sin ataduras.",
+    },
     ejemplos: [
       { titulo: "Panel de operación", desc: "Pedidos, inventario y clientes en un solo lugar.", img: "/work/zk-form-foto.webp", cat: "Interno" },
       { titulo: "Portal para clientes", desc: "Cada cliente entra, ve su estado y se autogestiona.", img: "/work/zk-ink-foto.webp", cat: "Portal" },
@@ -242,6 +270,7 @@ export const SERVICIOS: Record<Service["slug"], Service> = {
       { titulo: "Datos serios", desc: "Modelado en Postgres pensado para escalar sin sustos." },
       { titulo: "Del prototipo a producción", desc: "Validamos rápido y lo llevamos a algo robusto, sin reescribir todo." },
     ],
+    porQueImg: "/work/zk-prod-landing.webp",
     planes: [
       { nombre: "Prototipo / MVP", tagline: "Validar rápido.", incluye: ["Algo funcional para probar la idea", "Alcance acotado", "Listo para mostrar a usuarios"] },
       { nombre: "Plataforma", tagline: "Producto en producción.", incluye: ["Sistema completo", "Datos e integraciones", "Desplegado y monitoreado"], destacado: true },
@@ -261,7 +290,7 @@ export const SERVICIOS: Record<Service["slug"], Service> = {
 
   marca: {
     slug: "marca",
-    num: "— III.",
+    accent: "#C9954A",
     nav: "Marca",
     tag: "Marca · Contenido · Redes",
     titulo1: "Tu marca, viva.",
@@ -311,6 +340,12 @@ export const SERVICIOS: Record<Service["slug"], Service> = {
         "Contenido y publicación a diario",
       ],
     },
+    manifiesto: {
+      line1: "Una marca no es un logo:",
+      line2: "es la misma decisión repetida con",
+      em: "constancia.",
+      line3: "Todos los días.",
+    },
     ejemplos: [
       { titulo: "Marca desde cero", desc: "Le damos identidad y la ponemos a operar en redes.", img: "/work/zk-brand-foto2.webp", cat: "Identidad" },
       { titulo: "Relanzamiento", desc: "Refrescamos la imagen y reactivamos la presencia digital.", img: "/work/zk-ink-foto.webp", cat: "Rebrand" },
@@ -333,6 +368,7 @@ export const SERVICIOS: Record<Service["slug"], Service> = {
       { titulo: "Contenido a escala con criterio", desc: "IA para producir volumen, humanos para que tenga sentido." },
       { titulo: "Todo bajo un techo", desc: "Marca, contenido y las plataformas que lo sostienen, en un solo equipo." },
     ],
+    porQueImg: "/work/zk-prod-ecommerce.webp",
     planes: [
       { nombre: "Identidad", tagline: "El sistema de marca.", incluye: ["Identidad visual completa", "Lineamientos de marca", "Entrega una sola vez"] },
       { nombre: "Marca + Redes", tagline: "Imagen y presencia.", incluye: ["Identidad", "Manejo de redes", "Contenido mensual"], destacado: true },

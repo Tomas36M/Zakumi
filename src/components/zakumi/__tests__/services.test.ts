@@ -55,6 +55,35 @@ describe("services", () => {
     expect(SERVICIOS["marca"].ctaTipo).toBe("contacto");
   });
 
+  it("cada servicio trae su acento como hex válido y son los tres distintos", () => {
+    const acentos = all.map((s) => s.accent);
+    for (const a of acentos) expect(a).toMatch(/^#[0-9A-Fa-f]{6}$/);
+    expect(new Set(acentos).size).toBe(3);
+  });
+
+  it("cada servicio tiene manifiesto con las cuatro partes", () => {
+    for (const s of all) {
+      for (const parte of [s.manifiesto.line1, s.manifiesto.line2, s.manifiesto.em, s.manifiesto.line3]) {
+        expect(parte.trim().length).toBeGreaterThan(0);
+      }
+      // `em` es una sola palabra acentuada: el componente la envuelve en <em>.
+      expect(s.manifiesto.em.trim().split(/\s+/).length).toBe(1);
+    }
+  });
+
+  it("todas las rutas de imagen apuntan a /work", () => {
+    for (const s of all) {
+      const imgs = [s.heroImg, s.incluyeImg, s.porQueImg, ...s.ejemplos.map((e) => e.img)];
+      for (const img of imgs) {
+        if (img) expect(img).toMatch(/^\/work\/[a-z0-9.-]+\.webp$/);
+      }
+    }
+  });
+
+  it("el bento de 'por qué' tiene exactamente 4 garantías (media + 2x2)", () => {
+    for (const s of all) expect(s.porQue.length).toBe(4);
+  });
+
   it("REGLA: ningún copy contiene la palabra 'stack'", () => {
     expect(copy.toLowerCase()).not.toMatch(/\bstack\b/);
   });

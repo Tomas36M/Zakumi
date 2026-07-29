@@ -14,10 +14,20 @@ gsap.registerPlugin(ScrollTrigger, ScrollToPlugin);
 // Flag de módulo: la cortina de intro solo debe correr una vez por sesión (no en cada regreso a home via SPA).
 let curtainPlayed = false;
 
-const TWEAK_DEFAULTS = { heroSize: 8.5, bgMode: "full" as const, accent: "#DB5227" };
+const TWEAK_DEFAULTS = { bgMode: "full" as const, accent: "#DB5227" };
+
+/** Entrada del nav: logo y enlaces suben a su sitio. */
+function navIntro(tl: gsap.core.Timeline, at: gsap.Position) {
+  tl.from(".nav-logo a", { yPercent: 110, duration: 0.9, ease: "expo.out" }, at).from(
+    ".nav-links a",
+    { yPercent: 100, opacity: 0, stagger: 0.06, duration: 0.7, ease: "expo.out" },
+    "<+0.1",
+  );
+}
 
 const NAV_ITEMS = [
   ...SERVICE_SLUGS.map((s) => ({ href: `/${s}`, label: SERVICIOS[s].nav })),
+  { href: "/academia", label: "Academia" },
   { href: "/contacto", label: "Contacto" },
 ];
 
@@ -28,23 +38,12 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
   const dotRef = useRef<HTMLDivElement>(null);
   const ringRef = useRef<HTMLDivElement>(null);
 
-  // ——— CSS vars: --hero-size / --orange / bg-* ———
+  // ——— CSS vars: --orange / bg-* ———
+  // (Antes esto también seteaba --hero-size, pero ninguna regla del CSS lo
+  // consumía: el tamaño del h1 lo manda el clamp de .hero h1.)
   useEffect(() => {
-    const applyHeroSize = () => {
-      const wide = window.matchMedia("(min-width: 721px)").matches;
-      if (wide) {
-        document.documentElement.style.setProperty(
-          "--hero-size",
-          `${TWEAK_DEFAULTS.heroSize}rem`,
-        );
-      } else {
-        document.documentElement.style.removeProperty("--hero-size");
-      }
-    };
-    applyHeroSize();
     const mq = window.matchMedia("(min-width: 721px)");
     const onBreakpoint = () => {
-      applyHeroSize();
       requestAnimationFrame(() => ScrollTrigger.refresh());
     };
     mq.addEventListener("change", onBreakpoint);
@@ -129,51 +128,19 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
               )
               .set("#curtain", { display: "none" });
 
-            tl.from(
-              ".nav-logo a",
-              {
-                yPercent: 110,
-                duration: 0.9,
-                ease: "expo.out",
-              },
-              "-=0.7",
-            ).from(
-              ".nav-links a",
-              {
-                yPercent: 100,
-                opacity: 0,
-                stagger: 0.06,
-                duration: 0.7,
-                ease: "expo.out",
-              },
-              "<+0.1",
-            );
+            navIntro(tl, "-=0.7");
           } else {
-            tl.from(
-              ".nav-logo a",
-              {
-                yPercent: 110,
-                duration: 0.9,
-                ease: "expo.out",
-              },
-              0,
-            ).from(
-              ".nav-links a",
-              {
-                yPercent: 100,
-                opacity: 0,
-                stagger: 0.06,
-                duration: 0.7,
-                ease: "expo.out",
-              },
-              "<+0.1",
-            );
+            navIntro(tl, 0);
           }
         }
       } else {
-        // Deep-link a una vista interna: marca la cortina como "ya mostrada"
-        // para que un regreso a home por navegación SPA no la dispare.
+        // Deep-link a una vista interna. La cortina es un gesto de carga
+        // inicial: dispararla al volver a home por SPA parecería una recarga,
+        // así que se marca como vista. Pero la página no debe abrir en frío —
+        // el nav entra igual, sin cortina.
         curtainPlayed = true;
+        // #curtain solo se renderiza en la home, así que no se toca aquí.
+        navIntro(gsap.timeline(), 0);
       }
 
       ScrollTrigger.create({

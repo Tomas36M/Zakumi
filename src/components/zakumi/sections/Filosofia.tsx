@@ -5,12 +5,31 @@ interface FilosofiaProps {
   line2: string[];
   em: string[];
   line3: string[];
+  /** Eyebrow. En la home es "— filosofía —"; en servicios, "— manifiesto —". */
+  label?: string;
+  /** Firma de cierre. Se omite pasando null. */
+  signature?: string | null;
+  /** El id solo debe existir una vez por página; las rutas de servicio lo omiten. */
+  id?: string;
 }
 
-export function Filosofia({ line1, line2, em, line3 }: FilosofiaProps) {
+/**
+ * Beat de manifiesto: las palabras se encienden según el progreso del scroll
+ * (ver `litWords` en @/lib/motion). Es el único momento de la página que no
+ * informa, solo afirma, y por eso rompe la sucesión de bloques.
+ */
+export function Filosofia({
+  line1,
+  line2,
+  em,
+  line3,
+  label = "— filosofía —",
+  signature = "— ZKM Studio",
+  id = "filosofia",
+}: FilosofiaProps) {
   return (
-    <section className="philosophy" id="filosofia">
-      <div className="small">— filosofía —</div>
+    <section className="philosophy" {...(id ? { id } : {})}>
+      <div className="small">{label}</div>
       <p className="big">
         {line1.map((w, i) => (
           <React.Fragment key={`a${i}`}>
@@ -33,7 +52,7 @@ export function Filosofia({ line1, line2, em, line3 }: FilosofiaProps) {
           </React.Fragment>
         ))}
       </p>
-      <p className="signature">— ZKM Studio</p>
+      {signature && <p className="signature">{signature}</p>}
     </section>
   );
 }

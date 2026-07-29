@@ -2,17 +2,22 @@
 
 import Image from "next/image";
 import { useLayoutEffect, useRef } from "react";
-import gsap from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
+import {
+  gsap,
+  ScrollTrigger,
+  magneticCtas,
+  revealBlocks,
+  revealTiles,
+} from "@/lib/motion";
 import {
   EMAIL,
   WHATSAPP_URL,
   INSTAGRAM_URL,
   INSTAGRAM_HANDLE,
 } from "../contact";
+import { CONTACTO_PASOS, CONTACTO_PORQUE } from "../content";
 import { ContactForm } from "./ContactForm";
-
-gsap.registerPlugin(ScrollTrigger);
+import { ContactoSection } from "./ContactoSection";
 
 const WaIcon = () => (
   <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor" aria-hidden>
@@ -33,66 +38,27 @@ const IgIcon = () => (
   </svg>
 );
 
-const PASOS = [
-  { t: "Nos cuentas", d: "Nos escribes por WhatsApp o el formulario con lo que tienes en mente. No hace falta que lo tengas todo claro." },
-  { t: "Te proponemos", d: "Agendamos una llamada corta, entendemos tu caso y te armamos una propuesta con alcance y precio claros." },
-  { t: "Arrancamos", d: "Aprobada la propuesta, empezamos a construir y te mostramos avances rápido, sin desaparecer." },
-];
+const two = (n: number) => String(n + 1).padStart(2, "0");
 
 export function ContactoView() {
   const root = useRef<HTMLElement>(null);
 
   useLayoutEffect(() => {
+    const el = root.current;
+    if (!el) return;
+    let releaseCtas: (() => void) | undefined;
+
     const ctx = gsap.context(() => {
-      const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-      if (!reduce) {
-        gsap.utils.toArray<HTMLElement>(".reveal").forEach((section) => {
-          const wipe = section.querySelectorAll<HTMLElement>(".svc-wipe");
-          if (wipe.length) {
-            gsap.fromTo(
-              wipe,
-              { clipPath: "inset(0 100% 0 0)", y: 24, opacity: 0 },
-              {
-                clipPath: "inset(0 0% 0 0)",
-                y: 0,
-                opacity: 1,
-                duration: 1.1,
-                ease: "expo.out",
-                stagger: 0.12,
-                scrollTrigger: { trigger: section, start: "top 85%", once: true },
-              },
-            );
-          }
-          const items = section.querySelectorAll<HTMLElement>(".reveal-item");
-          if (items.length) {
-            gsap.from(items, {
-              opacity: 0,
-              y: 30,
-              duration: 0.7,
-              ease: "power3.out",
-              stagger: 0.08,
-              scrollTrigger: { trigger: section, start: "top 82%", once: true },
-            });
-          }
-        });
-        gsap.utils.toArray<HTMLElement>(".cta").forEach((el) => {
-          const onMove = (e: MouseEvent) => {
-            const r = el.getBoundingClientRect();
-            gsap.to(el, {
-              x: (e.clientX - (r.left + r.width / 2)) * 0.25,
-              y: (e.clientY - (r.top + r.height / 2)) * 0.35,
-              duration: 0.5,
-              ease: "power3.out",
-            });
-          };
-          const onLeave = () => gsap.to(el, { x: 0, y: 0, duration: 0.7, ease: "elastic.out(1, 0.4)" });
-          el.addEventListener("mousemove", onMove);
-          el.addEventListener("mouseleave", onLeave);
-        });
-      }
+      revealBlocks(el);
+      revealTiles(".porque-bento", ".porque-bento > *", 3);
+      releaseCtas = magneticCtas(el);
     }, root);
+
     requestAnimationFrame(() => ScrollTrigger.refresh());
-    return () => ctx.revert();
+    return () => {
+      releaseCtas?.();
+      ctx.revert();
+    };
   }, []);
 
   return (
@@ -112,9 +78,11 @@ export function ContactoView() {
             Cuéntanos qué necesitas — un agente de IA, una plataforma a medida o tu marca en redes — y te
             devolvemos una propuesta clara, sin compromiso.
           </p>
+          {/* Por canal, no como promesa global: por WhatsApp contesta el agente
+              al instante; el formulario y el correo los ve una persona. */}
           <p className="contacto-promise reveal-item">
             <span className="contacto-promise-dot" aria-hidden />
-            Respondemos en minutos, en horario laboral (Colombia).
+            Por WhatsApp respondemos en minutos. Lun–Vie, 8:00–18:00 (Colombia).
           </p>
           <div className="svc-cta-row reveal-item">
             <a className="cta" style={{ opacity: 1 }} href={WHATSAPP_URL} target="_blank" rel="noopener noreferrer">
@@ -173,17 +141,17 @@ export function ContactoView() {
       </section>
 
       {/* ——— Qué pasa cuando escribes ——— */}
-      <section className="service-block contacto-pasos reveal">
+      <section className="service-block contacto-pasos svc-tight reveal">
         <header className="block-head">
           <span className="section-num svc-wipe">02 / Qué pasa cuando escribes</span>
           <h2 className="section-title reveal-item">
-            Qué pasa cuando <em>escribes</em>.
+            Tres pasos, sin <em>vueltas</em>.
           </h2>
         </header>
         <ol className="proceso-list">
-          {PASOS.map((p, i) => (
+          {CONTACTO_PASOS.map((p, i) => (
             <li className="proceso-step reveal-item" key={p.t}>
-              <span className="proceso-n">{String(i + 1).padStart(2, "0")}</span>
+              <span className="proceso-n">{two(i)}</span>
               <h3>{p.t}</h3>
               <p>{p.d}</p>
             </li>
@@ -191,7 +159,37 @@ export function ContactoView() {
         </ol>
       </section>
 
+      {/* ——— Por qué Zakumi: el bloque de confianza que pedía el spec ——— */}
+      <section className="service-block service-porque svc-wide reveal">
+        <header className="block-head">
+          <span className="section-num svc-wipe">03 / Por qué Zakumi</span>
+          <h2 className="section-title reveal-item">
+            Qué puedes <em>esperar</em>.
+          </h2>
+        </header>
+        <div className="porque-bento">
+          <figure className="porque-media">
+            <Image src="/work/zk-ink-foto.webp" alt="" fill quality={85} sizes="(max-width: 900px) 100vw, 34vw" style={{ objectFit: "cover" }} />
+            <figcaption className="svc-visual-badge">Zakumi</figcaption>
+          </figure>
+          {CONTACTO_PORQUE.map((g, i) => (
+            <div className="porque-card" key={g.titulo}>
+              <span className="porque-n" aria-hidden>
+                {two(i)}
+              </span>
+              <h3>{g.titulo}</h3>
+              <p>{g.desc}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ——— Formulario (04) ——— */}
       <ContactForm />
+
+      {/* Cierre con los cuatro canales. Estaba huérfano: al sacarlo de esta ruta,
+          los CTA de WhatsApp/correo/Instagram solo vivían en la home. */}
+      <ContactoSection />
     </main>
   );
 }

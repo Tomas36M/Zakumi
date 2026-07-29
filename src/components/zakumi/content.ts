@@ -169,3 +169,43 @@ export const CONTACTO = {
   tituloEm: "ahora.",
   sub: "Es el mismo agente de IA que pondríamos a trabajar para ti. Escríbele por WhatsApp y ve cómo atiende — sin formularios eternos, sin compromiso.",
 };
+
+/**
+ * Proceso comercial de /contacto. Vive aquí y no dentro del componente para que
+ * entre en los tests y en la base de conocimiento del bot de WhatsApp, que debe
+ * contar el mismo proceso que cuenta la web.
+ */
+export const CONTACTO_PASOS: { t: string; d: string }[] = [
+  {
+    t: "Nos cuentas",
+    d: "Nos escribes por WhatsApp o el formulario con lo que tienes en mente. No hace falta que lo tengas todo claro.",
+  },
+  {
+    t: "Te proponemos",
+    d: "Agendamos una llamada corta, entendemos tu caso y te armamos una propuesta con alcance y precio claros.",
+  },
+  {
+    t: "Arrancamos",
+    d: "Aprobada la propuesta, empezamos a construir y te mostramos avances rápido, sin desaparecer.",
+  },
+];
+
+/** Señales de confianza de /contacto (el bloque que pedía el spec y faltaba). */
+export const CONTACTO_PORQUE: { titulo: string; desc: string }[] = [
+  {
+    titulo: "Propuesta con alcance y precio",
+    desc: "No mandamos un rango vago: te decimos qué incluye, qué no, y cuánto cuesta antes de empezar.",
+  },
+  {
+    titulo: "Un solo equipo",
+    desc: "Marca, software y agentes bajo el mismo techo. No hay intermediarios entre quien diseña y quien despliega.",
+  },
+  {
+    titulo: "Sin compromiso",
+    desc: "Escribir no te ata a nada. Si no somos lo que necesitas, te lo decimos y te orientamos.",
+  },
+  {
+    titulo: "Te contamos cómo va",
+    desc: "Avances visibles desde la primera semana. Nada de desaparecer un mes y volver con un entregable.",
+  },
+];
