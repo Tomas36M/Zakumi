@@ -9,14 +9,14 @@
     "lint": "eslint",
     "test": "vitest run",
     "images": "node scripts/optimize-images.mjs",
-    "images:check": "node scripts/optimize-images.mjs --check"
+    "images:check": "node scripts/optimize-images.mjs --check",
+    "logos": "node scripts/gen-tech-logos.mjs"
   },
   "dependencies": {
     "gsap": "^3.15.0",
-    "next": "16.2.4",
+    "next": "^16.2.12",
     "react": "19.2.4",
-    "react-dom": "19.2.4",
-    "simple-icons": "^16.23.0"
+    "react-dom": "19.2.4"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
@@ -24,9 +24,14 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.2.4",
+    "eslint-config-next": "^16.2.12",
     "tailwindcss": "^4",
     "typescript": "^5",
-    "vitest": "^4.1.9"
+    "vitest": "^4.1.9",
+    "simple-icons": "^16.23.0"
+  },
+  "overrides": {
+    "postcss": "^8.5.24",
+    "sharp": "^0.35.3"
   }
 }

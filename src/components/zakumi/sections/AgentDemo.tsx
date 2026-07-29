@@ -118,7 +118,7 @@ export function AgentDemo() {
             href={WHATSAPP_URL}
             target="_blank"
             rel="noopener noreferrer"
-            aria-label="Prueba el agente de IA en WhatsApp"
+            aria-label="Pruébalo tú mismo: abre WhatsApp con nuestro agente de IA"
             style={{ opacity: 1 }}
           >
             <span>Pruébalo tú mismo</span>

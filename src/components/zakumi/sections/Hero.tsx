@@ -46,6 +46,10 @@ export function Hero() {
                 src={s.img}
                 alt=""
                 fill
+                /* preload emite el <link rel="preload"> en el <head> durante el
+                   SSR. Sin él el hero es el elemento LCP y la descarga no
+                   arrancaba hasta hidratar: 2.5s de retraso medidos. */
+                preload={i === 0}
                 loading={i === 0 ? "eager" : "lazy"}
                 fetchPriority={i === 0 ? "high" : "auto"}
                 quality={90}
@@ -77,7 +81,9 @@ export function Hero() {
         ›
       </button>
 
-      <div className="hero-dots" role="tablist" aria-label="Servicios">
+      {/* No es un tablist: no hay tabpanels. Un grupo etiquetado es lo honesto
+          y además no falla aria-required-children. */}
+      <div className="hero-dots" role="group" aria-label="Elegir servicio">
         {HERO_SLIDES.map((s, i) => (
           <button
             type="button"
