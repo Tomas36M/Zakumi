@@ -3685,29 +3685,48 @@
        quedan fuera porque su block-head no es hijo directo de .service-block
        (FAQ) o no trae lead. */
     .service-block > .block-head:has(.block-lead) {
+      /* Una sola fuente para el tamaño del titular, para poder derivar de ella
+         la compensación óptica del lead. */
+      --head-fs: clamp(2.1rem, 3.4vw, 3.2rem);
       display: grid;
       grid-template-columns: 1.1fr 0.9fr;
       gap: clamp(2rem, 4vw, 4.5rem);
-      /* Por línea base: la primera línea del lead se apoya en la del titular.
-         Con `end` el lead quedaba colgando por encima del título. */
-      align-items: baseline;
+      align-items: start;
     }
     .service-block > .block-head:has(.block-lead) .section-num { grid-column: 1 / -1; }
-    .service-block > .block-head:has(.block-lead) .section-title { max-width: 24ch; }
-    .service-block > .block-head:has(.block-lead) .block-lead { margin: 0; max-width: 46ch; }
+    .service-block > .block-head:has(.block-lead) .section-title {
+      font-size: var(--head-fs);
+      max-width: 24ch;
+    }
+    .service-block > .block-head:has(.block-lead) .block-lead {
+      margin: 0;
+      max-width: 46ch;
+      /* Alineación óptica de los techos de mayúscula.
+         `baseline` alineaba las líneas base, pero entre 51px y 18px eso deja el
+         texto pequeño 25px por debajo. `start` alinea las cajas y lo deja 12px
+         por encima, porque Playfair tiene 55.4px de ascendente para solo 36.2px
+         de altura de mayúscula (medido con actualBoundingBoxAscent), mientras
+         Instrument Sans tiene 18.4 y 13.2. El factor sale de esa diferencia. */
+      padding-top: calc(var(--head-fs) * 0.23);
+    }
 
     /* — Encabezado de "datos clave": mismo reparto, solo si hay lead que
          poner en la segunda columna. Sin el :has() la columna derecha quedaba
          vacía y el hueco era el mismo que antes. — */
     .stats-intro:has(.lead) {
+      --head-fs: clamp(2.1rem, 3.4vw, 3.2rem);
       max-width: none;
       display: grid;
       grid-template-columns: 1.1fr 0.9fr;
       gap: clamp(2rem, 4vw, 4.5rem);
-      align-items: baseline;
+      align-items: start;
     }
-    .stats-intro:has(.lead) .section-title { max-width: 24ch; }
-    .stats-intro:has(.lead) .lead { max-width: 46ch; margin: 0; }
+    .stats-intro:has(.lead) .section-title { font-size: var(--head-fs); max-width: 24ch; }
+    .stats-intro:has(.lead) .lead {
+      max-width: 46ch;
+      margin: 0;
+      padding-top: calc(var(--head-fs) * 0.23);
+    }
     /* Sin lead, el título display puede ocupar más ancho en vez de cortarse. */
     .stats-intro:not(:has(.lead)) .section-title { max-width: 34ch; }
 
