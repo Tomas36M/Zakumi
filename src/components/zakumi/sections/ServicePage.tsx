@@ -385,6 +385,7 @@ export function ServicePage({ data }: { data: Service }) {
           <h2 className="section-title reveal-item">
             {sec.porQue.titulo} <em>{sec.porQue.em}</em>
           </h2>
+          {sec.porQue.lead && <p className="block-lead reveal-item">{sec.porQue.lead}</p>}
         </header>
         <div className="porque-bento">
           <figure className="porque-media">

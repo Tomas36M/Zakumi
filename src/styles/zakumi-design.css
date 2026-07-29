@@ -2778,10 +2778,12 @@
      Era la cuarta rejilla hairline idéntica de la página. Con un tile de imagen
      dominante a la izquierda y las garantías en 2×2 al lado, la textura cambia
      y la sección deja de ser texto sobre negro. */
-  /* El rail cede ancho al bento: con 0.85fr el tile de imagen quedaba en ~235px
-     y recortaba la foto hasta hacerla irreconocible. */
-  .service-porque { display: grid; grid-template-columns: 0.7fr 1.3fr; gap: clamp(2rem, 4vw, 4rem); align-items: start; }
-  .service-porque .block-head { position: sticky; top: 7rem; margin-bottom: 0; }
+  /* Sin rail lateral: el encabezado va encima y el bento ocupa el ancho
+     completo. Con el rail sticky, una sección que solo lleva título dejaba una
+     franja vacía de ~450px a la izquierda, y el bento se quedaba en 1000px con
+     el tile de imagen recortado a ~370px. Además la sección no es lo bastante
+     alta para que la stickiness aporte algo. */
+  .service-porque .block-head { margin-bottom: clamp(2rem, 4vw, 3.2rem); }
   .porque-bento {
     display: grid;
     grid-template-columns: 1.4fr 1fr 1fr;
@@ -2826,6 +2828,9 @@
     font-size: clamp(1.2rem, 1.7vw, 1.55rem);
     color: var(--paper);
     margin-bottom: 0.6rem;
+    /* Reserva el sitio del numeral fantasma de la esquina: con las tarjetas más
+       anchas el título llegaba hasta él y se solapaban. */
+    padding-right: 4.75rem;
   }
   .porque-card p { color: var(--slate); line-height: 1.55; max-width: 44ch; }
   .porque-n {
@@ -2856,10 +2861,6 @@
   @media (max-width: 1024px) {
     .porque-bento { grid-template-columns: 1fr 1fr; grid-template-areas: "media media" "a b" "c d"; }
     .porque-media { min-height: 220px; }
-  }
-  @media (max-width: 820px) {
-    .service-porque { grid-template-columns: 1fr; }
-    .service-porque .block-head { position: static; }
   }
   @media (max-width: 640px) {
     .porque-bento { grid-template-columns: 1fr; grid-template-areas: "media" "a" "b" "c" "d"; }

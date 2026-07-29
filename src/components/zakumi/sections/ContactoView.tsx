@@ -166,6 +166,10 @@ export function ContactoView() {
           <h2 className="section-title reveal-item">
             Qué puedes <em>esperar</em>.
           </h2>
+          <p className="block-lead reveal-item">
+            No hace falta que llegues con el proyecto definido. Con que nos cuentes el problema, nosotros
+            proponemos el alcance.
+          </p>
         </header>
         <div className="porque-bento">
           <figure className="porque-media">
