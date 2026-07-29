@@ -1,29 +1,6 @@
 import Image from "next/image";
-import {
-  siNextdotjs,
-  siReact,
-  siTypescript,
-  siPostgresql,
-  siTailwindcss,
-  siGreensock,
-  siAnthropic,
-  siGooglegemini,
-  siN8n,
-} from "simple-icons";
 import { PROYECTOS, TECNOLOGIAS } from "../content";
-
-// Logos monocromáticos por tecnología (OpenAI no está en simple-icons → solo texto).
-const LOGOS: Record<string, { path: string } | undefined> = {
-  "Next.js": siNextdotjs,
-  React: siReact,
-  TypeScript: siTypescript,
-  Postgres: siPostgresql,
-  Tailwind: siTailwindcss,
-  GSAP: siGreensock,
-  Anthropic: siAnthropic,
-  Gemini: siGooglegemini,
-  n8n: siN8n,
-};
+import { TECH_LOGOS as LOGOS } from "../techLogos";
 
 export function Proyectos() {
   return (
