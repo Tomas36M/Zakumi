@@ -31,9 +31,18 @@ export type CursoFaq = { q: string; a: string };
 export type CursoPaso = { titulo: string; desc: string };
 export type CursoPunto = { titulo: string; desc: string };
 
-/** Checkout de Hotmart. El producto es el 7970555 (Zakumi Estudio). */
-export const HOTMART_CHECKOUT =
-  "https://pay.hotmart.com/O102003889B";
+/**
+ * Checkout de Hotmart del producto 7970555 (cuenta Zakumi Estudio).
+ *
+ * ⚠️ PENDIENTE: hay que reemplazarlo por el enlace real, que sale de
+ * Hotmart → producto 7970555 → "Links de divulgación". La oferta de precio base
+ * tiene el código `iiovskoy`, así que el enlace final se verá parecido a
+ * `https://pay.hotmart.com/<CÓDIGO>?off=iiovskoy`.
+ *
+ * Mientras no esté, los CTA apuntan a la página del producto en Hotmart, que
+ * funciona pero no lleva directo al pago.
+ */
+export const HOTMART_CHECKOUT = "https://hotmart.com/es/marketplace/productos/7970555";
 
 export const CURSO = {
   nombre: "Introducción a la Inteligencia Artificial",

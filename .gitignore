@@ -54,3 +54,13 @@ next-env.d.ts
 !/assets/masters/README.md
 /cursos/img/originales/
 /zaku_tech_render.png
+
+# PDFs del curso: son derivados. El markdown es la fuente y
+# cursos/curso-ia/pdf/build-pdf.mjs los regenera.
+/Curso-Introduccion-IA-Zakumi-Academy.pdf
+/cursos/Curso-Introduccion-IA-Zakumi-Academy.pdf
+/cursos/curso-ia/pdf/*.pdf
+
+# whatsapp-bot tiene su propio repo git con su propia historia. Sin esto,
+# `git add .` lo metería aquí como gitlink y quedaría un submódulo roto.
+/whatsapp-bot/
