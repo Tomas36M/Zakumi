@@ -42,6 +42,22 @@ export type CursoPunto = { titulo: string; desc: string };
  */
 export const HOTMART_CHECKOUT = "https://pay.hotmart.com/A106414286A";
 
+/**
+ * ¿Está vivo el checkout? Comprobado el 2026-07-29: `pay.hotmart.com/A106414286A`
+ * responde 307 → `/error?errorMessage=049`, o sea que el CTA "Inscribirme por
+ * $129.000" aterriza en una página de error de Hotmart.
+ *
+ * Mientras esto sea `false`, `/academia` se publica pero con `noindex` y fuera
+ * del sitemap: la página existe para quien le pases el enlace a mano, pero
+ * Google no indexa un embudo roto ni empieza a mandarle tráfico a una página que
+ * no puede cobrar.
+ *
+ * Cuando la oferta esté activa en Hotmart, comprobar
+ *   curl -sI https://pay.hotmart.com/A106414286A | head -1
+ * y si da 200, poner esto en `true`. Es el único cambio necesario.
+ */
+export const CHECKOUT_ACTIVO = false;
+
 export const CURSO = {
   nombre: "Introducción a la Inteligencia Artificial",
   academia: "Zakumi Academy",

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { AcademiaPage } from "@/components/zakumi/sections/AcademiaPage";
-import { CURSO, HOTMART_CHECKOUT } from "@/components/zakumi/curso";
+import { CHECKOUT_ACTIVO, CURSO, HOTMART_CHECKOUT } from "@/components/zakumi/curso";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://zakumistudio.com";
 
@@ -8,6 +8,10 @@ export const metadata: Metadata = {
   title: CURSO.seo.title,
   description: CURSO.seo.description,
   alternates: { canonical: "/academia" },
+  // Mientras el checkout de Hotmart no cobre, la página no se indexa: no tiene
+  // sentido que Google mande tráfico a un CTA que aterriza en un error. Ver
+  // CHECKOUT_ACTIVO en curso.ts — es el único flag que hay que cambiar.
+  ...(CHECKOUT_ACTIVO ? {} : { robots: { index: false, follow: true } }),
   openGraph: {
     title: CURSO.seo.title,
     description: CURSO.seo.description,
