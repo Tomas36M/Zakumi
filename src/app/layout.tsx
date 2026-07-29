@@ -1,15 +1,21 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Playfair_Display } from "next/font/google";
+import { Instrument_Sans, Playfair_Display } from "next/font/google";
 import { JsonLd } from "@/components/site/JsonLd";
 import { SiteShell } from "@/components/site/SiteShell";
 import "./globals.css";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://zakumistudio.com";
 
-const inter = Inter({
-  variable: "--font-inter",
+// Instrument Sans en vez de Inter: Inter es la sans más usada de la web y no
+// aporta carácter — con Playfair Display al lado, el cuerpo pedía una grotesca
+// con más personalidad y mejor legibilidad a 16px sobre fondo oscuro.
+// Los pesos son los que el CSS usa de verdad: antes se cargaban 300/400/500 y
+// las 14 declaraciones a 600 y las 3 a 700 las sintetizaba el navegador
+// (negrita falsa).
+const sans = Instrument_Sans({
+  variable: "--font-sans",
   subsets: ["latin"],
-  weight: ["300", "400", "500"],
+  weight: ["400", "500", "600", "700"],
   display: "swap",
 });
 
@@ -105,7 +111,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es-CO" className={`${inter.variable} ${playfair.variable} h-full`}>
+    <html lang="es-CO" className={`${sans.variable} ${playfair.variable} h-full`}>
       <body className="min-h-full antialiased">
         <JsonLd />
         <SiteShell>{children}</SiteShell>
