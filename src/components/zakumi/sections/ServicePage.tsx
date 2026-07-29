@@ -65,7 +65,7 @@ export function ServicePage({ data }: { data: Service }) {
       statCounters(el);
       releaseCtas = magneticCtas(el);
       litWords(".philosophy", ".phil-word");
-      loopMarquee(".svc-tech-track", 22);
+      loopMarquee(".svc-tech-track", 34);
       revealTiles(".porque-bento", ".porque-bento > *", 3);
 
       // Casos de uso: escenario fijado con crossfade. Es el único momento de la
@@ -357,8 +357,8 @@ export function ServicePage({ data }: { data: Service }) {
         </header>
         <div className="svc-tech-marquee">
           <div className="svc-tech-track">
-            {[0, 1].map((k) => (
-              <div className="svc-tech-run" key={k} aria-hidden={k === 1}>
+            {[0, 1, 2, 3, 4, 5].map((k) => (
+              <div className="svc-tech-run" key={k} aria-hidden={k > 0}>
                 {data.tech.items.map((t) => {
                   const logo = TECH_LOGOS[t];
                   return (

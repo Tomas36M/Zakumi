@@ -2186,8 +2186,28 @@
      Tres escalas que se alternan. La home respira porque va de 4rem a 12rem
      según la sección; cuando todos los bloques comparten un único padding la
      página se lee como una lista. */
+  /* Gutter que se ensancha en pantallas grandes para que el contenido nunca
+     pase de --content. Las hairlines siguen a sangre (el border va en la
+     sección), así que se conserva el look editorial sin dejar filas medio
+     vacías. El bloque "GLOW-UP" había quitado el max-width original de 1320px
+     y por eso a 2000px la mitad derecha quedaba en negro. */
+  :root { --content: 1560px; }
+  .service-block,
+  .service-intro,
+  .svc-meta-band,
+  .service-signature,
+  .service-cierre,
+  .stats-section,
+  .casos-stage,
+  .contact-form-section,
+  .contacto-hero {
+    --gutter: max(4vw, calc((100% - var(--content)) / 2));
+    padding-left: var(--gutter);
+    padding-right: var(--gutter);
+  }
   .service-block {
-    padding: clamp(4.5rem, 8vw, 8rem) 4vw;
+    padding-top: clamp(4.5rem, 8vw, 8rem);
+    padding-bottom: clamp(4.5rem, 8vw, 8rem);
     border-top: 1px solid color-mix(in srgb, var(--slate) 16%, transparent);
   }
   .svc-tight {
@@ -2205,7 +2225,7 @@
     grid-template-columns: 1.05fr 0.95fr;
     gap: clamp(2rem, 4vw, 4.5rem);
     align-items: center;
-    padding: 1rem 4vw clamp(3rem, 5vw, 5rem);
+    padding: 1rem var(--gutter) clamp(3rem, 5vw, 5rem);
   }
   .service-intro h1 {
     font-family: var(--font-playfair), serif;
@@ -2238,7 +2258,7 @@
     aspect-ratio: 4 / 3;
     /* Sangra hasta el borde del viewport: sin este tramo de negro a la derecha
        la imagen vuelve a leerse como caja. */
-    margin-right: -4vw;
+    margin-right: calc(-1 * var(--gutter, 4vw));
     border: none;
     border-radius: 0;
     box-shadow: none;
@@ -2280,19 +2300,19 @@
   /* En el hero la esquina izquierda es la que se desvanece, así que el badge se
      va al lado opaco. */
   .service-intro-visual .svc-visual-badge,
-  .contacto-hero-visual .svc-visual-badge { left: auto; right: calc(4vw + 1rem); }
+  .contacto-hero-visual .svc-visual-badge { left: auto; right: calc(var(--gutter, 4vw) + 1rem); }
 
   @media (max-width: 900px) {
     /* Apilado: la imagen ocupa el ancho completo y sangra por los dos lados. */
     .service-intro-visual,
-    .contacto-hero-visual { margin-left: -4vw; margin-right: -4vw; }
+    .contacto-hero-visual { margin-left: calc(-1 * var(--gutter, 4vw)); margin-right: calc(-1 * var(--gutter, 4vw)); }
     .service-intro-visual img,
     .contacto-hero-visual img {
       -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 10%, #000 84%, transparent 100%);
       mask-image: linear-gradient(180deg, transparent 0%, #000 10%, #000 84%, transparent 100%);
     }
     .service-intro-visual .svc-visual-badge,
-    .contacto-hero-visual .svc-visual-badge { right: calc(4vw + 1rem); }
+    .contacto-hero-visual .svc-visual-badge { right: calc(var(--gutter, 4vw) + 1rem); }
   }
 
   /* ——— Banda de datos del hero ———
@@ -2300,7 +2320,7 @@
      dos casi idénticas. Como banda horizontal a todo el ancho lee como un pie
      de portada y no compite con las stats. */
   .svc-meta-band {
-    padding: 0 4vw;
+    padding: 0 var(--gutter);
     border-top: 1px solid color-mix(in srgb, var(--slate) 16%, transparent);
     border-bottom: 1px solid color-mix(in srgb, var(--slate) 16%, transparent);
   }
@@ -2440,7 +2460,7 @@
 
   /* ——— Sección estrella: texto + mock con tilt 3D ——— */
   .service-signature {
-    padding: clamp(3.5rem, 7vw, 7rem) 4vw;
+    padding: clamp(3.5rem, 7vw, 7rem) var(--gutter);
     border-top: 1px solid color-mix(in srgb, var(--slate) 16%, transparent);
     overflow: clip;
   }
@@ -2612,7 +2632,7 @@
   .casos-stage {
     box-sizing: border-box;
     min-height: 100vh;
-    padding: clamp(5rem, 9vh, 7.5rem) 4vw;
+    padding: clamp(5rem, 9vh, 7.5rem) var(--gutter);
     display: flex;
     flex-direction: column;
     gap: clamp(1.5rem, 3vh, 2.5rem);
@@ -2922,7 +2942,7 @@
     text-align: center;
     position: relative;
     overflow: clip;
-    padding: clamp(5rem, 9vw, 8rem) 4vw;
+    padding: clamp(5rem, 9vw, 8rem) var(--gutter);
     border-top: 1px solid color-mix(in srgb, var(--slate) 16%, transparent);
   }
   .service-cierre::before {
@@ -2968,7 +2988,7 @@
     grid-template-columns: 1.05fr 0.95fr;
     gap: clamp(2rem, 4vw, 4.5rem);
     align-items: center;
-    padding: 1rem 4vw 4rem;
+    padding: 1rem var(--gutter) 4rem;
   }
   .contacto-hero h1 {
     font-family: var(--font-playfair), serif;
@@ -3043,7 +3063,7 @@
 
   /* ——— Formulario: dos columnas, campos con caja real ——— */
   .contact-form-section {
-    padding: clamp(3.5rem, 7vw, 7rem) 4vw clamp(4rem, 9vw, 8rem);
+    padding: clamp(3.5rem, 7vw, 7rem) var(--gutter) clamp(4rem, 9vw, 8rem);
     border-top: 1px solid color-mix(in srgb, var(--slate) 16%, transparent);
   }
   .cf-grid { display: grid; grid-template-columns: 0.82fr 1.18fr; gap: clamp(2.5rem, 5vw, 5rem); align-items: start; }
@@ -3636,4 +3656,109 @@
   }
   @media (prefers-reduced-motion: reduce) {
     .acad-herr-card, .acad-mod-icon, .acad-modulo > summary { transition: none; }
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     PANTALLA ANCHA — usar el ancho, no dejar medio viewport vacío
+
+     Las secciones son a sangre con gutter de 4vw, así que a 2000px hay 1840px
+     útiles. Los bloques de texto de una sola columna con max-width dejaban la
+     mitad derecha en negro: medido, el encabezado de stats y "sin humo"
+     desperdiciaban un 58% del ancho, y las filas numeradas cortaban la tinta a
+     media pantalla aunque su caja llegara al borde.
+
+     La home no tiene ese problema porque ahí todo es multicolumna (stats a 4,
+     bento, marquee, escenario pinneado). Mismo criterio aquí: donde hay dos
+     piezas de información, dos columnas.
+
+     A partir de 1100px, que es donde el hero ya cambia de composición.
+     ═══════════════════════════════════════════════════════════════════════ */
+  @media (min-width: 1100px) {
+    /* — Encabezado de bloque: título a la izquierda, lead a la derecha —
+       Solo cuando hay lead que colocar. Los rails sticky de FAQ y "por qué"
+       quedan fuera porque su block-head no es hijo directo de .service-block
+       (FAQ) o no trae lead. */
+    .service-block > .block-head:has(.block-lead) {
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: clamp(2rem, 4vw, 4.5rem);
+      align-items: end;
+    }
+    .service-block > .block-head:has(.block-lead) .section-num { grid-column: 1 / -1; }
+    .service-block > .block-head:has(.block-lead) .section-title { max-width: 24ch; }
+    .service-block > .block-head:has(.block-lead) .block-lead { margin: 0; max-width: 46ch; }
+
+    /* — Encabezado de "datos clave": mismo reparto, solo si hay lead que
+         poner en la segunda columna. Sin el :has() la columna derecha quedaba
+         vacía y el hueco era el mismo que antes. — */
+    .stats-intro:has(.lead) {
+      max-width: none;
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: clamp(2rem, 4vw, 4.5rem);
+      align-items: end;
+    }
+    .stats-intro:has(.lead) .section-title { max-width: 24ch; }
+    .stats-intro:has(.lead) .lead { max-width: 46ch; margin: 0; }
+    /* Sin lead, el título display puede ocupar más ancho en vez de cortarse. */
+    .stats-intro:not(:has(.lead)) .section-title { max-width: 34ch; }
+
+    /* — Filas numeradas a tres columnas: numeral | título | descripción —
+       Antes el título y su texto se apilaban en la misma columna y la fila
+       terminaba a media pantalla. Con la descripción en su propia columna la
+       fila se lee de un barrido y el ancho se usa entero. */
+    .incluye-row {
+      grid-template-columns: 2.75rem minmax(0, 0.85fr) minmax(0, 1.35fr);
+      align-items: baseline;
+    }
+    .incluye-row h3 { grid-column: 2; }
+    .incluye-row p { grid-column: 3; max-width: 74ch; }
+
+    .acad-punto {
+      grid-template-columns: 3.5rem minmax(0, 0.85fr) minmax(0, 1.35fr);
+      align-items: baseline;
+    }
+    .acad-punto h3 { grid-column: 2; margin-bottom: 0; }
+    .acad-punto p { grid-column: 3; max-width: 74ch; }
+
+    /* — Listas largas de una columna: a dos — */
+    .acad-nolista,
+    .acad-lista { grid-template-columns: 1fr 1fr; column-gap: clamp(2rem, 4vw, 4rem); }
+    .acad-nolista li,
+    .acad-lista li { max-width: none; }
+    /* Con dos columnas la hairline superior de la segunda columna duplica la
+       del bloque; se conserva solo en las filas que abren cada columna. */
+    .acad-nolista li:nth-child(2),
+    .acad-lista li:nth-child(2) { border-top: 1px solid color-mix(in srgb, var(--slate) 16%, transparent); }
+
+    /* — FAQ: la respuesta puede respirar más en la columna ancha — */
+    .faq-a { max-width: 78ch; }
+  }
+
+  /* — Sección estrella en pantalla grande —
+     El mock medía 300px (teléfono) o 560px (ventana) dentro de una columna de
+     ~800px, así que más de la mitad de la sección quedaba vacía. En pantallas
+     grandes el mock crece hasta ocupar su columna. */
+  @media (min-width: 1200px) {
+    .sig-grid { grid-template-columns: 0.88fr 1.12fr; }
+    .sig-phone { width: 360px; }
+    .sig-window { max-width: 680px; }
+    .sig-board { max-width: 620px; }
+    .sig-sub { max-width: 52ch; }
+  }
+
+  @media (min-width: 1100px) {
+    /* Títulos de bloque sin lead: 20ch en un ancho de 1560px dejaba media fila
+       en negro. 34ch sigue siendo una medida corta para display, pero ya
+       equilibra la fila. */
+    .service-block > .block-head:not(:has(.block-lead)) .section-title { max-width: 34ch; }
+
+    /* El remate en naranja se cortaba al 45% del ancho y leía como un
+       rectángulo roto. Ahora la banda ocupa el ancho del contenido —el color
+       es lo que usa el espacio— y el texto mantiene su medida corta gracias al
+       padding derecho. */
+    .acad-remate {
+      max-width: none;
+      padding-right: max(clamp(2rem, 3.5vw, 3.25rem), 40%);
+    }
   }
