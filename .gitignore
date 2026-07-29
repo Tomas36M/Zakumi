@@ -50,6 +50,7 @@ next-env.d.ts
 
 # Image masters — multi-MB sources, kept outside git. Back these up yourself.
 # scripts/optimize-images.mjs reads from here and writes to public/work.
-/assets/masters/
+/assets/masters/*
+!/assets/masters/README.md
 /cursos/img/originales/
 /zaku_tech_render.png

@@ -16,6 +16,7 @@ export function Proyectos() {
                 alt={p.alt}
                 fill
                 className="show-img"
+                quality={85}
                 sizes="(max-width: 720px) 100vw, 33vw"
               />
             </div>

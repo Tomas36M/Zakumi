@@ -46,9 +46,12 @@ export function Hero() {
                 src={s.img}
                 alt=""
                 fill
-                priority={i === 0}
+                loading={i === 0 ? "eager" : "lazy"}
+                fetchPriority={i === 0 ? "high" : "auto"}
                 quality={90}
-                sizes="100vw"
+                /* ≤720px la foto es una figura en el flujo con 5vw de gutter a
+                   cada lado; por encima va a sangre completa. */
+                sizes="(max-width: 720px) 90vw, 100vw"
                 style={{ objectFit: "cover" }}
               />
             </div>

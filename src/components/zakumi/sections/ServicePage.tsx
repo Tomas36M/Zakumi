@@ -279,7 +279,7 @@ export function ServicePage({ data }: { data: Service }) {
           </dl>
         </div>
         <figure className="service-intro-visual">
-          <Image src={data.heroImg} alt="" fill quality={90} sizes="(max-width: 900px) 100vw, 46vw" style={{ objectFit: "cover" }} priority />
+          <Image src={data.heroImg} alt="" fill quality={90} sizes="(max-width: 900px) 100vw, 46vw" style={{ objectFit: "cover" }} loading="eager" fetchPriority="high" />
           <figcaption className="svc-visual-badge">{data.nav}</figcaption>
         </figure>
       </section>
@@ -336,7 +336,7 @@ export function ServicePage({ data }: { data: Service }) {
           </ul>
           <figure className="incluye-visual reveal-item">
             <span className="incluye-visual-media">
-              <Image src={data.incluyeImg} alt="" fill sizes="(max-width: 900px) 100vw, 38vw" style={{ objectFit: "cover" }} />
+              <Image src={data.incluyeImg} alt="" fill quality={85} sizes="(max-width: 900px) 100vw, 38vw" style={{ objectFit: "cover" }} />
             </span>
           </figure>
         </div>
@@ -379,7 +379,7 @@ export function ServicePage({ data }: { data: Service }) {
             <article className="ejemplo-tile reveal-item" key={e.titulo}>
               {e.img && (
                 <div className="ejemplo-img">
-                  <Image src={e.img} alt="" fill sizes="(max-width: 900px) 100vw, 32vw" style={{ objectFit: "cover" }} />
+                  <Image src={e.img} alt="" fill quality={85} sizes="(max-width: 900px) 100vw, 32vw" style={{ objectFit: "cover" }} />
                 </div>
               )}
               <figcaption className="ejemplo-cap">

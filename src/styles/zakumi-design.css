@@ -1062,33 +1062,68 @@
     }
   }
 
-  /* Móvil/tablet: a pantalla completa las imágenes del hero (chat, landing, feed)
-     compiten con el texto. Las difuminamos, oscurecemos y reforzamos el scrim
-     para que el titular y el párrafo se lean bien. También reseteamos los
-     transforms de escritorio (no aplican en móvil). */
-  @media (max-width: 1099px) {
+  /* Tablet (721–1099px): la foto sigue a sangre detrás del texto, así que el
+     titular necesita ayuda. La ayuda es el scrim, NO desenfocar la imagen:
+     un gradiente que concentra la oscuridad en la banda donde vive el copy y
+     deja respirar el lado derecho, donde está el sujeto de la composición. */
+  @media (min-width: 721px) and (max-width: 1099px) {
     .hero-active-agentes .hero-slide.is-active img,
     .hero-active-desarrollo .hero-slide.is-active img,
     .hero-active-marca .hero-slide.is-active img {
-      object-position: center;
-      transform: scale(1.1);
-      filter: blur(3px) brightness(0.65);
+      object-position: 62% center;
+      transform: none;
     }
     .hero-visual::after {
       background:
         linear-gradient(
-          180deg,
-          rgba(10, 12, 18, 0.6) 0%,
-          rgba(10, 12, 18, 0.62) 45%,
-          rgba(10, 12, 18, 0.96) 100%
+          100deg,
+          var(--black) 0%,
+          rgba(10, 12, 18, 0.9) 34%,
+          rgba(10, 12, 18, 0.52) 62%,
+          rgba(10, 12, 18, 0.18) 100%
         ),
         linear-gradient(
-          90deg,
-          var(--black) 0%,
-          rgba(10, 12, 18, 0.72) 55%,
-          rgba(10, 12, 18, 0.4) 100%
+          180deg,
+          rgba(10, 12, 18, 0.55) 0%,
+          rgba(10, 12, 18, 0.2) 42%,
+          rgba(10, 12, 18, 0.88) 100%
         );
     }
+  }
+
+  /* Móvil (≤720px): en vez de tapar la foto con texto y luego desenfocarla para
+     poder leer, la sacamos de debajo del copy. Pasa a ser una figura editorial
+     en el flujo, después del CTA: nada encima, así que va 100% nítida y a
+     calidad plena. El hero ya tiene min-height:auto y crece con el contenido. */
+  @media (max-width: 720px) {
+    .hero-copy-stable { order: -1; }
+    .hero-visual {
+      position: relative;
+      order: 0;
+      inset: auto;
+      z-index: auto;
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      margin-top: 2.25rem;
+      border-radius: 2px;
+      border: 1px solid color-mix(in srgb, var(--slate) 20%, transparent);
+    }
+    .hero-active-agentes .hero-slide.is-active img,
+    .hero-active-desarrollo .hero-slide.is-active img,
+    .hero-active-marca .hero-slide.is-active img {
+      object-position: center;
+      transform: none;
+    }
+    /* Sin texto encima: solo una viñeta muy leve para asentar la figura. */
+    .hero-visual::after {
+      background: linear-gradient(
+        180deg,
+        rgba(10, 12, 18, 0) 55%,
+        rgba(10, 12, 18, 0.32) 100%
+      );
+    }
+    .hero-visual-frame { border: none; }
+    .hero-meta { margin-top: 2.25rem; }
   }
 
   /* Banda editorial: previews de entregables (< 1100px) */

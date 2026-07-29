@@ -131,7 +131,7 @@ export function ContactoView() {
           </div>
         </div>
         <figure className="contacto-hero-visual reveal-item">
-          <Image src="/work/zk-hero-foto.webp" alt="" fill sizes="(max-width: 900px) 100vw, 46vw" style={{ objectFit: "cover" }} priority />
+          <Image src="/work/zk-hero-foto.webp" alt="" fill quality={90} sizes="(max-width: 900px) 100vw, 46vw" style={{ objectFit: "cover" }} loading="eager" fetchPriority="high" />
           <figcaption className="svc-visual-badge">Contacto</figcaption>
         </figure>
       </section>

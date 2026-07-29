@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "vitest run"
+    "test": "vitest run",
+    "images": "node scripts/optimize-images.mjs",
+    "images:check": "node scripts/optimize-images.mjs --check"
   },
   "dependencies": {
     "gsap": "^3.15.0",

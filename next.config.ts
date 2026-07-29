@@ -18,7 +18,12 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   compress: true,
   images: {
-    qualities: [75, 90],
+    // Next 16 exige declarar las calidades permitidas; el default es solo [75],
+    // y una quality no listada se degrada a la más cercana en vez de fallar.
+    qualities: [75, 85, 90],
+    // El default de Next 16 es únicamente ['image/webp']. AVIF comprime ~20%
+    // mejor a igual calidad percibida, y el navegador elige por Accept.
+    formats: ["image/avif", "image/webp"],
   },
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];

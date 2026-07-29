@@ -36,6 +36,7 @@ export function ProductosShowcase() {
                   src={p.img}
                   alt={p.alt}
                   fill
+                  quality={85}
                   sizes="(max-width: 720px) 100vw, 50vw"
                 />
               </div>
