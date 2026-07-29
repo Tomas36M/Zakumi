@@ -5,7 +5,7 @@ const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://zakumistudio.com";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const now = new Date();
-  const paths = ["", ...SERVICE_SLUGS.map((s) => `/${s}`), "/contacto"];
+  const paths = ["", ...SERVICE_SLUGS.map((s) => `/${s}`), "/academia", "/contacto"];
   return paths.map((p) => ({
     url: `${siteUrl}${p}`,
     lastModified: now,
