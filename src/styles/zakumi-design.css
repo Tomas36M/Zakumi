@@ -2226,28 +2226,41 @@
   }
   .svc-cta-row { display: flex; flex-wrap: wrap; gap: 0.9rem; align-items: center; }
 
+  /* ——— Visual del hero de sección ———
+     Con borde de 1px, radio y sombra se leía como una captura pegada sobre el
+     fondo: un rectángulo de negro ligeramente distinto, con esquinas duras.
+     Aquí no lleva marco: sangra por el borde de página (como la franja del hero
+     de la home a partir de 1100px) y se disuelve hacia el texto con una
+     máscara. El único borde definido que queda es ninguno. */
   .service-intro-visual,
   .contacto-hero-visual {
     position: relative;
     aspect-ratio: 4 / 3;
+    /* Sangra hasta el borde del viewport: sin este tramo de negro a la derecha
+       la imagen vuelve a leerse como caja. */
+    margin-right: -4vw;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    /* Necesario: el scale(1.05) de la imagen se saldría sobre la columna de
+       texto. Lo que hacía "caja" era el borde, no el recorte. */
     overflow: hidden;
-    border-radius: 2px;
-    border: 1px solid color-mix(in srgb, var(--paper) 10%, transparent);
-    box-shadow:
-      0 50px 90px -45px color-mix(in srgb, var(--black) 92%, transparent),
-      0 0 130px -25px color-mix(in srgb, var(--orange) 45%, transparent);
   }
-  .service-intro-visual::after,
-  .contacto-hero-visual::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(180deg, transparent 45%, color-mix(in srgb, var(--black) 55%, transparent) 100%);
-  }
+  /* La máscara va en la imagen, no en la figura, para que el badge no se
+     desvanezca con ella. Izquierda: se funde con la columna de texto.
+     Arriba y abajo: caída suave para que no haya aristas horizontales. */
   .service-intro-visual img,
   .contacto-hero-visual img {
     transform: scale(1.05);
     transition: transform 1.2s cubic-bezier(.2, .8, .2, 1);
+    -webkit-mask-image:
+      linear-gradient(90deg, transparent 0%, rgba(0, 0, 0, 0.55) 16%, #000 42%),
+      linear-gradient(180deg, transparent 0%, #000 12%, #000 82%, transparent 100%);
+    -webkit-mask-composite: source-in;
+    mask-image:
+      linear-gradient(90deg, transparent 0%, rgba(0, 0, 0, 0.55) 16%, #000 42%),
+      linear-gradient(180deg, transparent 0%, #000 12%, #000 82%, transparent 100%);
+    mask-composite: intersect;
   }
   .service-intro:hover .service-intro-visual img,
   .contacto-hero:hover .contacto-hero-visual img { transform: scale(1.09); }
@@ -2263,6 +2276,23 @@
     color: var(--paper);
     background: color-mix(in srgb, var(--orange) 88%, var(--black));
     padding: 0.35rem 0.7rem;
+  }
+  /* En el hero la esquina izquierda es la que se desvanece, así que el badge se
+     va al lado opaco. */
+  .service-intro-visual .svc-visual-badge,
+  .contacto-hero-visual .svc-visual-badge { left: auto; right: calc(4vw + 1rem); }
+
+  @media (max-width: 900px) {
+    /* Apilado: la imagen ocupa el ancho completo y sangra por los dos lados. */
+    .service-intro-visual,
+    .contacto-hero-visual { margin-left: -4vw; margin-right: -4vw; }
+    .service-intro-visual img,
+    .contacto-hero-visual img {
+      -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 10%, #000 84%, transparent 100%);
+      mask-image: linear-gradient(180deg, transparent 0%, #000 10%, #000 84%, transparent 100%);
+    }
+    .service-intro-visual .svc-visual-badge,
+    .contacto-hero-visual .svc-visual-badge { right: calc(4vw + 1rem); }
   }
 
   /* ——— Banda de datos del hero ———
@@ -3149,7 +3179,10 @@
     counter-increment: pq;
     display: grid;
     grid-template-columns: 3.5rem 1fr;
-    gap: clamp(1.25rem, 2.5vw, 2.5rem);
+    /* Solo separación entre columnas: el aire entre h3 y p lo da el
+       margin-bottom del h3, no el row-gap. */
+    column-gap: clamp(1.25rem, 2.5vw, 2.5rem);
+    row-gap: 0;
     align-items: baseline;
     padding: clamp(1.5rem, 2.5vw, 2.2rem) 0;
     border-top: 1px solid color-mix(in srgb, var(--slate) 16%, transparent);
@@ -3163,6 +3196,12 @@
     color: var(--orange);
     line-height: 1;
   }
+  /* El grid tiene dos columnas y TRES hijos: ::before (el numeral), h3 y p.
+     Sin fijar la columna, el auto-placement mandaba el párrafo a la fila
+     siguiente dentro de la columna de 3.5rem y quedaba una palabra por línea.
+     Ambos van a la columna 2, cada uno en su fila. */
+  .acad-punto h3,
+  .acad-punto p { grid-column: 2; }
   .acad-punto h3 {
     font-family: var(--font-playfair), serif;
     font-weight: 400;
@@ -3579,7 +3618,7 @@
   @media (max-width: 720px) {
     .acad-letras { grid-template-columns: repeat(2, 1fr); }
     .acad-herr-grid { grid-template-columns: 1fr; }
-    .acad-punto { grid-template-columns: 2.5rem 1fr; gap: 1rem; }
+    .acad-punto { grid-template-columns: 2.5rem 1fr; column-gap: 1rem; row-gap: 0; }
     .acad-modulo > summary { grid-template-columns: 3rem 1fr; }
     .acad-mod-meta {
       grid-column: 1 / -1;
