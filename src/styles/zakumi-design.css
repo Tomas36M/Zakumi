@@ -206,6 +206,13 @@
     visibility: hidden;
     opacity: 0;
     transition: opacity 0.35s ease, visibility 0.35s ease;
+    /* El panel cerrado se aparca con translateX(100%), 340px fuera de pantalla.
+       `visibility: hidden` no lo saca del layout, así que el documento medía
+       770px de ancho en un viewport de 430 y había scroll horizontal hacia la
+       nada en todas las páginas. El overflow-x:hidden del body no lo pillaba
+       porque este overlay es `fixed` y no es hijo suyo a efectos de recorte.
+       Abierto el panel está en translateX(0), dentro de estos límites. */
+    overflow: hidden;
   }
   .nav-overlay.is-open {
     pointer-events: auto;
@@ -2876,6 +2883,13 @@
 
   /* ——— Planes ——— */
   .planes-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: clamp(1rem, 2vw, 1.75rem); align-items: stretch; }
+  /* Tres columnas no caben por debajo de 900px: sin este fallback la sección
+     medía 756px en un viewport de 430 y metía scroll horizontal a toda la
+     página. Se perdió al consolidar el CSS, porque compartía bloque con las
+     reglas muertas de .testimonios-grid y .ejemplos-grid. */
+  @media (max-width: 900px) {
+    .planes-grid { grid-template-columns: 1fr; }
+  }
   .plan-card {
     border: 1px solid color-mix(in srgb, var(--slate) 18%, transparent);
     padding: clamp(1.75rem, 2.5vw, 2.5rem);
