@@ -68,6 +68,13 @@ function coordenadasValidas(lat: unknown, lng: unknown): boolean {
   );
 }
 
+/** Solo URLs navegables: nada de javascript: ni esquemas raros en los href. */
+function urlHttpONull(valor: unknown): string | null {
+  if (typeof valor !== "string") return null;
+  const limpio = valor.trim();
+  return /^https?:\/\/\S+$/i.test(limpio) ? limpio : null;
+}
+
 function revalidarPanel() {
   revalidatePath("/admin/mapa");
   revalidatePath("/admin/negocios");
@@ -110,7 +117,7 @@ export async function importarNegocios(
       lng: r.lng,
       categoria: typeof r.categoria === "string" ? r.categoria : null,
       rating: typeof r.rating === "number" ? r.rating : null,
-      sitio_web: typeof r.sitioWeb === "string" ? r.sitioWeb : null,
+      sitio_web: urlHttpONull(r.sitioWeb),
       telefono,
       tipo_telefono: tipo,
       google_place_id: r.placeId,
@@ -223,7 +230,7 @@ export async function actualizarNegocio(
     if (!esCiudad(cambios.ciudad)) return { error: "Ciudad no válida." };
     fila.ciudad = cambios.ciudad;
   }
-  if ("sitio_web" in cambios) fila.sitio_web = cambios.sitio_web?.trim() || null;
+  if ("sitio_web" in cambios) fila.sitio_web = urlHttpONull(cambios.sitio_web);
   if ("direccion" in cambios) fila.direccion = cambios.direccion?.trim() || null;
 
   if (Object.keys(fila).length === 0) return { error: null };
