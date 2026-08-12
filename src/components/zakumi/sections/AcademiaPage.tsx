@@ -22,7 +22,7 @@ function ComprarCta({ label, ghost }: { label?: string; ghost?: boolean }) {
       target="_blank"
       rel="noopener noreferrer"
     >
-      <span>{label ?? `Inscribirme por $${CURSO.precio.lanzamiento}`}</span>
+      <span>{label ?? "Inscribirme"}</span>
       <span className="arrow">→</span>
     </a>
   );

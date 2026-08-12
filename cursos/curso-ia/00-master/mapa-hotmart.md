@@ -5,25 +5,74 @@ Documento operativo. Traduce `curriculo.md` a la estructura exacta que hay que c
 
 ---
 
-## 0 · Estado real del producto (leído el 2026-07-29)
+## 0 · Estado del producto (2026-07-29 · act. 2026-08-12)
 
-Lo que había configurado antes de empezar:
+### Hecho y verificado
 
-| Campo | Estado encontrado | Decisión |
+| Campo | Estado |
+|---|---|
+| **Nombre** | ✅ "Introducción a la Inteligencia Artificial" (era "Domina la Inteligencia Artificial sin Conocimientos Técnicos") |
+| **Descripción** | ✅ Reemplazada por el copy de `lanzamiento/hotmart-descripcion.md` |
+| **Módulos del Club** | ✅ 8 módulos, en orden. Borrado el placeholder "Bienvenido a tu curso". |
+| **Clases** | ✅ **51** — las 40 del currículo + 11 entradas en Recursos |
+| **Certificado** | ✅ Activado (verificado tras recargar) |
+| **Enlace de checkout** | ✅ `pay.hotmart.com/A106414286A` — ya en `curso.ts` y en la base de Zak. **VIVO desde 2026-08-12** (`curl -sI` → HTTP 200; antes 307 a página de error). |
+| **Precio base** | ✅ **COP 129.900** configurado a mano en el panel (2026-08-12). La web, el JSON-LD y `curso.ts` se alinearon a 129.900 y `CHECKOUT_ACTIVO` pasó a `true`. |
+| **Garantía** | 15 días (ya estaban; se dejan) |
+
+Reparto de clases por módulo:
+
+| Módulo | Clases | ID interno |
 |---|---|---|
-| Nombre | "Domina la Inteligencia Artificial sin Conocimientos Técnicos: Curso Práctico y Certificado" | **Cambiar** a "Introducción a la Inteligencia Artificial" (manda el folleto) |
-| ID | 7970555 | — |
-| Cuenta | Zakumi Estudio · `zakumiestudio@gmail.com` | — |
-| Precio base | 300.000 COP | **Bajar a 129.000** (lanzamiento) · 199.000 después |
-| Garantía | 15 días | **Dejar 15 días.** Hotmart permite hasta 30 y más garantía convierte mejor. |
-| Ventas | **Desactivadas** | Activar al final, cuando todo esté montado |
-| Ofertas | 1 sola: precio base, pago al contado, código `iiovskoy` | Añadir la de lanzamiento |
-| Recuperador automático | No disponible | Revisar por qué |
+| 0 · Antes de empezar | 4 | `M7qzd1gyOx` |
+| 1 · Día 1 | 6 | `y4bwVzqdeR` |
+| 2 · Día 2 | 7 | `BeZlNjvWOw` |
+| 3 · Día 3 | 6 | `Z721RkYLeN` |
+| 4 · Día 4 | 7 | `RONl9VKAeP` |
+| 5 · Día 5 | 6 | `R4jKbQNaea` |
+| 6 · Tu certificado y qué sigue | 4 | `146ZVkvo4d` |
+| Recursos · Tus materiales | 11 | `k45ZQkBjel` |
 
-> **Nota técnica:** las pestañas del producto (Información básica, Área de Miembros, Página de
-> producto) no responden a clics programáticos — son un micro-frontend que ignora los eventos
-> sintéticos. Para esas secciones hay que abrirlas a mano en la ventana del navegador y desde ahí
-> sigue funcionando la automatización.
+### Pendiente — hay que hacerlo a mano
+
+| Qué | Por qué no se automatizó |
+|---|---|
+| **Adjuntar los 11 PDFs** | Las clases existen pero vacías. Cada una necesita su PDF desde el editor de la clase. |
+| **Liberación programada (drip)** | Depende de la fecha de la cohorte, que no está definida. |
+| **Order bump** | Pendiente de confirmar. |
+| **Recuperador Automático de Ventas** | El panel lo muestra **«No disponible»** (visto 2026-08-12). Averiguar qué requisito falta — recupera carritos abandonados. |
+
+> Contexto del precio (resuelto, pero la trampa sigue viva para ofertas futuras): Hotmart
+> **bloquea el precio** de una oferta existente ("Una vez que definas el precio, no podrás
+> cambiarlo") y el formulario de oferta nueva no envía por automatización — moneda, forma de
+> pago y precio son componentes personalizados cuyo estado interno no registra la selección.
+
+> ⚠️ **El campo de precio tiene máscara de centavos.** Escribir `129000` produce **1.290,00**.
+> Para 129.000 hay que escribir `12900000` y **confirmar en pantalla que dice `129.000,00`**
+> antes de guardar.
+
+### Notas técnicas de la automatización
+
+Si hay que volver a tocar el Club por script:
+
+1. **No usar refs `@eN` para rellenar campos** en el editor de contenido. El SPA re-renderiza entre
+   el snapshot y el comando siguiente, el ref caduca y `fill` falla **en silencio** (devuelve "Done"
+   y el campo queda vacío). Usar `find label "..." fill "..."`.
+2. **Ir directo a `.../modules/<ID>/content/new`** en vez del menú "Añadir contenido → Clase", que
+   solo abre si el módulo está expandido y falla la mayoría de las veces.
+3. El botón **"Publicar" del panel solo se renderiza cuando el título tiene texto**, y es el último
+   de los tres "Publicar" de la página.
+4. **No usar `wait --load networkidle`** en Hotmart: mantiene conexiones abiertas, nunca alcanza ese
+   estado y la pestaña acaba en `about:blank`. Usar esperas fijas.
+5. El navegador hay que lanzarlo **siempre** con `--headed --profile ~/.profiles/hotmart`. Si el
+   demonio se reinicia solo, vuelve a headless con perfil temporal y se pierde la sesión.
+6. La sesión de Hotmart caduca cada 10–15 minutos.
+7. **Las pestañas del producto (Información básica, Área de Miembros, Página de producto)
+   ignoran los clics programáticos** — hay que abrirlas a mano y dejar el script en la URL
+   interna correcta.
+
+Scripts usados — viven **junto a este doc**: `cursos/curso-ia/00-master/crear-modulos.sh` y
+`cursos/curso-ia/00-master/crear-clases.sh`.
 
 ---
 
@@ -47,7 +96,7 @@ Lo que había configurado antes de empezar:
 
 | Oferta | Precio | Cuándo |
 |---|---|---|
-| **Lanzamiento** (primera cohorte) | COP 129.000 | Hasta que cierre la cohorte |
+| **Lanzamiento** (primera cohorte) | **COP 129.900** (quedó así al configurarla; web y JSON-LD alineados el 2026-08-12) | Hasta que cierre la cohorte |
 | **Precio normal** | COP 199.000 | Después del lanzamiento |
 
 - Pago único. Habilitar cuotas si Hotmart lo permite en COP (baja la objeción de precio).
