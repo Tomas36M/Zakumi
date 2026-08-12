@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { actualizarNegocio, agregarNota } from "@/lib/admin/actions";
+import { convertirNegocioEnCliente } from "@/lib/admin/cartera-actions";
 import {
   CIUDADES,
   ESTADOS,
@@ -34,6 +36,7 @@ type Props = {
 };
 
 export function FichaNegocio({ negocio, onCambio, onCerrar }: Props) {
+  const router = useRouter();
   const [guardando, startGuardar] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [telefonoEdit, setTelefonoEdit] = useState<string | null>(null);
@@ -182,6 +185,25 @@ export function FichaNegocio({ negocio, onCambio, onCerrar }: Props) {
             Sitio web
           </a>
         ) : null}
+        <button
+          type="button"
+          className="adm-cta-ghost"
+          disabled={guardando}
+          onClick={() => {
+            setError(null);
+            startGuardar(async () => {
+              const res = await convertirNegocioEnCliente(negocio.id);
+              if ("error" in res) {
+                setError(res.error);
+                return;
+              }
+              // Idempotente: si ya era cliente, aterriza en su misma ficha.
+              router.push(`/admin/clientes?cliente=${res.clienteId}`);
+            });
+          }}
+        >
+          Convertir en cliente
+        </button>
       </div>
 
       <section className="adm-notas" aria-label="Notas del negocio">

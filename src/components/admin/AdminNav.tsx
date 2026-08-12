@@ -7,6 +7,7 @@ import { logout } from "@/lib/admin/actions";
 const SECCIONES = [
   { href: "/admin/mapa", label: "Mapa" },
   { href: "/admin/negocios", label: "Negocios" },
+  { href: "/admin/clientes", label: "Clientes" },
 ] as const;
 
 // OJO: nada de <nav>/<footer> desnudos en el panel — zakumi-design.css los

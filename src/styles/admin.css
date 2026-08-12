@@ -902,3 +902,97 @@
 .adm-tabla-wa:hover {
   text-decoration: underline;
 }
+
+/* ——— Cartera de clientes ——— */
+
+.adm-clientes {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.adm-clientes-layout {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  min-height: 0;
+}
+
+.adm-clientes-tabla {
+  overflow-y: auto;
+  min-height: 0;
+  padding: 1.25rem 1.5rem;
+}
+
+.adm-clientes-tabla .adm-tabla tbody tr {
+  cursor: pointer;
+}
+
+/* Semáforo de cobros: mismo lenguaje rombo que el pipeline */
+.adm-badge--sem-al_dia        { background: var(--estado-cliente); }
+.adm-badge--sem-por_vencer    { background: var(--estado-contactado); }
+.adm-badge--sem-vencido       { background: var(--orange); }
+.adm-badge--sem-sin_programar { background: var(--estado-descartado); }
+
+.adm-cobro-vencido {
+  color: var(--orange);
+  font-weight: 500;
+}
+
+.adm-productos {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.adm-productos-lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.adm-producto {
+  border: 1px solid var(--hairline);
+  padding: 0.7rem 0.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.adm-producto-fila {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.adm-producto-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.adm-pago-form,
+.adm-producto-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  border-top: 1px solid var(--hairline);
+  padding-top: 0.75rem;
+}
+
+@media (max-width: 960px) {
+  .adm-clientes-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .adm-clientes-layout .adm-ficha {
+    border-left: none;
+    border-top: 1px solid var(--hairline);
+  }
+}
