@@ -1,7 +1,5 @@
 import type { Metadata, Viewport } from "next";
 import { Instrument_Sans, Playfair_Display } from "next/font/google";
-import { JsonLd } from "@/components/site/JsonLd";
-import { SiteShell } from "@/components/site/SiteShell";
 import "./globals.css";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://zakumistudio.com";
@@ -112,10 +110,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es-CO" className={`${sans.variable} ${playfair.variable} h-full`}>
-      <body className="min-h-full antialiased">
-        <JsonLd />
-        <SiteShell>{children}</SiteShell>
-      </body>
+      {/* El chrome del sitio público (JsonLd + SiteShell) vive en (site)/layout.tsx
+          para que /admin no cargue nav, footer, cursor ni GSAP. */}
+      <body className="min-h-full antialiased">{children}</body>
     </html>
   );
 }
