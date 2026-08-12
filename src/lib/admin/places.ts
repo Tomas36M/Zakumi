@@ -83,6 +83,11 @@ export function inferirCiudad(
   return sesgo ?? "otra";
 }
 
+/** Sin teléfono no hay venta: el mapa solo muestra negocios contactables. */
+export function soloConTelefono(resultados: ResultadoPlace[]): ResultadoPlace[] {
+  return resultados.filter((r) => r.telefono !== null);
+}
+
 /** Marca los resultados cuyo placeId ya está en la base (dedupe visual). */
 export function marcarImportados(
   resultados: ResultadoPlace[],

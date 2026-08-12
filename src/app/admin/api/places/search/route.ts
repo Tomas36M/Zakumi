@@ -4,6 +4,7 @@ import { CIUDADES, type Ciudad } from "@/lib/admin/negocios";
 import {
   marcarImportados,
   placeANegocio,
+  soloConTelefono,
   type PlaceApi,
   type ResultadoPlace,
 } from "@/lib/admin/places";
@@ -97,8 +98,9 @@ export async function POST(request: Request) {
 
   const data = (await respuesta.json()) as { places?: PlaceApi[] };
   const sesgo = ciudad?.valor as Exclude<Ciudad, "otra"> | undefined;
-  const resultados: ResultadoPlace[] = (data.places ?? []).map((p) =>
-    placeANegocio(p, sesgo),
+  // Al mapa solo llegan negocios contactables: sin teléfono no hay venta.
+  const resultados: ResultadoPlace[] = soloConTelefono(
+    (data.places ?? []).map((p) => placeANegocio(p, sesgo)),
   );
 
   // Dedupe visual: marcar los que ya están en la base.

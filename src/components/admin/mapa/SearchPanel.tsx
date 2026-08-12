@@ -61,8 +61,8 @@ export function SearchPanel(props: Props) {
         <>
           <div className="adm-busqueda-lote">
             <span className="adm-busqueda-conteo">
-              <strong>{props.resultados.length}</strong> resultados ·{" "}
-              <strong>{importables.length}</strong> con teléfono sin importar
+              <strong>{props.resultados.length}</strong> con teléfono ·{" "}
+              <strong>{importables.length}</strong> sin importar
             </span>
             <button
               className="adm-cta-ghost"
@@ -72,7 +72,7 @@ export function SearchPanel(props: Props) {
             >
               {props.importando
                 ? "Importando…"
-                : `Importar ${importables.length} con teléfono`}
+                : `Importar los ${importables.length} nuevos`}
             </button>
           </div>
 
@@ -118,7 +118,8 @@ export function SearchPanel(props: Props) {
       ) : (
         <p className="adm-busqueda-vacia">
           Busca por oficio y ciudad — «ferreterías en Ubaté», «panaderías en
-          Madrid Cundinamarca» — e importa los que tengan teléfono.
+          Madrid Cundinamarca». Solo aparecen negocios <strong>con teléfono</strong>:
+          sin número no hay a quién venderle.
         </p>
       )}
     </div>

@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { inferirCiudad, marcarImportados, placeANegocio } from "../places";
+import {
+  inferirCiudad,
+  marcarImportados,
+  placeANegocio,
+  soloConTelefono,
+} from "../places";
 import type { PlaceApi } from "../places";
 
 const FERRETERIA_UBATE: PlaceApi = {
@@ -94,6 +99,23 @@ describe("inferirCiudad", () => {
   it("sin match y sin sesgo → otra", () => {
     expect(inferirCiudad("Vereda El Rincón, Colombia")).toBe("otra");
     expect(inferirCiudad(null)).toBe("otra");
+  });
+});
+
+describe("soloConTelefono", () => {
+  it("descarta los resultados sin teléfono: sin número no hay venta", () => {
+    const conTelefono = placeANegocio(FERRETERIA_UBATE);
+    const sinTelefono = placeANegocio({
+      ...FERRETERIA_UBATE,
+      id: "ChIJsinTel",
+      nationalPhoneNumber: undefined,
+      internationalPhoneNumber: undefined,
+    });
+    expect(soloConTelefono([conTelefono, sinTelefono])).toEqual([conTelefono]);
+  });
+
+  it("lista vacía → lista vacía", () => {
+    expect(soloConTelefono([])).toEqual([]);
   });
 });
 
