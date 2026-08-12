@@ -1,0 +1,270 @@
+/* ============================================================================
+   Panel de admin Zakumi — /admin
+   Extiende la identidad editorial del sitio (tokens de zakumi-design.css:
+   --black, --paper, --orange, --slate, --ink-2, --live) a densidad de
+   herramienta de trabajo. Todo con prefijo adm-: este CSS es global una vez
+   cargado y no debe tocar jamás a la landing.
+   Reglas duras: nada de <nav>/<footer> desnudos ni .cta (los estila la
+   landing); border-radius 0 en todo, como el resto del sitio.
+   ========================================================================== */
+
+.adm-shell {
+  /* Colores de estado del pipeline: una sola fuente para pins, chips y badges */
+  --estado-nuevo: var(--slate);
+  --estado-contactado: #e8b24a;
+  --estado-respondido: #5fa8d3;
+  --estado-interesado: var(--orange);
+  --estado-cliente: var(--live);
+  --estado-descartado: var(--charcoal);
+  --hairline: color-mix(in srgb, var(--slate) 20%, transparent);
+  --hairline-fuerte: color-mix(in srgb, var(--slate) 35%, transparent);
+  --superficie: color-mix(in srgb, var(--paper) 4%, transparent);
+  --superficie-alta: color-mix(in srgb, var(--paper) 7%, transparent);
+
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: var(--black);
+  color: var(--paper);
+  font-family: var(--font-sans), "Instrument Sans", system-ui, sans-serif;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.adm-shell *:focus-visible {
+  outline: 2px solid var(--orange);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .adm-shell *,
+  .adm-shell *::before,
+  .adm-shell *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
+
+/* ——— Topbar ——— */
+
+.adm-topbar {
+  display: flex;
+  align-items: center;
+  gap: 2.5rem;
+  padding: 0.85rem 1.5rem;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.adm-topbar-marca {
+  color: var(--paper);
+  text-decoration: none;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  font-size: 0.9rem;
+}
+
+.adm-topbar-panel {
+  margin-left: 0.6rem;
+  color: var(--orange);
+  font-family: var(--font-playfair), "Playfair Display", serif;
+  font-style: italic;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  text-transform: none;
+}
+
+.adm-topbar-secciones {
+  display: flex;
+  gap: 1.75rem;
+  flex: 1;
+}
+
+.adm-topbar-link {
+  color: var(--ink-2);
+  text-decoration: none;
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  font-size: 0.72rem;
+  font-weight: 500;
+  padding: 0.35rem 0;
+  border-bottom: 1px solid transparent;
+  transition: color 140ms ease, border-color 140ms ease;
+}
+
+.adm-topbar-link:hover {
+  color: var(--paper);
+}
+
+.adm-topbar-link--activo {
+  color: var(--paper);
+  border-bottom-color: var(--orange);
+}
+
+/* ——— Contenido ——— */
+
+.adm-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0; /* los hijos con scroll propio (mapa) lo necesitan */
+}
+
+.adm-seccion {
+  padding: 2rem 1.5rem;
+}
+
+.adm-titulo {
+  font-family: var(--font-playfair), "Playfair Display", serif;
+  font-size: 1.6rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  margin: 0 0 0.5rem;
+}
+
+.adm-lead {
+  color: var(--ink-2);
+  max-width: 60ch;
+  margin: 0;
+}
+
+/* ——— Controles ——— */
+
+/* Receta visual del .cta de la landing sin su opacity:0 (que espera GSAP) */
+.adm-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  background: var(--orange);
+  color: var(--black);
+  border: none;
+  border-radius: 0;
+  padding: 0.7rem 1.4rem;
+  font-family: inherit;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: filter 140ms ease;
+}
+
+.adm-cta:hover:not(:disabled) {
+  filter: brightness(1.12);
+}
+
+.adm-cta:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.adm-cta-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  color: var(--ink-2);
+  border: 1px solid var(--hairline-fuerte);
+  border-radius: 0;
+  padding: 0.55rem 1.1rem;
+  font-family: inherit;
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color 140ms ease, border-color 140ms ease;
+}
+
+.adm-cta-ghost:hover:not(:disabled) {
+  color: var(--paper);
+  border-color: var(--paper);
+}
+
+.adm-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.adm-field-label {
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  font-size: 0.68rem;
+  color: var(--ink-2);
+}
+
+.adm-input,
+.adm-select,
+.adm-textarea {
+  background: var(--superficie);
+  color: var(--paper);
+  border: 1px solid var(--hairline-fuerte);
+  border-radius: 0;
+  padding: 0.6rem 0.75rem;
+  font-family: inherit;
+  font-size: 0.875rem;
+  transition: border-color 140ms ease;
+}
+
+.adm-input:focus,
+.adm-select:focus,
+.adm-textarea:focus {
+  border-color: var(--orange);
+  outline: none;
+}
+
+.adm-error {
+  color: var(--orange);
+  border-left: 2px solid var(--orange);
+  padding-left: 0.75rem;
+  margin: 0;
+}
+
+/* ——— Login ——— */
+
+.adm-login {
+  flex: 1;
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 2rem 1.5rem;
+}
+
+.adm-login-card {
+  width: min(24rem, 100%);
+  border: 1px solid var(--hairline);
+  border-top: 2px solid var(--orange);
+  background: var(--superficie);
+  padding: 2.5rem 2.25rem 2.25rem;
+}
+
+.adm-login-marca {
+  margin: 0 0 1.5rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.3em;
+  color: var(--ink-2);
+}
+
+.adm-login-titulo {
+  font-family: var(--font-playfair), "Playfair Display", serif;
+  font-size: 1.75rem;
+  font-weight: 500;
+  margin: 0 0 0.4rem;
+}
+
+.adm-login-lead {
+  color: var(--ink-2);
+  margin: 0 0 2rem;
+}
+
+.adm-login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+}
+
+.adm-login-form .adm-cta {
+  margin-top: 0.5rem;
+}

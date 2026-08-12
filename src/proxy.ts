@@ -1,0 +1,77 @@
+import { createServerClient } from "@supabase/ssr";
+import { NextResponse, type NextRequest } from "next/server";
+
+/**
+ * Gate de /admin (Next 16: proxy.ts reemplaza a middleware.ts).
+ *
+ * Hace dos cosas que nadie más puede hacer:
+ * 1. Check optimista de sesión antes de renderizar nada de /admin.
+ * 2. Persistir los tokens refrescados de Supabase — los Server Components
+ *    no pueden escribir cookies, así que sin esto la sesión muere cuando
+ *    expira el access token.
+ *
+ * No es la única barrera: cada page, server action y route handler vuelve a
+ * verificar con verifySession()/getSesion() (los layouts no se re-renderizan
+ * al navegar), y RLS protege los datos aunque todo lo demás falle.
+ */
+export default async function proxy(request: NextRequest) {
+  let response = NextResponse.next({ request });
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll();
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) =>
+            request.cookies.set(name, value),
+          );
+          response = NextResponse.next({ request });
+          cookiesToSet.forEach(({ name, value, options }) =>
+            response.cookies.set(name, value, options),
+          );
+        },
+      },
+    },
+  );
+
+  // getClaims verifica la firma del JWT (local con JWT Signing Keys) y
+  // dispara el refresh si el token expiró — por eso va ANTES de decidir.
+  const { data } = await supabase.auth.getClaims();
+  const haySesion = Boolean(data?.claims);
+  const esLogin = request.nextUrl.pathname === "/admin/login";
+
+  if (!haySesion && !esLogin) {
+    return redirigirConCookies(request, response, "/admin/login");
+  }
+  if (haySesion && esLogin) {
+    return redirigirConCookies(request, response, "/admin/mapa");
+  }
+  return response;
+}
+
+/**
+ * Redirect que conserva las cookies ya escritas en la respuesta: si el
+ * refresh de tokens coincide con un redirect, los tokens nuevos no se
+ * pueden perder.
+ */
+function redirigirConCookies(
+  request: NextRequest,
+  response: NextResponse,
+  destino: string,
+) {
+  const url = request.nextUrl.clone();
+  url.pathname = destino;
+  const redirect = NextResponse.redirect(url);
+  for (const cookie of response.cookies.getAll()) {
+    redirect.cookies.set(cookie);
+  }
+  return redirect;
+}
+
+export const config = {
+  matcher: ["/admin/:path*"],
+};
