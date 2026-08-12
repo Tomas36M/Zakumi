@@ -1,15 +1,20 @@
+import { NegociosView } from "@/components/admin/negocios/NegociosView";
 import { verifySession } from "@/lib/admin/dal";
+import type { Negocio } from "@/lib/admin/negocios";
 
 export const metadata = { title: "Negocios" };
 
 export default async function NegociosPage() {
-  await verifySession();
+  const { supabase } = await verifySession();
 
-  // Stub de F3 — la mesa de control llega en F6.
-  return (
-    <section className="adm-seccion">
-      <h1 className="adm-titulo">Negocios</h1>
-      <p className="adm-lead">La tabla del pipeline se construye en la fase 6.</p>
-    </section>
-  );
+  const { data, error } = await supabase
+    .from("negocios")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("[negocios] error cargando negocios:", error.message);
+  }
+
+  return <NegociosView negocios={(data as Negocio[]) ?? []} />;
 }

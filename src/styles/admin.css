@@ -718,3 +718,187 @@
     gap: 0.75rem;
   }
 }
+
+/* ——— Tabla de negocios ——— */
+
+.adm-negocios {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.25rem 1.5rem;
+  min-height: 0;
+}
+
+.adm-filtros {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.9rem;
+  flex-wrap: wrap;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.adm-filtro-q {
+  flex: 1;
+  min-width: 14rem;
+}
+
+.adm-filtros-conteo {
+  color: var(--ink-2);
+  font-size: 0.8rem;
+  padding-bottom: 0.55rem;
+}
+
+.adm-lote-bar {
+  display: flex;
+  align-items: flex-end;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--orange);
+  background: color-mix(in srgb, var(--orange) 8%, transparent);
+}
+
+.adm-lote-bar > span {
+  flex: 1;
+  padding-bottom: 0.4rem;
+}
+
+.adm-lote-select {
+  min-width: 11rem;
+}
+
+.adm-aviso {
+  color: var(--live);
+  border-left: 2px solid var(--live);
+  padding-left: 0.75rem;
+  margin: 0;
+  font-size: 0.82rem;
+}
+
+.adm-tabla-vacia {
+  color: var(--ink-2);
+  padding: 2.5rem 0;
+  text-align: center;
+  border: 1px dashed var(--hairline-fuerte);
+  margin: 0;
+}
+
+.adm-tabla-scroll {
+  overflow-x: auto;
+  min-height: 0;
+}
+
+.adm-tabla {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.84rem;
+}
+
+.adm-tabla th {
+  text-align: left;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  font-size: 0.66rem;
+  font-weight: 500;
+  color: var(--ink-2);
+  padding: 0.55rem 0.75rem;
+  border-bottom: 1px solid var(--hairline-fuerte);
+  white-space: nowrap;
+}
+
+.adm-tabla td {
+  padding: 0.55rem 0.75rem;
+  border-bottom: 1px solid var(--hairline);
+  vertical-align: middle;
+}
+
+.adm-tr--activa td {
+  background: color-mix(in srgb, var(--orange) 6%, transparent);
+}
+
+.adm-th-check {
+  width: 2.2rem;
+}
+
+.adm-tabla input[type="checkbox"] {
+  width: 1rem;
+  height: 1rem;
+  accent-color: var(--orange);
+  cursor: pointer;
+}
+
+.adm-tabla-nombre {
+  display: block;
+  font-weight: 500;
+}
+
+.adm-tabla-categoria {
+  display: block;
+  color: var(--ink-2);
+  font-size: 0.72rem;
+}
+
+.adm-tabla-ciudad {
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+
+.adm-tabla-telefono {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.adm-tabla-fijo {
+  color: var(--ink-2);
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.adm-badge-select {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.adm-badge {
+  width: 10px;
+  height: 10px;
+  transform: rotate(45deg);
+  flex: none;
+}
+
+.adm-badge--nuevo        { background: var(--estado-nuevo); }
+.adm-badge--contactado   { background: var(--estado-contactado); }
+.adm-badge--respondido   { background: var(--estado-respondido); }
+.adm-badge--interesado   { background: var(--estado-interesado); }
+.adm-badge--cliente      { background: var(--estado-cliente); }
+.adm-badge--descartado   { background: var(--estado-descartado); }
+
+.adm-select-estado {
+  padding: 0.35rem 0.5rem;
+  font-size: 0.78rem;
+  border-color: transparent;
+  background: transparent;
+}
+
+.adm-select-estado:hover {
+  border-color: var(--hairline-fuerte);
+}
+
+.adm-tabla-acciones {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.adm-tabla-wa {
+  color: var(--orange);
+  text-decoration: none;
+  font-size: 0.7rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.adm-tabla-wa:hover {
+  text-decoration: underline;
+}
