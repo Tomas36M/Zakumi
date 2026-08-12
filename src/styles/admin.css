@@ -268,3 +268,453 @@
 .adm-login-form .adm-cta {
   margin-top: 0.5rem;
 }
+
+/* ——— Mapa: toolbar y chips ——— */
+
+.adm-mapa {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.adm-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  padding: 0.75rem 1.5rem;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.adm-chips {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.adm-chip {
+  background: transparent;
+  color: var(--ink-2);
+  border: 1px solid var(--hairline-fuerte);
+  border-radius: 0;
+  padding: 0.45rem 0.9rem;
+  font-family: inherit;
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color 140ms ease, border-color 140ms ease, background 140ms ease;
+}
+
+.adm-chip:hover {
+  color: var(--paper);
+}
+
+.adm-chip--activa {
+  color: var(--black);
+  background: var(--paper);
+  border-color: var(--paper);
+}
+
+.adm-toolbar-conteo {
+  flex: 1;
+  color: var(--ink-2);
+  font-size: 0.8rem;
+}
+
+.adm-cifra {
+  font-family: var(--font-playfair), "Playfair Display", serif;
+  font-size: 1.05rem;
+  color: var(--paper);
+  font-weight: 500;
+}
+
+/* ——— Mapa: layout de 3 columnas ——— */
+
+.adm-map-layout {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 320px 1fr 340px;
+  min-height: 0;
+}
+
+.adm-panel-busqueda,
+.adm-ficha {
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.adm-panel-busqueda {
+  border-right: 1px solid var(--hairline);
+}
+
+.adm-ficha {
+  border-left: 1px solid var(--hairline);
+}
+
+.adm-map-canvas {
+  position: relative;
+  min-height: 0;
+}
+
+.adm-map {
+  width: 100%;
+  height: 100%;
+}
+
+.adm-map--captura {
+  cursor: crosshair;
+}
+
+.adm-map-vacio {
+  height: 100%;
+  display: grid;
+  place-items: center;
+  padding: 2rem;
+  color: var(--ink-2);
+  text-align: center;
+  border: 1px dashed var(--hairline-fuerte);
+}
+
+.adm-map-vacio code {
+  color: var(--orange);
+  font-size: 0.8em;
+}
+
+/* ——— Pins: rombos por estado (mismo lenguaje que chips y badges) ——— */
+
+.adm-pin-hit {
+  padding: 9px; /* target táctil ~34px sobre el pin de 16px */
+  cursor: pointer;
+}
+
+.adm-pin {
+  width: 16px;
+  height: 16px;
+  transform: rotate(45deg);
+  border: 1.5px solid color-mix(in srgb, var(--black) 80%, transparent);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+  transition: transform 140ms ease;
+}
+
+.adm-pin--nuevo        { background: var(--estado-nuevo); }
+.adm-pin--contactado   { background: var(--estado-contactado); }
+.adm-pin--respondido   { background: var(--estado-respondido); }
+.adm-pin--interesado   { background: var(--estado-interesado); }
+.adm-pin--cliente      { background: var(--estado-cliente); }
+.adm-pin--descartado   { background: var(--estado-descartado); }
+
+.adm-pin--resultado {
+  background: transparent;
+  border: 2px solid var(--orange);
+}
+
+.adm-pin--nuevo-manual {
+  background: var(--paper);
+  border-color: var(--orange);
+}
+
+.adm-pin--activo {
+  transform: rotate(45deg) scale(1.45);
+  border-color: var(--paper);
+}
+
+/* ——— Panel de búsqueda ——— */
+
+.adm-busqueda {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.25rem;
+}
+
+.adm-busqueda-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.adm-busqueda-lote {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.adm-busqueda-conteo {
+  color: var(--ink-2);
+  font-size: 0.78rem;
+}
+
+.adm-busqueda-conteo strong {
+  color: var(--paper);
+  font-family: var(--font-playfair), "Playfair Display", serif;
+  font-size: 0.95rem;
+}
+
+.adm-busqueda-vacia {
+  color: var(--ink-2);
+  font-size: 0.8rem;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.adm-resultados {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.adm-resultado {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-bottom: 1px solid var(--hairline);
+  padding: 0.6rem 0;
+}
+
+.adm-resultado--activo {
+  background: var(--superficie);
+  box-shadow: inset 2px 0 0 var(--orange);
+  padding-left: 0.6rem;
+}
+
+.adm-resultado-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  background: none;
+  border: none;
+  padding: 0;
+  text-align: left;
+  color: inherit;
+  font-family: inherit;
+  cursor: pointer;
+  min-width: 0;
+}
+
+.adm-resultado-nombre {
+  font-weight: 500;
+  font-size: 0.85rem;
+}
+
+.adm-resultado-meta {
+  color: var(--ink-2);
+  font-size: 0.74rem;
+}
+
+.adm-resultado-ya {
+  color: var(--ink-2);
+  font-size: 0.68rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.adm-resultado-importar {
+  padding: 0.4rem 0.7rem;
+  font-size: 0.66rem;
+  white-space: nowrap;
+}
+
+/* ——— Ficha ——— */
+
+.adm-ficha-vacia {
+  padding: 1.5rem 1.25rem;
+  color: var(--ink-2);
+  font-size: 0.82rem;
+  line-height: 1.6;
+}
+
+.adm-ficha-contenido {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+  padding: 1.25rem;
+}
+
+.adm-ficha-cabecera {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.adm-ficha-cabecera > div {
+  flex: 1;
+  min-width: 0;
+}
+
+.adm-ficha-nombre {
+  font-family: var(--font-playfair), "Playfair Display", serif;
+  font-size: 1.25rem;
+  font-weight: 500;
+  margin: 0 0 0.2rem;
+  line-height: 1.25;
+}
+
+.adm-ficha-meta {
+  color: var(--ink-2);
+  font-size: 0.76rem;
+  margin: 0;
+}
+
+.adm-ficha-cerrar {
+  background: none;
+  border: 1px solid transparent;
+  color: var(--ink-2);
+  font-size: 1.3rem;
+  line-height: 1;
+  padding: 0.3rem 0.55rem;
+  cursor: pointer;
+  transition: color 140ms ease;
+}
+
+.adm-ficha-cerrar:hover {
+  color: var(--paper);
+}
+
+.adm-ficha-direccion {
+  color: var(--ink-2);
+  font-size: 0.8rem;
+  margin: 0;
+  border-left: 2px solid var(--hairline-fuerte);
+  padding-left: 0.75rem;
+}
+
+.adm-ficha-telefono {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  font-size: 0.9rem;
+}
+
+.adm-ficha-sin {
+  color: var(--ink-2);
+}
+
+.adm-ficha-editar {
+  background: none;
+  border: none;
+  color: var(--orange);
+  font-family: inherit;
+  font-size: 0.7rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  cursor: pointer;
+  padding: 0.25rem 0;
+}
+
+.adm-ficha-telefono-form {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.adm-ficha-telefono-form .adm-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.adm-ficha-acciones {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+/* ——— Notas ——— */
+
+.adm-notas {
+  border-top: 1px solid var(--hairline);
+  padding-top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.adm-notas-titulo {
+  font-size: 0.7rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+  font-weight: 500;
+  margin: 0;
+}
+
+.adm-notas-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.adm-notas-form .adm-cta-ghost {
+  align-self: flex-end;
+}
+
+.adm-notas-cargando,
+.adm-notas-vacias {
+  color: var(--ink-2);
+  font-size: 0.78rem;
+  margin: 0;
+}
+
+.adm-notas-lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.adm-nota {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  border-bottom: 1px solid var(--hairline);
+  padding-bottom: 0.6rem;
+  font-size: 0.82rem;
+}
+
+.adm-nota--auto .adm-nota-texto {
+  color: var(--ink-2);
+  font-style: italic;
+}
+
+.adm-nota-fecha {
+  color: var(--ink-2);
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+}
+
+.adm-nuevo-form .adm-cta {
+  margin-top: 0.25rem;
+}
+
+/* ——— Responsive: en pantallas angostas el mapa apila ——— */
+
+@media (max-width: 960px) {
+  .adm-map-layout {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(320px, 45dvh) auto;
+  }
+
+  .adm-panel-busqueda {
+    border-right: none;
+    border-bottom: 1px solid var(--hairline);
+    max-height: 35dvh;
+  }
+
+  .adm-ficha {
+    border-left: none;
+    border-top: 1px solid var(--hairline);
+  }
+
+  .adm-toolbar {
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+}
