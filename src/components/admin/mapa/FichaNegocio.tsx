@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { actualizarNegocio, agregarNota } from "@/lib/admin/actions";
 import {
   CIUDADES,
@@ -17,6 +17,16 @@ const LABEL_CIUDAD = new Map<string, string>(
 );
 LABEL_CIUDAD.set("otra", "Otra");
 
+async function fetchNotas(negocioId: string): Promise<Nota[]> {
+  const supabase = createSupabaseBrowser();
+  const { data } = await supabase
+    .from("notas")
+    .select("*")
+    .eq("negocio_id", negocioId)
+    .order("created_at", { ascending: false });
+  return (data as Nota[]) ?? [];
+}
+
 type Props = {
   negocio: Negocio;
   onCambio: () => void; // router.refresh() del dueño
@@ -30,21 +40,21 @@ export function FichaNegocio({ negocio, onCambio, onCerrar }: Props) {
   const [notas, setNotas] = useState<Nota[] | null>(null);
   const [notaNueva, setNotaNueva] = useState("");
 
-  const cargarNotas = useCallback(async () => {
-    const supabase = createSupabaseBrowser();
-    const { data } = await supabase
-      .from("notas")
-      .select("*")
-      .eq("negocio_id", negocio.id)
-      .order("created_at", { ascending: false });
-    setNotas((data as Nota[]) ?? []);
-  }, [negocio.id]);
-
   // El dueño monta esta ficha con key={negocio.id}: al cambiar de negocio el
   // componente se remonta y el estado vuelve solo a su valor inicial.
   useEffect(() => {
-    void cargarNotas();
-  }, [cargarNotas]);
+    let activo = true;
+    fetchNotas(negocio.id).then((ns) => {
+      if (activo) setNotas(ns);
+    });
+    return () => {
+      activo = false;
+    };
+  }, [negocio.id]);
+
+  async function cargarNotas() {
+    setNotas(await fetchNotas(negocio.id));
+  }
 
   function guardar(cambios: Parameters<typeof actualizarNegocio>[1]) {
     setError(null);
