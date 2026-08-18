@@ -13,6 +13,8 @@ import {
   crearInstancia,
   enviarManual as enviarManualApi,
   guardarPrompt as guardarPromptApi,
+  obtenerInstancia,
+  obtenerPrompt,
   pausar,
   reanudar,
   reintentarJob as reintentarJobApi,
@@ -183,6 +185,60 @@ export async function editarBot(
   if (!r.ok) return { error: mensajeDe(r.error) };
   revalidarBots();
   return { error: null };
+}
+
+/**
+ * Copia una instancia SIN credenciales (el API las redacta y jamás deben
+ * viajar de vuelta) con el prompt activo como v1. Ideal para demos: el Labs
+ * funciona sin proveedor conectado.
+ */
+export async function duplicarBot(id: number): Promise<{ id: number } | { error: string }> {
+  await verifySession();
+  if (!Number.isInteger(id) || id <= 0) return { error: "Bot no válido." };
+
+  const inst = await obtenerInstancia(id);
+  if (!inst.ok) return { error: mensajeDe(inst.error) };
+  const base = inst.data;
+  const prompt = await obtenerPrompt(id); // puede no existir; se tolera
+
+  const fila: DatosInstancia = {
+    nombre: `Copia de ${base.nombre}`.slice(0, 120),
+    proveedor: base.proveedor,
+    acuse_escalado: base.acuse_escalado,
+    fallback_reply: base.fallback_reply,
+    modelo: base.modelo,
+    effort: base.effort,
+    max_tokens: base.max_tokens,
+  };
+  if (base.escalation_notify_to) fila.escalation_notify_to = base.escalation_notify_to;
+  if (base.presupuesto_tokens_dia !== null) {
+    fila.presupuesto_tokens_dia = base.presupuesto_tokens_dia;
+  }
+
+  let creado = await crearInstancia({ ...fila, slug: `${base.slug}-copia`.slice(0, 40) });
+  if (!creado.ok && creado.error === "conflicto") {
+    const sufijo = Math.random().toString(36).slice(2, 5);
+    creado = await crearInstancia({
+      ...fila,
+      slug: `${base.slug}-copia-${sufijo}`.slice(0, 40),
+    });
+  }
+  if (!creado.ok) return { error: mensajeDe(creado.error) };
+
+  if (prompt.ok) {
+    const v1 = await guardarPromptApi(creado.data.id, {
+      system_prompt: prompt.data.system_prompt,
+      knowledge: prompt.data.knowledge,
+      notas: `copiado de ${base.slug} v${prompt.data.version}`,
+      base_version: 0,
+    });
+    if (!v1.ok) {
+      console.error("[duplicarBot] copia creada pero el prompt falló:", v1.error);
+    }
+  }
+
+  revalidarBots();
+  return { id: creado.data.id };
 }
 
 export async function guardarPrompt(

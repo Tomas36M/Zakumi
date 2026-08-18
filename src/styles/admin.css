@@ -1556,3 +1556,18 @@ a.adm-bot-card {
   flex-wrap: wrap;
   margin-top: 0.4rem;
 }
+
+/* ——— Semáforo de salud de los bots en el nav ——— */
+
+.adm-salud {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  transform: rotate(45deg);
+  margin-left: 0.45rem;
+  vertical-align: middle;
+}
+
+.adm-salud--ok       { background: var(--live); }
+.adm-salud--atencion { background: var(--estado-contactado); }
+.adm-salud--problema { background: var(--orange); }

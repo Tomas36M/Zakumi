@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useState, useTransition } from "react";
+import { duplicarBot, editarBot } from "@/lib/admin/bots-actions";
 import type {
   Instancia,
   PromptActivo,
@@ -36,9 +38,46 @@ type Props = {
  * al cargar — se muestra lo que haya y un aviso, nunca pantalla rota.
  */
 export function AgenteView({ id, instancia, prompt, versiones, status, tabInicial }: Props) {
+  const router = useRouter();
   const [tab, setTab] = useState<Pestana>(tabInicial);
+  const [operando, startOperar] = useTransition();
+  const [avisoOperacion, setAvisoOperacion] = useState<string | null>(null);
 
   const uso = status?.uso_hoy;
+
+  function alternarEncendido() {
+    if (!instancia) return;
+    const apagar = instancia.activo;
+    if (
+      apagar &&
+      !window.confirm(
+        `¿Apagar "${instancia.nombre}"? Deja de responder TODOS sus chats de inmediato.`,
+      )
+    ) {
+      return;
+    }
+    setAvisoOperacion(null);
+    startOperar(async () => {
+      const res = await editarBot(id, { activo: !apagar });
+      if (res.error) {
+        setAvisoOperacion(res.error);
+        return;
+      }
+      router.refresh();
+    });
+  }
+
+  function duplicar() {
+    setAvisoOperacion(null);
+    startOperar(async () => {
+      const res = await duplicarBot(id);
+      if ("error" in res) {
+        setAvisoOperacion(res.error);
+        return;
+      }
+      router.push(`/admin/bots/${res.id}`);
+    });
+  }
 
   return (
     <section className="adm-seccion">
@@ -65,11 +104,36 @@ export function AgenteView({ id, instancia, prompt, versiones, status, tabInicia
             {status?.conversaciones ?? 0} conversaciones
           </span>
         )}
+        {instancia && (
+          <div className="adm-ficha-acciones">
+            <button
+              type="button"
+              className="adm-cta-ghost"
+              disabled={operando}
+              onClick={duplicar}
+            >
+              Duplicar
+            </button>
+            <button
+              type="button"
+              className="adm-cta-ghost"
+              disabled={operando}
+              onClick={alternarEncendido}
+            >
+              {instancia.activo ? "Apagar bot" : "Encender bot"}
+            </button>
+          </div>
+        )}
       </div>
 
       {!instancia && (
         <p className="adm-aviso">
           Sin conexión con el bot: se muestra lo último conocido. Recarga en un momento.
+        </p>
+      )}
+      {avisoOperacion && (
+        <p className="adm-error" role="alert">
+          {avisoOperacion}
         </p>
       )}
 
