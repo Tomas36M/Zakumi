@@ -10,13 +10,14 @@ import type {
 } from "@/lib/bots/tipos";
 import { Actividad } from "./Actividad";
 import { Conversaciones } from "./Conversaciones";
+import { LabsChat } from "./LabsChat";
 import { PromptEditor } from "./PromptEditor";
 
 export type Pestana = "prompt" | "labs" | "conversaciones" | "actividad";
 
 const PESTANAS: readonly { valor: Pestana; label: string; lista: boolean }[] = [
   { valor: "prompt", label: "Prompt", lista: true },
-  { valor: "labs", label: "Labs", lista: false },
+  { valor: "labs", label: "Labs", lista: true },
   { valor: "conversaciones", label: "Conversaciones", lista: true },
   { valor: "actividad", label: "Actividad", lista: true },
 ] as const;
@@ -96,6 +97,9 @@ export function AgenteView({ id, instancia, prompt, versiones, status, tabInicia
           versiones={versiones}
           onProbarEnLabs={() => setTab("labs")}
         />
+      )}
+      {tab === "labs" && (
+        <LabsChat instanciaId={id} prompt={prompt} onEditarPrompt={() => setTab("prompt")} />
       )}
       {tab === "conversaciones" && <Conversaciones instanciaId={id} />}
       {tab === "actividad" && <Actividad instanciaId={id} />}
