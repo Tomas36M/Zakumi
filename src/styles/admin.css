@@ -1089,3 +1089,157 @@
   letter-spacing: 0.1em;
   font-size: 0.7rem;
 }
+
+/* Card-enlace: sin subrayado, color heredado */
+a.adm-bot-card {
+  color: var(--paper);
+  text-decoration: none;
+}
+
+.adm-bot-volver {
+  color: var(--slate);
+  text-decoration: none;
+}
+
+.adm-bot-volver:hover {
+  color: var(--paper);
+}
+
+/* ——— Ficha del agente: pestañas ——— */
+
+.adm-tabs {
+  display: flex;
+  gap: 0;
+  margin-top: 1.25rem;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.adm-tab {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--slate);
+  font: inherit;
+  font-size: 0.85rem;
+  padding: 0.6rem 1rem;
+  cursor: pointer;
+}
+
+.adm-tab:hover:not(:disabled) {
+  color: var(--paper);
+}
+
+.adm-tab--activa {
+  color: var(--orange);
+  border-bottom-color: var(--orange);
+}
+
+.adm-tab:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+/* ——— Editor de prompt ——— */
+
+.adm-editor-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 280px;
+  gap: 2rem;
+  margin-top: 1.5rem;
+  align-items: start;
+}
+
+.adm-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.adm-editor-textarea {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 0.8rem;
+  line-height: 1.55;
+  resize: vertical;
+}
+
+.adm-editor-conflicto {
+  border: 1px solid var(--orange);
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.adm-editor-diff {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.adm-editor-pre {
+  margin: 0.35rem 0 0;
+  padding: 0.6rem;
+  border: 1px solid var(--hairline);
+  background: var(--superficie);
+  font-size: 0.72rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.adm-editor-historial {
+  border-left: 1px solid var(--hairline);
+  padding-left: 1.25rem;
+}
+
+.adm-editor-versiones {
+  list-style: none;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.adm-editor-version {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  gap: 0.75rem;
+  font-size: 0.82rem;
+}
+
+.adm-editor-activa {
+  color: var(--live);
+}
+
+.adm-editor-fecha {
+  color: var(--slate);
+}
+
+.adm-editor-notas {
+  margin: 0.15rem 0 0;
+  color: var(--ink-2);
+  font-size: 0.78rem;
+}
+
+@media (max-width: 960px) {
+  .adm-editor-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .adm-editor-historial {
+    border-left: none;
+    border-top: 1px solid var(--hairline);
+    padding-left: 0;
+    padding-top: 1rem;
+  }
+
+  .adm-editor-diff {
+    grid-template-columns: 1fr;
+  }
+}

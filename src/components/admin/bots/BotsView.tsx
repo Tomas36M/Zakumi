@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { PROVEEDORES, type StatusGlobal } from "@/lib/bots/tipos";
 import { NuevoBotForm } from "./NuevoBotForm";
@@ -24,6 +26,7 @@ function labelProveedor(valor: string): string {
  * una pantalla rota por tener Railway caído.
  */
 export function BotsView({ inicial }: { inicial: StatusGlobal | null }) {
+  const router = useRouter();
   const [status, setStatus] = useState<StatusGlobal | null>(inicial);
   const [sinConexionDesde, setSinConexionDesde] = useState<string | null>(
     inicial ? null : horaBogota(),
@@ -68,9 +71,9 @@ export function BotsView({ inicial }: { inicial: StatusGlobal | null }) {
 
       {creando && (
         <NuevoBotForm
-          onCreado={() => {
+          onCreado={(id) => {
             setCreando(false);
-            void recargar();
+            router.push(`/admin/bots/${id}`);
           }}
           onCancelar={() => setCreando(false)}
         />
@@ -95,7 +98,7 @@ export function BotsView({ inicial }: { inicial: StatusGlobal | null }) {
         {(status?.instancias ?? []).map((inst) => {
           const colaInst = porInstancia.get(inst.id);
           return (
-            <article key={inst.id} className="adm-bot-card">
+            <Link key={inst.id} href={`/admin/bots/${inst.id}`} className="adm-bot-card">
               <header className="adm-bot-cabecera">
                 <h2 className="adm-bot-nombre">{inst.nombre}</h2>
                 <span
@@ -117,7 +120,7 @@ export function BotsView({ inicial }: { inicial: StatusGlobal | null }) {
                   ? `${colaInst.pendientes} en cola · ${colaInst.fallidos} fallidos`
                   : "Sin actividad en cola"}
               </p>
-            </article>
+            </Link>
           );
         })}
       </div>
