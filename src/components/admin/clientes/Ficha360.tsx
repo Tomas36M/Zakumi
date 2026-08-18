@@ -18,6 +18,7 @@ import {
 import { mrrDeProductos, oportunidades } from "@/lib/admin/upsell";
 import type { StatusInstancia } from "@/lib/bots/tipos";
 import { ProductoForm } from "./ProductoForm";
+import { VincularBot } from "./VincularBot";
 
 const LABEL_TIPO = new Map(TIPOS_PRODUCTO.map((t) => [t.valor, t.label]));
 const LABEL_CICLO = new Map(CICLOS.map((c) => [c.valor, c.label]));
@@ -139,6 +140,9 @@ export function Ficha360({ cliente, productos, pagos, botStatus, hoy }: Props) {
                               "Bot: sin conexión con Railway"
                             )}
                           </span>
+                        )}
+                        {p.activo && p.tipo === "bot" && !p.instancia_id && (
+                          <VincularBot productoId={p.id} onVinculado={refrescar} />
                         )}
                       </div>
                       {p.activo && (

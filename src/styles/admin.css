@@ -1548,3 +1548,11 @@ a.adm-bot-card {
     padding-top: 1.25rem;
   }
 }
+
+.adm-vincular {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin-top: 0.4rem;
+}

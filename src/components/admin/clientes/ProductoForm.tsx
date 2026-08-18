@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { crearProducto } from "@/lib/admin/cartera-actions";
 import {
   CICLOS,
@@ -8,6 +8,8 @@ import {
   type Ciclo,
   type TipoProducto,
 } from "@/lib/admin/cartera";
+
+type InstanciaCorta = { id: number; slug: string; nombre: string; activo: boolean };
 
 type Props = {
   clienteId: string;
@@ -28,6 +30,26 @@ export function ProductoForm({ clienteId, hoy, onCreado, onCancelar, inicial }: 
   const [proximaFecha, setProximaFecha] = useState(hoy);
   const [dominio, setDominio] = useState("");
   const [instanciaId, setInstanciaId] = useState("");
+  // null = cargando; [] = sin conexión o sin bots → cae al input de texto.
+  const [instancias, setInstancias] = useState<InstanciaCorta[] | null>(null);
+
+  useEffect(() => {
+    if (tipo !== "bot") return;
+    let activo = true;
+    void (async () => {
+      try {
+        const res = await fetch("/admin/api/bots/instancias");
+        if (!res.ok) throw new Error(String(res.status));
+        const data = (await res.json()) as { instancias: InstanciaCorta[] };
+        if (activo) setInstancias(data.instancias);
+      } catch {
+        if (activo) setInstancias([]);
+      }
+    })();
+    return () => {
+      activo = false;
+    };
+  }, [tipo]);
 
   return (
     <form
@@ -138,12 +160,29 @@ export function ProductoForm({ clienteId, hoy, onCreado, onCancelar, inicial }: 
       {tipo === "bot" ? (
         <label className="adm-field">
           <span className="adm-field-label">Instancia del bot</span>
-          <input
-            className="adm-input"
-            value={instanciaId}
-            onChange={(e) => setInstanciaId(e.target.value)}
-            placeholder="se enlaza cuando exista la consola de bots"
-          />
+          {instancias && instancias.length > 0 ? (
+            <select
+              className="adm-select"
+              value={instanciaId}
+              onChange={(e) => setInstanciaId(e.target.value)}
+            >
+              <option value="">— sin vincular todavía —</option>
+              {instancias.map((i) => (
+                <option key={i.id} value={String(i.id)}>
+                  {i.nombre} ({i.slug}){i.activo ? "" : " · apagado"}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <input
+              className="adm-input"
+              value={instanciaId}
+              onChange={(e) => setInstanciaId(e.target.value)}
+              placeholder={
+                instancias === null ? "cargando bots…" : "id numérico (bot sin conexión)"
+              }
+            />
+          )}
         </label>
       ) : null}
 

@@ -10,6 +10,7 @@ import {
   type TipoProducto,
 } from "./cartera";
 import { normalizarTelefonoCO } from "./telefono";
+import { listarInstancias } from "@/lib/bots/api";
 
 const TIPOS_VALIDOS = new Set(TIPOS_PRODUCTO.map((t) => t.valor));
 const CICLOS_VALIDOS = new Set(CICLOS.map((c) => c.valor));
@@ -226,6 +227,43 @@ export async function actualizarProducto(
   if (error) {
     console.error("[actualizarProducto]", error.message);
     return { error: "No se pudo guardar el cambio." };
+  }
+  revalidarCartera();
+  return { error: null };
+}
+
+/**
+ * Vincula un producto a una instancia REAL del bot: se valida contra la lista
+ * viva del API (whitelist viva) antes de escribir la referencia blanda.
+ */
+export async function vincularInstancia(
+  productoId: string,
+  instanciaId: string,
+): Promise<{ error: string | null }> {
+  const { supabase } = await verifySession();
+
+  if (typeof productoId !== "string" || !productoId) {
+    return { error: "Producto no válido." };
+  }
+  if (typeof instanciaId !== "string" || !/^\d+$/.test(instanciaId)) {
+    return { error: "Instancia no válida." };
+  }
+
+  const instancias = await listarInstancias();
+  if (!instancias.ok) {
+    return { error: "No hay conexión con el bot para validar la instancia." };
+  }
+  if (!instancias.data.some((i) => String(i.id) === instanciaId)) {
+    return { error: "Esa instancia no existe en el bot." };
+  }
+
+  const { error } = await supabase
+    .from("productos_contratados")
+    .update({ instancia_id: instanciaId })
+    .eq("id", productoId);
+  if (error) {
+    console.error("[vincularInstancia]", error.message);
+    return { error: "No se pudo guardar el vínculo." };
   }
   revalidarCartera();
   return { error: null };
