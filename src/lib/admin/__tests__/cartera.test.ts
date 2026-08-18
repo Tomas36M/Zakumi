@@ -132,8 +132,10 @@ describe("formatearCOP", () => {
 });
 
 describe("constantes y regla editorial", () => {
-  it("los 4 tipos de producto y los 3 ciclos tienen label es-CO", () => {
-    expect(TIPOS_PRODUCTO.map((t) => t.valor)).toEqual(["bot", "web", "crm", "otro"]);
+  it("los 6 tipos de producto y los 3 ciclos tienen label es-CO", () => {
+    expect(TIPOS_PRODUCTO.map((t) => t.valor)).toEqual([
+      "bot", "web", "crm", "voz", "mantenimiento", "otro",
+    ]);
     expect(CICLOS.map((c) => c.valor)).toEqual(["mensual", "anual", "unico"]);
     for (const x of [...TIPOS_PRODUCTO, ...CICLOS]) {
       expect(x.label.trim().length).toBeGreaterThan(0);

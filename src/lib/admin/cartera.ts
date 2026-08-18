@@ -2,7 +2,7 @@
 // Todas las fechas son strings ISO "YYYY-MM-DD" y se comparan como strings —
 // sin objetos Date en la lógica, sin sorpresas de zona horaria.
 
-export type TipoProducto = "bot" | "web" | "crm" | "otro";
+export type TipoProducto = "bot" | "web" | "crm" | "voz" | "mantenimiento" | "otro";
 export type Ciclo = "mensual" | "anual" | "unico";
 export type Semaforo = "al_dia" | "por_vencer" | "vencido" | "sin_programar";
 
@@ -53,6 +53,8 @@ export const TIPOS_PRODUCTO: readonly { valor: TipoProducto; label: string }[] =
   { valor: "bot", label: "Bot de WhatsApp" },
   { valor: "web", label: "Página web" },
   { valor: "crm", label: "CRM" },
+  { valor: "voz", label: "Agente de voz" },
+  { valor: "mantenimiento", label: "Mantenimiento web" },
   { valor: "otro", label: "Otro" },
 ] as const;
 
