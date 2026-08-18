@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { PROVEEDORES, type StatusGlobal } from "@/lib/bots/tipos";
+import { NuevoBotForm } from "./NuevoBotForm";
 
 const INTERVALO_MS = 30_000;
 
@@ -27,26 +28,23 @@ export function BotsView({ inicial }: { inicial: StatusGlobal | null }) {
   const [sinConexionDesde, setSinConexionDesde] = useState<string | null>(
     inicial ? null : horaBogota(),
   );
+  const [creando, setCreando] = useState(false);
+
+  const recargar = useCallback(async () => {
+    try {
+      const res = await fetch("/admin/api/bots/status");
+      if (!res.ok) throw new Error(String(res.status));
+      setStatus(await res.json());
+      setSinConexionDesde(null);
+    } catch {
+      setSinConexionDesde((desde) => desde ?? horaBogota());
+    }
+  }, []);
 
   useEffect(() => {
-    let activo = true;
-    async function poll() {
-      try {
-        const res = await fetch("/admin/api/bots/status");
-        if (!activo) return;
-        if (!res.ok) throw new Error(String(res.status));
-        setStatus(await res.json());
-        setSinConexionDesde(null);
-      } catch {
-        if (activo) setSinConexionDesde((desde) => desde ?? horaBogota());
-      }
-    }
-    const timer = setInterval(poll, INTERVALO_MS);
-    return () => {
-      activo = false;
-      clearInterval(timer);
-    };
-  }, []);
+    const timer = setInterval(recargar, INTERVALO_MS);
+    return () => clearInterval(timer);
+  }, [recargar]);
 
   const cola = status?.cola;
   const porInstancia = new Map(
@@ -63,7 +61,20 @@ export function BotsView({ inicial }: { inicial: StatusGlobal | null }) {
             {cola.jobs_fallidos} fallidos
           </span>
         )}
+        <button className="adm-cta" type="button" onClick={() => setCreando(true)}>
+          Nuevo bot
+        </button>
       </div>
+
+      {creando && (
+        <NuevoBotForm
+          onCreado={() => {
+            setCreando(false);
+            void recargar();
+          }}
+          onCancelar={() => setCreando(false)}
+        />
+      )}
 
       {sinConexionDesde && (
         <p className="adm-aviso">
