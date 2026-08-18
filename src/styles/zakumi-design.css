@@ -3825,3 +3825,35 @@
       padding-right: max(clamp(2rem, 3.5vw, 3.25rem), 40%);
     }
   }
+
+/* ——— Páginas legales (privacidad) — texto plano, sin animaciones ——— */
+.legal {
+  max-width: 46rem;
+  margin: 0 auto;
+  padding: 9rem 4vw 6rem;
+}
+.legal h1 {
+  font-family: var(--font-playfair), 'Playfair Display', serif;
+  font-size: clamp(2rem, 5vw, 2.8rem);
+  font-weight: 500;
+  margin: 0 0 0.5rem;
+}
+.legal-meta {
+  color: var(--ink-2);
+  font-size: 0.85rem;
+  margin: 0 0 3rem;
+}
+.legal h2 {
+  font-family: var(--font-playfair), 'Playfair Display', serif;
+  font-size: 1.35rem;
+  font-weight: 500;
+  margin: 2.5rem 0 0.75rem;
+}
+.legal p, .legal li {
+  color: var(--ink-2);
+  line-height: 1.7;
+}
+.legal ul { padding-left: 1.25rem; }
+.legal li { margin-bottom: 0.5rem; }
+.legal a { color: var(--orange); }
+.legal strong { color: var(--paper); }
