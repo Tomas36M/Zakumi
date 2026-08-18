@@ -1243,3 +1243,196 @@ a.adm-bot-card {
     grid-template-columns: 1fr;
   }
 }
+
+/* ——— Conversaciones ——— */
+
+.adm-conv-layout {
+  display: grid;
+  grid-template-columns: 340px minmax(0, 1fr);
+  gap: 2rem;
+  margin-top: 1.5rem;
+  align-items: start;
+}
+
+.adm-conv-items {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.adm-conv-item {
+  width: 100%;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--hairline);
+  color: var(--paper);
+  font: inherit;
+  text-align: left;
+  padding: 0.7rem 0.5rem;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.adm-conv-item:hover {
+  background: var(--superficie);
+}
+
+.adm-conv-item--activa {
+  background: var(--superficie-alta);
+  border-left: 2px solid var(--orange);
+}
+
+.adm-conv-telefono {
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.adm-conv-prueba {
+  color: var(--orange);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.adm-conv-pausado {
+  color: var(--estado-contactado);
+  font-size: 0.75rem;
+}
+
+.adm-conv-ultimo {
+  color: var(--ink-2);
+  font-size: 0.78rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.adm-conv-fecha {
+  color: var(--slate);
+  font-size: 0.72rem;
+}
+
+.adm-conv-detalle {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.adm-conv-cabecera {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+/* ——— Chat (historial y Labs) ——— */
+
+.adm-chat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  border: 1px solid var(--hairline);
+  background: var(--superficie);
+  padding: 1rem;
+  min-height: 200px;
+  max-height: 480px;
+  overflow-y: auto;
+}
+
+.adm-chat-burbuja {
+  margin: 0;
+  padding: 0.55rem 0.8rem;
+  max-width: 75%;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.adm-chat-burbuja--persona {
+  align-self: flex-start;
+  background: var(--superficie-alta);
+  border: 1px solid var(--hairline);
+}
+
+.adm-chat-burbuja--bot {
+  align-self: flex-end;
+  background: color-mix(in srgb, var(--orange) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--orange) 35%, transparent);
+}
+
+.adm-chat-envio {
+  display: flex;
+  gap: 0.6rem;
+}
+
+.adm-chat-envio .adm-input {
+  flex: 1;
+}
+
+/* ——— Actividad ——— */
+
+.adm-actividad {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  margin-top: 1.5rem;
+}
+
+.adm-actividad-cifras {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 1rem;
+}
+
+.adm-cifra-bloque {
+  border: 1px solid var(--hairline);
+  background: var(--superficie);
+  padding: 0.9rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.adm-cifra-bloque .adm-cifra {
+  font-size: 1.5rem;
+}
+
+.adm-cifra-label {
+  color: var(--slate);
+  font-size: 0.75rem;
+}
+
+.adm-actividad-jobs,
+.adm-actividad-leads {
+  list-style: none;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.adm-actividad-job {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  gap: 1rem;
+  border-bottom: 1px solid var(--hairline);
+  padding-bottom: 0.9rem;
+}
+
+.adm-actividad-lead {
+  font-size: 0.85rem;
+}
+
+@media (max-width: 960px) {
+  .adm-conv-layout {
+    grid-template-columns: 1fr;
+  }
+}
