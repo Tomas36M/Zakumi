@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState, useTransition } from "react";
 import { registrarPago } from "@/lib/admin/cartera-actions";
 import {
@@ -70,6 +71,9 @@ export function FichaCliente({ cliente, productos, hoy, onCambio, onCerrar }: Pr
             {[cliente.telefono, cliente.email].filter(Boolean).join(" · ") ||
               "Sin datos de contacto"}
           </p>
+          <Link href={`/admin/clientes/${cliente.id}`} className="adm-360-link">
+            Ver ficha completa →
+          </Link>
         </div>
         <button
           type="button"

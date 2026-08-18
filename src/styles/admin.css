@@ -1478,3 +1478,73 @@ a.adm-bot-card {
     padding-top: 1rem;
   }
 }
+
+/* ——— Ficha 360 del cliente ——— */
+
+.adm-360-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 2.5rem;
+  margin-top: 2rem;
+  align-items: start;
+}
+
+.adm-360-principal {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  min-width: 0;
+}
+
+.adm-360-link {
+  color: var(--orange);
+  text-decoration: none;
+  font-size: 0.8rem;
+}
+
+.adm-360-link:hover {
+  text-decoration: underline;
+}
+
+.adm-360-oportunidades {
+  border-left: 1px solid var(--hairline);
+  padding-left: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.adm-360-oportunidad {
+  border: 1px solid var(--hairline);
+  background: var(--superficie);
+  padding: 0.9rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  align-items: start;
+}
+
+.adm-360-oportunidad-nombre {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.adm-360-oportunidad-tarifa {
+  margin: 0;
+  color: var(--orange);
+  font-size: 0.85rem;
+}
+
+@media (max-width: 960px) {
+  .adm-360-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .adm-360-oportunidades {
+    border-left: none;
+    border-top: 1px solid var(--hairline);
+    padding-left: 0;
+    padding-top: 1.25rem;
+  }
+}

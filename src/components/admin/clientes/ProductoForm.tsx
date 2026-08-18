@@ -14,15 +14,17 @@ type Props = {
   hoy: string;
   onCreado: () => void;
   onCancelar: () => void;
+  /** Prefill desde una oportunidad del catálogo (ficha 360). */
+  inicial?: { tipo?: TipoProducto; nombre?: string; tarifa?: number; ciclo?: Ciclo };
 };
 
-export function ProductoForm({ clienteId, hoy, onCreado, onCancelar }: Props) {
+export function ProductoForm({ clienteId, hoy, onCreado, onCancelar, inicial }: Props) {
   const [guardando, startGuardar] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const [tipo, setTipo] = useState<TipoProducto>("bot");
-  const [nombre, setNombre] = useState("");
-  const [tarifa, setTarifa] = useState("");
-  const [ciclo, setCiclo] = useState<Ciclo>("mensual");
+  const [tipo, setTipo] = useState<TipoProducto>(inicial?.tipo ?? "bot");
+  const [nombre, setNombre] = useState(inicial?.nombre ?? "");
+  const [tarifa, setTarifa] = useState(inicial?.tarifa != null ? String(inicial.tarifa) : "");
+  const [ciclo, setCiclo] = useState<Ciclo>(inicial?.ciclo ?? "mensual");
   const [proximaFecha, setProximaFecha] = useState(hoy);
   const [dominio, setDominio] = useState("");
   const [instanciaId, setInstanciaId] = useState("");
