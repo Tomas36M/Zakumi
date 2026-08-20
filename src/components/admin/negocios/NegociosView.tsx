@@ -11,6 +11,8 @@ import {
   type Negocio,
 } from "@/lib/admin/negocios";
 import { waMeUrl } from "@/lib/admin/telefono";
+import { contactables } from "@/lib/admin/zak";
+import { enviarTandaZak } from "@/lib/admin/zak-actions";
 
 const LABEL_CIUDAD = new Map<string, string>(
   CIUDADES.map((c) => [c.valor, c.label]),
@@ -57,6 +59,8 @@ export function NegociosView({ negocios }: { negocios: Negocio[] }) {
     [filtrados],
   );
   const seleccionActiva = [...seleccionados].filter((id) => idsFiltrados.has(id));
+  const seleccionSet = new Set(seleccionActiva);
+  const contactablesZak = contactables(filtrados.filter((n) => seleccionSet.has(n.id)));
 
   function alternar(id: string) {
     setSeleccionados((prev) => {
@@ -85,6 +89,35 @@ export function NegociosView({ negocios }: { negocios: Negocio[] }) {
       }
       const label = ESTADOS.find((e) => e.valor === estadoLote)?.label;
       setAviso(`${res.actualizados} negocios pasaron a «${label}».`);
+      setSeleccionados(new Set());
+      router.refresh();
+    });
+  }
+
+  function contactarConZak() {
+    const n = contactablesZak.length;
+    const fuera = seleccionActiva.length - n;
+    const ok = window.confirm(
+      `Zak les enviará la plantilla «saludo_zakumi» por WhatsApp a ${n} negocio(s)` +
+        (fuera > 0 ? ` (${fuera} quedan fuera: sin celular, cliente o descartado).` : ".") +
+        "\n\nCada envío inicia una conversación de marketing con costo de Meta, y el " +
+        "número sin verificar admite máx. 250 iniciadas/día. Cuando respondan, Zak " +
+        "conversa solo y marca a los interesados.\n\n¿Continuar?",
+    );
+    if (!ok) return;
+    setAviso(null);
+    startGuardar(async () => {
+      const res = await enviarTandaZak(contactablesZak.map((x) => x.id));
+      if ("error" in res) {
+        setAviso(res.error);
+        return;
+      }
+      setAviso(
+        `Zak va a contactar a ${res.contactados} negocio(s)` +
+          (res.duplicados > 0 ? `, ${res.duplicados} ya eran prospectos` : "") +
+          (res.omitidos > 0 ? `, ${res.omitidos} quedaron fuera` : "") +
+          ". Sigue el funnel en la pestaña Zak → Tandas.",
+      );
       setSeleccionados(new Set());
       router.refresh();
     });
@@ -196,6 +229,19 @@ export function NegociosView({ negocios }: { negocios: Negocio[] }) {
             onClick={aplicarLote}
           >
             {guardando ? "Aplicando…" : `Aplicar a ${seleccionActiva.length}`}
+          </button>
+          <button
+            className="adm-cta"
+            type="button"
+            disabled={guardando || contactablesZak.length === 0}
+            title={
+              contactablesZak.length === 0
+                ? "Ninguno de los seleccionados tiene celular contactable"
+                : undefined
+            }
+            onClick={contactarConZak}
+          >
+            🧡 Que Zak los contacte ({contactablesZak.length})
           </button>
         </div>
       ) : null}
