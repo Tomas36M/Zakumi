@@ -1,7 +1,14 @@
 import { describe, expect, it } from "vitest";
 
 import type { Negocio } from "../negocios";
-import { avancesDeEstado, componentesSaludo, contactables, fueraDeVentana } from "../zak";
+import {
+  agruparPorVertical,
+  avancesDeEstado,
+  componentesSaludo,
+  contactables,
+  fueraDeVentana,
+  verticalPara,
+} from "../zak";
 import type { Prospecto } from "@/lib/bots/tipos";
 
 function negocio(extra: Partial<Negocio>): Negocio {
@@ -133,5 +140,50 @@ describe("fueraDeVentana", () => {
   it("pasadas las 24h la ventana se cierra (y una fecha rota también)", () => {
     expect(fueraDeVentana("2026-08-19T11:59:00Z", ahora)).toBe(true);
     expect(fueraDeVentana("no-es-fecha", ahora)).toBe(true);
+  });
+});
+
+describe("verticalPara", () => {
+  it("mapea las categorías reales de Google al vertical correcto", () => {
+    expect(verticalPara("restaurant").slug).toBe("restaurante");
+    expect(verticalPara("family restaurant").slug).toBe("restaurante");
+    expect(verticalPara("bakery").slug).toBe("panaderia");
+    expect(verticalPara("hardware store").slug).toBe("ferreteria");
+    expect(verticalPara("building materials store").slug).toBe("ferreteria");
+    expect(verticalPara("veterinary care").slug).toBe("veterinaria");
+    expect(verticalPara("pharmacy").slug).toBe("farmacia");
+    expect(verticalPara("beauty salon").slug).toBe("belleza");
+    expect(verticalPara("car repair").slug).toBe("taller");
+    expect(verticalPara("furniture store").slug).toBe("hogar");
+    expect(verticalPara("home goods store").slug).toBe("hogar");
+    expect(verticalPara("clothing store").slug).toBe("moda");
+    expect(verticalPara("convenience store").slug).toBe("comercio");
+  });
+
+  it("lo desconocido cae al genérico (saludo_zakumi)", () => {
+    expect(verticalPara("manufacturer").plantilla).toBe("saludo_zakumi");
+    expect(verticalPara("bank").slug).toBe("generico");
+    expect(verticalPara(null).slug).toBe("generico");
+  });
+
+  it("'comercio' no le roba el match a los específicos (orden del catálogo)", () => {
+    // "hardware store" contiene "store" pero ferretería va primero.
+    expect(verticalPara("hardware store").slug).toBe("ferreteria");
+    expect(verticalPara("pet store").slug).toBe("veterinaria");
+  });
+});
+
+describe("agruparPorVertical", () => {
+  it("una tanda por plantilla, con los negocios correctos en cada una", () => {
+    const grupos = agruparPorVertical([
+      negocio({ id: "r1", categoria: "restaurant" }),
+      negocio({ id: "f1", categoria: "hardware store" }),
+      negocio({ id: "r2", categoria: "family restaurant" }),
+      negocio({ id: "x1", categoria: "manufacturer" }),
+    ]);
+    const porSlug = new Map(grupos.map((g) => [g.vertical.slug, g.negocios.map((n) => n.id)]));
+    expect(porSlug.get("restaurante")).toEqual(["r1", "r2"]);
+    expect(porSlug.get("ferreteria")).toEqual(["f1"]);
+    expect(porSlug.get("generico")).toEqual(["x1"]);
   });
 });

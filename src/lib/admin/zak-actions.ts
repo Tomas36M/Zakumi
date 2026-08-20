@@ -10,6 +10,7 @@ import { normalizarTelefonoCO, sinMas } from "./telefono";
 import {
   PLANTILLA_SALUDO,
   PLANTILLA_SALUDO_TEXTO,
+  agruparPorVertical,
   avancesDeEstado,
   componentesSaludo,
   contactables,
@@ -52,34 +53,56 @@ export async function enviarTandaZak(negocioIds: string[]): Promise<
     return { error: "Ninguno de los seleccionados tiene celular contactable." };
   }
 
-  const r = await crearTanda(ID_ZAK, {
-    plantilla: PLANTILLA_SALUDO,
-    lang: "es",
-    notas: `tanda desde el CRM (${elegibles.length} negocios)`,
-    prospectos: elegibles.map((n) => ({
-      telefono: sinMas(n.telefono as string),
-      negocio_id: n.id,
-      contexto: {
-        nombre: n.nombre,
-        categoria: n.categoria ?? undefined,
-        ciudad: n.ciudad,
-      },
-      componentes: componentesSaludo(n),
-    })),
-  });
-  if (!r.ok) {
-    if (r.error === "conflicto") {
-      return { error: "Tope diario de prospección alcanzado. Inténtalo mañana." };
+  // Una tanda POR VERTICAL: cada tipo de negocio recibe SU plantilla y su
+  // ángulo de conversación viaja en el contexto del prospecto.
+  const grupos = agruparPorVertical(elegibles);
+  const duplicadosTels = new Set<string>();
+  const procesados: Negocio[] = []; // negocios de grupos cuya tanda SÍ se creó
+  let topeAlcanzado = false;
+  let algunaOk = false;
+
+  for (const { vertical, negocios } of grupos) {
+    const r = await crearTanda(ID_ZAK, {
+      plantilla: vertical.plantilla,
+      lang: "es",
+      notas: `tanda ${vertical.label} desde el CRM (${negocios.length} negocios)`,
+      prospectos: negocios.map((n) => ({
+        telefono: sinMas(n.telefono as string),
+        negocio_id: n.id,
+        contexto: {
+          nombre: n.nombre,
+          categoria: n.categoria ?? undefined,
+          ciudad: n.ciudad,
+          angulo: vertical.angulo,
+        },
+        componentes: componentesSaludo(n),
+      })),
+    });
+    if (!r.ok) {
+      if (r.error === "conflicto") {
+        topeAlcanzado = true;
+        break; // el tope diario es global: los grupos restantes tampoco caben
+      }
+      console.error("[enviarTandaZak] bot:", r.error, "vertical:", vertical.slug);
+      continue;
     }
-    console.error("[enviarTandaZak] bot:", r.error);
-    return { error: "No hay conexión con el bot para crear la tanda." };
+    algunaOk = true;
+    procesados.push(...negocios);
+    for (const t of r.data.duplicados) duplicadosTels.add(t);
+  }
+
+  if (!algunaOk) {
+    return {
+      error: topeAlcanzado
+        ? "Tope diario de prospección alcanzado. Inténtalo mañana."
+        : "No hay conexión con el bot para crear la tanda.",
+    };
   }
 
   // 'contactado' solo para los creados y solo desde 'nuevo': un negocio que ya
   // respondió o se interesó por otra vía no retrocede.
-  const dup = new Set(r.data.duplicados);
-  const idsCreados = elegibles
-    .filter((n) => !dup.has(sinMas(n.telefono as string)))
+  const idsCreados = procesados
+    .filter((n) => !duplicadosTels.has(sinMas(n.telefono as string)))
     .map((n) => n.id);
   if (idsCreados.length > 0) {
     const { error: e2 } = await supabase
@@ -94,8 +117,8 @@ export async function enviarTandaZak(negocioIds: string[]): Promise<
   revalidatePath("/admin/zak");
   return {
     contactados: idsCreados.length,
-    omitidos: negocioIds.length - elegibles.length,
-    duplicados: r.data.duplicados.length,
+    omitidos: negocioIds.length - procesados.length,
+    duplicados: duplicadosTels.size,
   };
 }
 

@@ -12,7 +12,7 @@ import {
   type Negocio,
 } from "@/lib/admin/negocios";
 import { sinMas } from "@/lib/admin/telefono";
-import { contactables } from "@/lib/admin/zak";
+import { agruparPorVertical, contactables } from "@/lib/admin/zak";
 import { enviarTandaZak } from "@/lib/admin/zak-actions";
 
 const LABEL_CIUDAD = new Map<string, string>(
@@ -121,12 +121,15 @@ export function NegociosView({ negocios }: { negocios: Negocio[] }) {
   function contactarConZak() {
     const n = contactablesZak.length;
     const fuera = seleccionActiva.length - n;
+    const desglose = agruparPorVertical(contactablesZak)
+      .map((g) => `${g.negocios.length} ${g.vertical.label}`)
+      .join(" · ");
     const ok = window.confirm(
-      `Zak les enviará la plantilla «saludo_zakumi» por WhatsApp a ${n} negocio(s)` +
-        (fuera > 0 ? ` (${fuera} quedan fuera: sin celular, cliente o descartado).` : ".") +
+      `Zak abrirá conversación con ${n} negocio(s), cada tipo con SU plantilla:\n${desglose}` +
+        (fuera > 0 ? `\n(${fuera} quedan fuera: sin celular, cliente o descartado.)` : "") +
         "\n\nCada envío inicia una conversación de marketing con costo de Meta, y el " +
         "número sin verificar admite máx. 250 iniciadas/día. Cuando respondan, Zak " +
-        "conversa solo y marca a los interesados.\n\n¿Continuar?",
+        "conversa con el ángulo de cada vertical y marca a los interesados.\n\n¿Continuar?",
     );
     if (!ok) return;
     setAviso(null);

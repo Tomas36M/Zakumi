@@ -36,6 +36,144 @@ export const PLANTILLA_SALUDO_TEXTO =
   "¡Hola! 👋 Soy *Zak*, el asistente de IA de Zakumi. " +
   "Me pidieron saludarte por aquí — escríbeme cualquier cosa y conversamos. 🧡";
 
+// ---------- Verticales de prospección ----------
+// Cada vertical define: la plantilla de Meta con la que Zak ABRE (su cuerpo en
+// `texto`, espejo de lo aprobado), los `matchers` contra la categoría de Google
+// del CRM, y el `angulo` — el concepto de venta que viaja en el contexto del
+// prospecto para que Zak converse con el pitch correcto. Agregar un vertical =
+// una entrada aquí + crear su plantilla en Meta. Cero deploys del bot.
+
+export type VerticalProspeccion = {
+  slug: string;
+  label: string;
+  plantilla: string; // nombre de la plantilla en Meta
+  texto: string; // cuerpo visible (espejo de la plantilla)
+  angulo: string; // cómo hablarle a este tipo de negocio
+  matchers: string[]; // substrings de negocios.categoria (Google Places)
+};
+
+const _SALUDO = (queHacemos: string, emoji: string) =>
+  `¡Hola! 👋 Soy *Zak*, el asistente de IA de Zakumi. Ayudamos ${queHacemos} — ` +
+  `con un agente como yo. ¿Te cuento cómo se vería en tu negocio? ${emoji}`;
+
+export const VERTICALES_PROSPECCION: readonly VerticalProspeccion[] = [
+  {
+    slug: "restaurante",
+    label: "Restaurante",
+    plantilla: "saludo_restaurante",
+    texto: _SALUDO("a restaurantes a tomar pedidos y reservas por WhatsApp 24/7, sin perder llamadas en hora pico", "🍽️"),
+    angulo: "Pedidos completos y reservas sin perder llamadas en hora pico: el agente toma el pedido con dirección y forma de pago mientras la cocina trabaja.",
+    matchers: ["restaurant", "food", "cafe", "coffee", "burger", "pizza", "comida"],
+  },
+  {
+    slug: "panaderia",
+    label: "Panadería",
+    plantilla: "saludo_panaderia",
+    texto: _SALUDO("a panaderías a vender el surtido del día y tomar encargos de tortas por WhatsApp 24/7", "🥐"),
+    angulo: "Encargos de tortas y pedidos del día sin ocupar el mostrador; el agente confirma sabores, porciones y fecha de entrega.",
+    matchers: ["bakery", "pastry", "panader"],
+  },
+  {
+    slug: "ferreteria",
+    label: "Ferretería",
+    plantilla: "saludo_ferreteria",
+    texto: _SALUDO("a ferreterías a responder precios y disponibilidad y tomar pedidos por WhatsApp 24/7, sin filas en el mostrador", "🔧"),
+    angulo: "Los '¿tienen X? ¿a cómo?' respondidos al instante desde el catálogo; pedidos listos para recoger o despachar a obra.",
+    matchers: ["hardware", "building materials", "paint", "ferreter", "electrical supply", "plumbing"],
+  },
+  {
+    slug: "veterinaria",
+    label: "Veterinaria",
+    plantilla: "saludo_veterinaria",
+    texto: _SALUDO("a veterinarias a agendar citas y responder a los dueños de mascotas a toda hora", "🐾"),
+    angulo: "Citas y recordatorios de vacunas; los dueños preguntan a cualquier hora y el agente agenda sin interrumpir la consulta.",
+    matchers: ["veterinar", "pet"],
+  },
+  {
+    slug: "farmacia",
+    label: "Droguería",
+    plantilla: "saludo_farmacia",
+    texto: _SALUDO("a droguerías a tomar pedidos a domicilio y responder disponibilidad al instante", "💊"),
+    angulo: "Domicilios y disponibilidad al momento, con el teléfono siempre desocupado.",
+    matchers: ["pharmacy", "drugstore", "drogueria", "droguería"],
+  },
+  {
+    slug: "belleza",
+    label: "Belleza",
+    plantilla: "saludo_belleza",
+    texto: _SALUDO("a salones y barberías a llenar la agenda por WhatsApp 24/7, sin interrumpir el servicio", "💇"),
+    angulo: "Agenda llena sin soltar las tijeras: el agente da citas, reagenda y manda recordatorios.",
+    matchers: ["beauty", "hair", "barber", "nail", "spa", "peluquer"],
+  },
+  {
+    slug: "taller",
+    label: "Taller",
+    plantilla: "saludo_taller",
+    texto: _SALUDO("a talleres a agendar revisiones y cotizar repuestos por WhatsApp, sin soltar la herramienta", "🔩"),
+    angulo: "Citas de revisión y cotización de repuestos mientras el equipo trabaja; el cliente sabe cuándo traer el carro.",
+    matchers: ["car repair", "auto parts", "motorcycle", "mechanic", "taller", "car wash", "tire"],
+  },
+  {
+    slug: "hogar",
+    label: "Hogar y muebles",
+    plantilla: "saludo_hogar",
+    texto: _SALUDO("a tiendas de muebles y hogar a cotizar productos y coordinar entregas por WhatsApp 24/7", "🛋️"),
+    angulo: "Cotizaciones con medidas y fotos, y coordinación de entregas sin llamadas cruzadas.",
+    matchers: ["furniture", "home goods", "appliance", "home improvement", "decor", "mueble"],
+  },
+  {
+    slug: "moda",
+    label: "Moda",
+    plantilla: "saludo_moda",
+    texto: _SALUDO("a tiendas de ropa a mostrar novedades, responder tallas y apartar prendas por WhatsApp", "👗"),
+    angulo: "Novedades, tallas y apartados: el agente vende por chat mientras la tienda atiende.",
+    matchers: ["clothing", "shoe", "boutique", "fashion", "jewelry", "ropa"],
+  },
+  {
+    slug: "comercio",
+    label: "Comercio",
+    plantilla: "saludo_comercio",
+    texto: _SALUDO("a tiendas y comercios a responder clientes y tomar pedidos por WhatsApp 24/7", "🛍️"),
+    angulo: "Pedidos y preguntas frecuentes respondidos al momento: la venta no se enfría esperando.",
+    matchers: ["store", "shop", "market", "grocery", "supermarket", "convenience", "tienda", "florist", "garden"],
+  },
+] as const;
+
+export const VERTICAL_GENERICO: VerticalProspeccion = {
+  slug: "generico",
+  label: "Genérico",
+  plantilla: PLANTILLA_SALUDO,
+  texto: PLANTILLA_SALUDO_TEXTO,
+  angulo: "Descubre a qué se dedica el negocio y muestra cómo un agente como tú le atendería clientes 24/7.",
+  matchers: [],
+};
+
+/** El vertical de un negocio según su categoría de Google (fallback genérico).
+ * El orden del catálogo importa: gana el primer match — 'comercio' va de
+ * último porque sus matchers ("store") son los más genéricos. */
+export function verticalPara(categoria: string | null): VerticalProspeccion {
+  if (!categoria) return VERTICAL_GENERICO;
+  const c = categoria.toLowerCase();
+  for (const v of VERTICALES_PROSPECCION) {
+    if (v.matchers.some((m) => c.includes(m))) return v;
+  }
+  return VERTICAL_GENERICO;
+}
+
+/** Agrupa negocios por vertical (para crear una tanda por plantilla). */
+export function agruparPorVertical(
+  negocios: Negocio[],
+): { vertical: VerticalProspeccion; negocios: Negocio[] }[] {
+  const grupos = new Map<string, { vertical: VerticalProspeccion; negocios: Negocio[] }>();
+  for (const n of negocios) {
+    const v = verticalPara(n.categoria);
+    const g = grupos.get(v.slug) ?? { vertical: v, negocios: [] };
+    g.negocios.push(n);
+    grupos.set(v.slug, g);
+  }
+  return [...grupos.values()];
+}
+
 /** Ventana de 24h de Meta: fuera de ella el texto libre se descarta en
  * silencio y solo valen plantillas. Sin mensaje del cliente = sin ventana. */
 export function fueraDeVentana(ultimoDelCliente: string | null, ahoraMs: number): boolean {
