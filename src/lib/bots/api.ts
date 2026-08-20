@@ -303,6 +303,26 @@ export function crearTanda(
   }, datos);
 }
 
+/** Una plantilla a UN número (síncrona, sin tanda): abre un chat nuevo o
+ * reabre uno con la ventana de 24h cerrada. */
+export function enviarPlantillaDirecta(
+  id: number,
+  datos: { telefono: string; plantilla: string; lang?: string; texto?: string },
+): Promise<Resultado<{ wamid: string | null }>> {
+  return pedir("POST", `/instancias/${id}/plantilla`, (j) => ({
+    wamid: ((j ?? {}) as { wamid?: unknown }).wamid as string | null ?? null,
+  }), datos);
+}
+
+/** Borra la conversación (la memoria del agente con esa persona) y despausa. */
+export function borrarHistorial(id: number, telefono: string): Promise<Resultado<true>> {
+  return pedir(
+    "DELETE",
+    `/instancias/${id}/history?telefono=${encodeURIComponent(telefono)}`,
+    () => true,
+  );
+}
+
 export function listarTandas(id: number): Promise<Resultado<Tanda[]>> {
   return pedir("GET", `/instancias/${id}/tandas`, mapTandas);
 }

@@ -10,6 +10,7 @@ import { verifySession } from "./dal";
 import {
   activarVersion,
   actualizarInstancia,
+  borrarHistorial,
   crearInstancia,
   enviarManual as enviarManualApi,
   guardarPrompt as guardarPromptApi,
@@ -306,6 +307,19 @@ export async function reanudarChat(
   if (!Number.isInteger(id) || id <= 0 || !tel) return { error: "Datos no válidos." };
 
   const r = await reanudar(id, tel);
+  if (!r.ok) return { error: mensajeDe(r.error) };
+  return { error: null };
+}
+
+export async function borrarConversacion(
+  id: number,
+  telefono: string,
+): Promise<{ error: string | null }> {
+  await verifySession();
+  const tel = typeof telefono === "string" ? telefono.trim() : "";
+  if (!Number.isInteger(id) || id <= 0 || !tel) return { error: "Datos no válidos." };
+
+  const r = await borrarHistorial(id, tel);
   if (!r.ok) return { error: mensajeDe(r.error) };
   return { error: null };
 }

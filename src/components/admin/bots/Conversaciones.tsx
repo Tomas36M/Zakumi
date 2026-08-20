@@ -1,10 +1,21 @@
 "use client";
 
 import { useCallback, useEffect, useState, useTransition } from "react";
-import { enviarManual, pausarChat, reanudarChat } from "@/lib/admin/bots-actions";
+import {
+  borrarConversacion,
+  enviarManual,
+  pausarChat,
+  reanudarChat,
+} from "@/lib/admin/bots-actions";
+import { fueraDeVentana } from "@/lib/admin/zak";
+import { abrirChatZak } from "@/lib/admin/zak-actions";
 import { esLabs, type Conversacion, type Historial } from "@/lib/bots/tipos";
 
-type Props = { instanciaId: number };
+type Props = {
+  instanciaId: number;
+  /** Zak tiene extras de prospección: abrir chats nuevos y reabrir con plantilla. */
+  esZak?: boolean;
+};
 
 function fechaCorta(iso: string | null): string {
   if (!iso) return "";
@@ -23,7 +34,7 @@ function fechaCorta(iso: string | null): string {
  * Conversaciones reales del bot: lista paginada, historial del chat elegido,
  * pausar/reanudar (tomar el chat un humano) y envío manual por el proveedor.
  */
-export function Conversaciones({ instanciaId }: Props) {
+export function Conversaciones({ instanciaId, esZak = false }: Props) {
   const [conversaciones, setConversaciones] = useState<Conversacion[] | null>(null);
   const [offset, setOffset] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -33,6 +44,9 @@ export function Conversaciones({ instanciaId }: Props) {
   const [mensaje, setMensaje] = useState("");
   const [avisoChat, setAvisoChat] = useState<string | null>(null);
   const [operando, startOperar] = useTransition();
+
+  const [abriendoChat, setAbriendoChat] = useState(false);
+  const [telNuevo, setTelNuevo] = useState("");
 
   const cargarLista = useCallback(
     async (off: number) => {
@@ -105,9 +119,106 @@ export function Conversaciones({ instanciaId }: Props) {
     });
   }
 
+  function abrirChatNuevo() {
+    if (!telNuevo.trim()) return;
+    setError(null);
+    startOperar(async () => {
+      const res = await abrirChatZak(telNuevo);
+      if ("error" in res) {
+        setError(res.error);
+        return;
+      }
+      setTelNuevo("");
+      setAbriendoChat(false);
+      setError("Saludo enviado ✓ — la conversación ya está en la bandeja.");
+      await cargarLista(0);
+    });
+  }
+
+  function reabrirConPlantilla() {
+    if (!telefono) return;
+    setAvisoChat(null);
+    startOperar(async () => {
+      const res = await abrirChatZak(telefono);
+      if ("error" in res) {
+        setAvisoChat(res.error);
+        return;
+      }
+      await cargarHistorial(telefono);
+    });
+  }
+
+  function borrar() {
+    if (!telefono) return;
+    if (
+      !window.confirm(
+        "¿Borrar esta conversación? Se borra también la MEMORIA del agente con " +
+          "esta persona: el próximo mensaje empieza de cero.",
+      )
+    ) {
+      return;
+    }
+    setAvisoChat(null);
+    startOperar(async () => {
+      const res = await borrarConversacion(instanciaId, telefono);
+      if (res.error) {
+        setAvisoChat(res.error);
+        return;
+      }
+      setTelefono(null);
+      setHistorial(null);
+      await cargarLista(0);
+    });
+  }
+
+  const ventanaCerrada =
+    esZak && historial !== null && !esLabs(historial.phone) &&
+    fueraDeVentana(historial.ultimo_del_cliente, Date.now());
+
   return (
     <div className="adm-conv-layout">
       <div className="adm-conv-lista">
+        {esZak && (
+          <div className="adm-conv-nuevo">
+            {abriendoChat ? (
+              <form
+                className="adm-chat-envio"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  abrirChatNuevo();
+                }}
+              >
+                <input
+                  className="adm-input"
+                  type="tel"
+                  value={telNuevo}
+                  onChange={(e) => setTelNuevo(e.target.value)}
+                  placeholder="310 123 4567"
+                  autoFocus
+                  disabled={operando}
+                />
+                <button className="adm-cta" type="submit" disabled={operando || !telNuevo.trim()}>
+                  {operando ? "…" : "Saludar"}
+                </button>
+                <button
+                  type="button"
+                  className="adm-cta-ghost"
+                  onClick={() => setAbriendoChat(false)}
+                >
+                  ×
+                </button>
+              </form>
+            ) : (
+              <button
+                type="button"
+                className="adm-cta-ghost"
+                onClick={() => setAbriendoChat(true)}
+              >
+                + Nuevo chat (Zak saluda con la plantilla)
+              </button>
+            )}
+          </div>
+        )}
         {error && <p className="adm-aviso">{error}</p>}
         {conversaciones === null && !error && (
           <p className="adm-tabla-vacia">Cargando…</p>
@@ -173,14 +284,24 @@ export function Conversaciones({ instanciaId }: Props) {
             <div className="adm-conv-cabecera">
               <h2 className="adm-ficha-nombre">{telefono}</h2>
               {historial && (
-                <button
-                  type="button"
-                  className="adm-cta-ghost"
-                  disabled={operando}
-                  onClick={alternarPausa}
-                >
-                  {historial.paused ? "Reanudar bot" : "Pausar bot (lo tomo yo)"}
-                </button>
+                <div className="adm-ficha-acciones">
+                  <button
+                    type="button"
+                    className="adm-cta-ghost"
+                    disabled={operando}
+                    onClick={alternarPausa}
+                  >
+                    {historial.paused ? "Reanudar bot" : "Pausar bot (lo tomo yo)"}
+                  </button>
+                  <button
+                    type="button"
+                    className="adm-cta-ghost"
+                    disabled={operando}
+                    onClick={borrar}
+                  >
+                    🗑 Borrar
+                  </button>
+                </div>
               )}
             </div>
             {historial?.paused && (
@@ -210,28 +331,46 @@ export function Conversaciones({ instanciaId }: Props) {
                 {avisoChat}
               </p>
             )}
-            <form
-              className="adm-chat-envio"
-              onSubmit={(e) => {
-                e.preventDefault();
-                enviar();
-              }}
-            >
-              <input
-                className="adm-input"
-                value={mensaje}
-                onChange={(e) => setMensaje(e.target.value)}
-                placeholder="Mensaje manual por WhatsApp (como el negocio)"
-                disabled={operando || esLabs(telefono)}
-              />
-              <button
-                className="adm-cta"
-                type="submit"
-                disabled={operando || !mensaje.trim() || esLabs(telefono)}
+            {ventanaCerrada ? (
+              <div className="adm-conv-ventana">
+                <p className="adm-aviso">
+                  WhatsApp cerró el chat libre: pasaron más de 24 horas desde el
+                  último mensaje de esta persona (regla de Meta — el texto libre se
+                  descarta en silencio). Para reabrirlo, Zak saluda con la plantilla.
+                </p>
+                <button
+                  type="button"
+                  className="adm-cta"
+                  disabled={operando}
+                  onClick={reabrirConPlantilla}
+                >
+                  {operando ? "Enviando…" : "Reabrir con plantilla"}
+                </button>
+              </div>
+            ) : (
+              <form
+                className="adm-chat-envio"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  enviar();
+                }}
               >
-                Enviar
-              </button>
-            </form>
+                <input
+                  className="adm-input"
+                  value={mensaje}
+                  onChange={(e) => setMensaje(e.target.value)}
+                  placeholder="Mensaje manual por WhatsApp (como el negocio)"
+                  disabled={operando || esLabs(telefono)}
+                />
+                <button
+                  className="adm-cta"
+                  type="submit"
+                  disabled={operando || !mensaje.trim() || esLabs(telefono)}
+                >
+                  Enviar
+                </button>
+              </form>
+            )}
             {esLabs(telefono) && (
               <p className="adm-ficha-sin">
                 Conversación de prueba del Labs: no hay WhatsApp al otro lado.

@@ -89,6 +89,8 @@ export type Historial = {
   phone: string;
   paused: boolean;
   messages: MensajeChat[];
+  /** Última vez que escribió EL CLIENTE: define la ventana de 24h de Meta. */
+  ultimo_del_cliente: string | null;
 };
 
 export type Pausado = {

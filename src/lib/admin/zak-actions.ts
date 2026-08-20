@@ -6,14 +6,19 @@
 
 import { revalidatePath } from "next/cache";
 import { verifySession } from "./dal";
-import { sinMas } from "./telefono";
-import { avancesDeEstado, componentesSaludo, contactables } from "./zak";
+import { normalizarTelefonoCO, sinMas } from "./telefono";
+import {
+  PLANTILLA_SALUDO,
+  PLANTILLA_SALUDO_TEXTO,
+  avancesDeEstado,
+  componentesSaludo,
+  contactables,
+} from "./zak";
 import type { EstadoNegocio, Negocio } from "./negocios";
-import { crearTanda, listarProspectos } from "@/lib/bots/api";
+import { crearTanda, enviarPlantillaDirecta, listarProspectos } from "@/lib/bots/api";
 import { ID_ZAK } from "@/lib/bots/tipos";
 
 const TANDA_MAX = 50; // espejo del tope por tanda del bot
-const PLANTILLA_SALUDO = "saludo_zakumi";
 
 /**
  * «Que Zak los contacte»: crea la tanda en el bot (plantilla + contexto por
@@ -92,6 +97,44 @@ export async function enviarTandaZak(negocioIds: string[]): Promise<
     omitidos: negocioIds.length - elegibles.length,
     duplicados: r.data.duplicados.length,
   };
+}
+
+/**
+ * Abre (o reabre) un chat con la plantilla de saludo: lo ÚNICO que Meta
+ * permite con números nuevos o con la ventana de 24h cerrada. El saludo queda
+ * en el historial como mensaje de Zak, así la conversación aparece en la
+ * bandeja y él sabe que ya saludó.
+ */
+export async function abrirChatZak(
+  telefonoBruto: string,
+): Promise<{ ok: true } | { error: string }> {
+  await verifySession();
+
+  const { telefono, tipo } = normalizarTelefonoCO(telefonoBruto);
+  if (telefono === null) {
+    return { error: "Ese teléfono no se entiende. Usa 10 dígitos o +57…" };
+  }
+  if (tipo !== "movil") {
+    return { error: "WhatsApp necesita un número celular (empieza por 3)." };
+  }
+
+  const r = await enviarPlantillaDirecta(ID_ZAK, {
+    telefono: sinMas(telefono),
+    plantilla: PLANTILLA_SALUDO,
+    lang: "es",
+    texto: PLANTILLA_SALUDO_TEXTO,
+  });
+  if (!r.ok) {
+    if (r.error === "bot_error") {
+      return {
+        error:
+          "Meta rechazó el envío. Si la plantilla sigue en revisión, hay que esperar su aprobación.",
+      };
+    }
+    return { error: "No hay conexión con el bot para enviar el saludo." };
+  }
+  revalidatePath("/admin/zak");
+  return { ok: true };
 }
 
 /**

@@ -167,7 +167,7 @@ export function ZakView({
         ))}
       </div>
 
-      {tab === "bandeja" && <Conversaciones instanciaId={ID_ZAK} />}
+      {tab === "bandeja" && <Conversaciones instanciaId={ID_ZAK} esZak />}
 
       {tab === "interesados" && (
         <div className="adm-zak-interesados">

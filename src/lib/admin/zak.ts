@@ -28,6 +28,23 @@ export function componentesSaludo(_negocio: Negocio): unknown[] | null {
   return null;
 }
 
+// El cuerpo visible de saludo_zakumi: se guarda como mensaje del asistente al
+// abrir/reabrir un chat, para que la conversación exista en la bandeja y Zak
+// sepa que ya saludó. Mantener en espejo con la plantilla aprobada en Meta.
+export const PLANTILLA_SALUDO = "saludo_zakumi";
+export const PLANTILLA_SALUDO_TEXTO =
+  "¡Hola! 👋 Soy *Zak*, el asistente de IA de Zakumi. " +
+  "Me pidieron saludarte por aquí — escríbeme cualquier cosa y conversamos. 🧡";
+
+/** Ventana de 24h de Meta: fuera de ella el texto libre se descarta en
+ * silencio y solo valen plantillas. Sin mensaje del cliente = sin ventana. */
+export function fueraDeVentana(ultimoDelCliente: string | null, ahoraMs: number): boolean {
+  if (!ultimoDelCliente) return true;
+  const t = Date.parse(ultimoDelCliente);
+  if (Number.isNaN(t)) return true;
+  return ahoraMs - t > 24 * 60 * 60 * 1000;
+}
+
 export type AvanceEstado = { id: string; a: EstadoNegocio };
 
 /**

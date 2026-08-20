@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { Negocio } from "../negocios";
-import { avancesDeEstado, componentesSaludo, contactables } from "../zak";
+import { avancesDeEstado, componentesSaludo, contactables, fueraDeVentana } from "../zak";
 import type { Prospecto } from "@/lib/bots/tipos";
 
 function negocio(extra: Partial<Negocio>): Negocio {
@@ -115,5 +115,23 @@ describe("avancesDeEstado", () => {
       ],
     );
     expect(avances).toEqual([]);
+  });
+});
+
+describe("fueraDeVentana", () => {
+  const ahora = Date.parse("2026-08-20T12:00:00Z");
+
+  it("sin mensaje del cliente no hay ventana (número nuevo)", () => {
+    expect(fueraDeVentana(null, ahora)).toBe(true);
+  });
+
+  it("dentro de las 24h se puede escribir libre", () => {
+    expect(fueraDeVentana("2026-08-20T11:00:00Z", ahora)).toBe(false);
+    expect(fueraDeVentana("2026-08-19T12:00:01Z", ahora)).toBe(false);
+  });
+
+  it("pasadas las 24h la ventana se cierra (y una fecha rota también)", () => {
+    expect(fueraDeVentana("2026-08-19T11:59:00Z", ahora)).toBe(true);
+    expect(fueraDeVentana("no-es-fecha", ahora)).toBe(true);
   });
 });

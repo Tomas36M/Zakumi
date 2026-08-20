@@ -1626,3 +1626,16 @@ a.adm-bot-card {
 .adm-zak-funnel--interes {
   border-color: color-mix(in srgb, var(--orange) 45%, transparent);
 }
+
+.adm-conv-nuevo {
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--hairline);
+  margin-bottom: 0.5rem;
+}
+
+.adm-conv-ventana {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  align-items: start;
+}

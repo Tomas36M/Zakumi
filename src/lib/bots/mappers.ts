@@ -188,6 +188,7 @@ export function mapHistorial(crudo: unknown): Historial {
     phone: texto(c.phone),
     paused: c.paused === true,
     messages: mapMensajes(c.messages),
+    ultimo_del_cliente: textoONull(c.ultimo_del_cliente),
   };
 }
 
