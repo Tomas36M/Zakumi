@@ -1,8 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { actualizarNegocio, cambiarEstadoLote } from "@/lib/admin/actions";
+import { actualizarNegocio, cambiarEstadoLote, eliminarNegocios } from "@/lib/admin/actions";
 import {
   CIUDADES,
   ESTADOS,
@@ -10,7 +11,7 @@ import {
   type EstadoNegocio,
   type Negocio,
 } from "@/lib/admin/negocios";
-import { waMeUrl } from "@/lib/admin/telefono";
+import { sinMas } from "@/lib/admin/telefono";
 import { contactables } from "@/lib/admin/zak";
 import { enviarTandaZak } from "@/lib/admin/zak-actions";
 
@@ -89,6 +90,29 @@ export function NegociosView({ negocios }: { negocios: Negocio[] }) {
       }
       const label = ESTADOS.find((e) => e.valor === estadoLote)?.label;
       setAviso(`${res.actualizados} negocios pasaron a «${label}».`);
+      setSeleccionados(new Set());
+      router.refresh();
+    });
+  }
+
+  function eliminarLote() {
+    const n = seleccionActiva.length;
+    if (
+      !window.confirm(
+        `¿Eliminar ${n} negocio(s) del CRM? Se borran también sus notas. ` +
+          "Los clientes convertidos no se tocan y las conversaciones de Zak siguen en su bandeja.",
+      )
+    ) {
+      return;
+    }
+    setAviso(null);
+    startGuardar(async () => {
+      const res = await eliminarNegocios(seleccionActiva);
+      if ("error" in res) {
+        setAviso(res.error);
+        return;
+      }
+      setAviso(`${res.eliminados} negocio(s) eliminados.`);
       setSeleccionados(new Set());
       router.refresh();
     });
@@ -243,6 +267,14 @@ export function NegociosView({ negocios }: { negocios: Negocio[] }) {
           >
             🧡 Que Zak los contacte ({contactablesZak.length})
           </button>
+          <button
+            className="adm-cta-ghost adm-cta--peligro"
+            type="button"
+            disabled={guardando}
+            onClick={eliminarLote}
+          >
+            🗑 Eliminar ({seleccionActiva.length})
+          </button>
         </div>
       ) : null}
 
@@ -342,14 +374,12 @@ export function NegociosView({ negocios }: { negocios: Negocio[] }) {
                   </td>
                   <td className="adm-tabla-acciones">
                     {n.telefono && n.tipo_telefono === "movil" ? (
-                      <a
+                      <Link
                         className="adm-tabla-wa"
-                        href={waMeUrl(n.telefono)}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                        href={`/admin/zak?telefono=${sinMas(n.telefono)}`}
                       >
-                        WhatsApp
-                      </a>
+                        Chat Zak
+                      </Link>
                     ) : null}
                   </td>
                 </tr>

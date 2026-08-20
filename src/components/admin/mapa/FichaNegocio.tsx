@@ -11,7 +11,8 @@ import {
   type Negocio,
   type Nota,
 } from "@/lib/admin/negocios";
-import { waMeUrl } from "@/lib/admin/telefono";
+import Link from "next/link";
+import { sinMas } from "@/lib/admin/telefono";
 import { createSupabaseBrowser } from "@/lib/supabase/browser";
 
 const LABEL_CIUDAD = new Map<string, string>(
@@ -166,14 +167,9 @@ export function FichaNegocio({ negocio, onCambio, onCerrar }: Props) {
 
       <div className="adm-ficha-acciones">
         {negocio.telefono && negocio.tipo_telefono === "movil" ? (
-          <a
-            className="adm-cta"
-            href={waMeUrl(negocio.telefono)}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Abrir WhatsApp
-          </a>
+          <Link className="adm-cta" href={`/admin/zak?telefono=${sinMas(negocio.telefono)}`}>
+            Chat con Zak
+          </Link>
         ) : null}
         {negocio.sitio_web ? (
           <a

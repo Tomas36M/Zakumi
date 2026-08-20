@@ -42,6 +42,8 @@ type Props = {
   tandas: Tanda[];
   prospectos: Prospecto[];
   tabInicial: PestanaZak;
+  /** Deep-link desde el CRM: abrir la bandeja directo en este chat. */
+  telefonoInicial?: string | null;
 };
 
 function fechaCorta(iso: string | null): string {
@@ -70,6 +72,7 @@ export function ZakView({
   tandas,
   prospectos,
   tabInicial,
+  telefonoInicial = null,
 }: Props) {
   const router = useRouter();
   const [tab, setTab] = useState<PestanaZak>(tabInicial);
@@ -167,7 +170,9 @@ export function ZakView({
         ))}
       </div>
 
-      {tab === "bandeja" && <Conversaciones instanciaId={ID_ZAK} esZak />}
+      {tab === "bandeja" && (
+        <Conversaciones instanciaId={ID_ZAK} esZak abrirInicial={telefonoInicial} />
+      )}
 
       {tab === "interesados" && (
         <div className="adm-zak-interesados">

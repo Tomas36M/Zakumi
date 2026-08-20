@@ -15,6 +15,8 @@ type Props = {
   instanciaId: number;
   /** Zak tiene extras de prospección: abrir chats nuevos y reabrir con plantilla. */
   esZak?: boolean;
+  /** Chat a abrir al montar (deep-link del CRM), exista o no en la lista. */
+  abrirInicial?: string | null;
 };
 
 function fechaCorta(iso: string | null): string {
@@ -34,7 +36,7 @@ function fechaCorta(iso: string | null): string {
  * Conversaciones reales del bot: lista paginada, historial del chat elegido,
  * pausar/reanudar (tomar el chat un humano) y envío manual por el proveedor.
  */
-export function Conversaciones({ instanciaId, esZak = false }: Props) {
+export function Conversaciones({ instanciaId, esZak = false, abrirInicial = null }: Props) {
   const [conversaciones, setConversaciones] = useState<Conversacion[] | null>(null);
   const [offset, setOffset] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -87,6 +89,12 @@ export function Conversaciones({ instanciaId, esZak = false }: Props) {
   useEffect(() => {
     void cargarLista(0);
   }, [cargarLista]);
+
+  // Deep-link del CRM: abrir ese chat aunque no exista todavía en la lista —
+  // el historial vacío + ventana cerrada ofrece «Reabrir con plantilla».
+  useEffect(() => {
+    if (abrirInicial) void cargarHistorial(abrirInicial);
+  }, [abrirInicial, cargarHistorial]);
 
   function alternarPausa() {
     if (!telefono || !historial) return;

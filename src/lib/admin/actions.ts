@@ -302,3 +302,36 @@ export async function agregarNota(
 
   return { error: null };
 }
+
+/**
+ * Borra negocios en lote. Las notas se van en cascada (FK) y si alguno fue
+ * convertido en cliente, el cliente queda (negocio_id pasa a NULL). Los
+ * prospectos de Zak no se tocan: viven en la base del bot con referencia
+ * blanda, y su conversación sigue existiendo en la bandeja.
+ */
+export async function eliminarNegocios(
+  ids: string[],
+): Promise<{ eliminados: number } | { error: string }> {
+  const { supabase } = await verifySession();
+
+  if (!Array.isArray(ids) || ids.length === 0) {
+    return { error: "No hay negocios seleccionados." };
+  }
+  if (ids.length > 500) return { error: "Máximo 500 por operación." };
+  if (ids.some((id) => typeof id !== "string" || !id)) {
+    return { error: "Selección no válida." };
+  }
+
+  const { data, error } = await supabase
+    .from("negocios")
+    .delete()
+    .in("id", ids)
+    .select("id");
+
+  if (error) {
+    console.error("[eliminarNegocios]", error.message);
+    return { error: "No se pudieron eliminar los negocios." };
+  }
+  revalidarPanel();
+  return { eliminados: data?.length ?? 0 };
+}

@@ -19,10 +19,12 @@ const PESTANAS: readonly PestanaZak[] = [
 export default async function ZakPage({
   searchParams,
 }: {
-  searchParams: Promise<{ tab?: string }>;
+  searchParams: Promise<{ tab?: string; telefono?: string }>;
 }) {
   await verifySession();
-  const { tab } = await searchParams;
+  const { tab, telefono } = await searchParams;
+  // Deep-link desde el CRM: abrir la bandeja con este chat (exista o no).
+  const telefonoInicial = /^[0-9]{7,15}$/.test(telefono ?? "") ? (telefono as string) : null;
 
   // Con Railway caído el cockpit carga igual: cada pieza degrada por su lado.
   const [instancia, prompt, versiones, status, tandas, prospectos] = await Promise.all([
@@ -34,12 +36,15 @@ export default async function ZakPage({
     listarProspectos(ID_ZAK),
   ]);
 
-  const tabInicial: PestanaZak = PESTANAS.includes(tab as PestanaZak)
-    ? (tab as PestanaZak)
-    : "bandeja";
+  const tabInicial: PestanaZak = telefonoInicial
+    ? "bandeja"
+    : PESTANAS.includes(tab as PestanaZak)
+      ? (tab as PestanaZak)
+      : "bandeja";
 
   return (
     <ZakView
+      telefonoInicial={telefonoInicial}
       instancia={instancia.ok ? instancia.data : null}
       prompt={prompt.ok ? prompt.data : null}
       versiones={versiones.ok ? versiones.data : []}
