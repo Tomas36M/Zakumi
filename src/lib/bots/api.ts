@@ -18,13 +18,16 @@ import {
   mapLeads,
   mapPausados,
   mapPromptActivo,
+  mapProspectos,
   mapRespuestaLabs,
   mapStatusGlobal,
   mapStatusInstancia,
+  mapTandas,
   mapVersiones,
 } from "./mappers";
 import type {
   Conversacion,
+  EstadoEnvio,
   Historial,
   HistorialLabs,
   Instancia,
@@ -32,9 +35,11 @@ import type {
   Lead,
   Pausado,
   PromptActivo,
+  Prospecto,
   RespuestaLabs,
   StatusGlobal,
   StatusInstancia,
+  Tanda,
   VersionPrompt,
 } from "./tipos";
 
@@ -270,6 +275,47 @@ export function enviarManual(
   text: string,
 ): Promise<Resultado<true>> {
   return pedir("POST", `/instancias/${id}/send`, () => true, { number, text });
+}
+
+// ---------- Prospección (tandas de Zak) ----------
+
+export function crearTanda(
+  id: number,
+  datos: {
+    plantilla: string;
+    lang?: string;
+    notas?: string;
+    prospectos: {
+      telefono: string;
+      negocio_id: string | null;
+      contexto: { nombre?: string; categoria?: string; ciudad?: string };
+      componentes: unknown[] | null;
+    }[];
+  },
+): Promise<Resultado<{ tanda_id: number; creados: number; duplicados: string[] }>> {
+  return pedir("POST", `/instancias/${id}/tandas`, (j) => {
+    const c = (j ?? {}) as Record<string, unknown>;
+    return {
+      tanda_id: Number(c.tanda_id ?? 0),
+      creados: Number(c.creados ?? 0),
+      duplicados: Array.isArray(c.duplicados) ? (c.duplicados as string[]) : [],
+    };
+  }, datos);
+}
+
+export function listarTandas(id: number): Promise<Resultado<Tanda[]>> {
+  return pedir("GET", `/instancias/${id}/tandas`, mapTandas);
+}
+
+export function listarProspectos(
+  id: number,
+  opts: { estado?: EstadoEnvio; interesado?: boolean; limit?: number } = {},
+): Promise<Resultado<Prospecto[]>> {
+  const params = new URLSearchParams();
+  if (opts.estado) params.set("estado", opts.estado);
+  if (opts.interesado !== undefined) params.set("interesado", opts.interesado ? "1" : "0");
+  params.set("limit", String(opts.limit ?? 500));
+  return pedir("GET", `/instancias/${id}/prospectos?${params}`, mapProspectos);
 }
 
 // ---------- Labs (chat de prueba sin WhatsApp) ----------

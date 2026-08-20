@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { normalizarTelefonoCO, waMeUrl } from "../telefono";
+import { normalizarTelefonoCO, waMeUrl, sinMas } from "../telefono";
 
 describe("normalizarTelefonoCO", () => {
   it("celular nacional de 10 dígitos → +57 y tipo móvil", () => {
@@ -107,5 +107,13 @@ describe("normalizarTelefonoCO", () => {
 describe("waMeUrl", () => {
   it("arma el enlace wa.me sin el signo +", () => {
     expect(waMeUrl("+573101234567")).toBe("https://wa.me/573101234567");
+  });
+});
+
+describe("sinMas", () => {
+  it("quita el + inicial (el formato del bot) y es coherente con waMeUrl", () => {
+    expect(sinMas("+573101234567")).toBe("573101234567");
+    expect(sinMas("573101234567")).toBe("573101234567");
+    expect(waMeUrl("+573101234567")).toBe(`https://wa.me/${sinMas("+573101234567")}`);
   });
 });

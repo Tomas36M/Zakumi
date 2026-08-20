@@ -5,6 +5,7 @@
 import {
   canalDeProveedor,
   type Conversacion,
+  type EstadoEnvio,
   type Historial,
   type HistorialLabs,
   type Instancia,
@@ -14,10 +15,12 @@ import {
   type MensajeChat,
   type Pausado,
   type PromptActivo,
+  type Prospecto,
   type Proveedor,
   type RespuestaLabs,
   type StatusGlobal,
   type StatusInstancia,
+  type Tanda,
   type UsoHoy,
   type VersionPrompt,
 } from "./tipos";
@@ -218,6 +221,51 @@ export function mapJobs(crudo: unknown): JobFallido[] {
     intentos: num(f.intentos),
     creado_en: texto(f.creado_en),
   }));
+}
+
+const ESTADOS_ENVIO: readonly EstadoEnvio[] = [
+  "pendiente", "enviado", "entregado", "leido", "respondido", "fallido",
+] as const;
+
+function estadoEnvio(v: unknown): EstadoEnvio {
+  return ESTADOS_ENVIO.includes(v as EstadoEnvio) ? (v as EstadoEnvio) : "pendiente";
+}
+
+export function mapProspectos(crudo: unknown): Prospecto[] {
+  return lista(obj(crudo).prospectos).map((f) => ({
+    id: num(f.id),
+    tanda_id: num(f.tanda_id),
+    telefono: texto(f.telefono),
+    negocio_id: textoONull(f.negocio_id),
+    contexto: obj(f.contexto) as Prospecto["contexto"],
+    estado_envio: estadoEnvio(f.estado_envio),
+    interesado: f.interesado === true,
+    interes_resumen: textoONull(f.interes_resumen),
+    error: textoONull(f.error),
+    creado_en: texto(f.creado_en),
+    actualizado_en: textoONull(f.actualizado_en),
+  }));
+}
+
+export function mapTandas(crudo: unknown): Tanda[] {
+  return lista(obj(crudo).tandas).map((f) => {
+    const funnel = obj(f.funnel);
+    return {
+      id: num(f.id),
+      plantilla: texto(f.plantilla),
+      notas: textoONull(f.notas),
+      creado_en: texto(f.creado_en),
+      funnel: {
+        pendiente: num(funnel.pendiente),
+        enviado: num(funnel.enviado),
+        entregado: num(funnel.entregado),
+        leido: num(funnel.leido),
+        respondido: num(funnel.respondido),
+        fallido: num(funnel.fallido),
+      },
+      interesados: num(f.interesados),
+    };
+  });
 }
 
 export function mapRespuestaLabs(crudo: unknown): RespuestaLabs {

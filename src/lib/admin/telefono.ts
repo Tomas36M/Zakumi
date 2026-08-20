@@ -59,7 +59,12 @@ function tipoNacional(nacional: string): TipoTelefono {
   return "desconocido";
 }
 
+/** E.164 sin el `+`: el formato de teléfono que usa el bot (y wa.me). */
+export function sinMas(telefonoE164: string): string {
+  return telefonoE164.replace(/^\+/, "");
+}
+
 /** Enlace de chat directo. Solo tiene sentido para teléfonos tipo "movil". */
 export function waMeUrl(telefonoE164: string): string {
-  return `https://wa.me/${telefonoE164.replace(/^\+/, "")}`;
+  return `https://wa.me/${sinMas(telefonoE164)}`;
 }

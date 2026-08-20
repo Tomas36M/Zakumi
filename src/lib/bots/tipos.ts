@@ -159,6 +159,45 @@ export type HistorialLabs = {
   paused: boolean;
 };
 
+// Zak es la instancia 1: el agente de Zakumi, con vista propia (/admin/zak).
+// Los demás son bots vendibles y viven en /admin/bots.
+export const ID_ZAK = 1;
+
+// ---------- Prospección (tandas de Zak) ----------
+
+export type EstadoEnvio =
+  | "pendiente"
+  | "enviado"
+  | "entregado"
+  | "leido"
+  | "respondido"
+  | "fallido";
+
+export type Prospecto = {
+  id: number;
+  tanda_id: number;
+  telefono: string; // sin '+', formato del bot
+  negocio_id: string | null; // uuid del negocio en Supabase (clave del sync)
+  contexto: { nombre?: string; categoria?: string; ciudad?: string };
+  estado_envio: EstadoEnvio;
+  interesado: boolean;
+  interes_resumen: string | null;
+  error: string | null;
+  creado_en: string;
+  actualizado_en: string | null;
+};
+
+export type FunnelTanda = Record<EstadoEnvio, number>;
+
+export type Tanda = {
+  id: number;
+  plantilla: string;
+  notas: string | null;
+  creado_en: string;
+  funnel: FunnelTanda;
+  interesados: number;
+};
+
 /** Conversaciones y leads del Labs llevan teléfono sentinel "labs:<session>". */
 export function esLabs(telefono: string): boolean {
   return telefono.startsWith("labs:");

@@ -8,9 +8,11 @@ import {
   mapLeads,
   mapPausados,
   mapPromptActivo,
+  mapProspectos,
   mapRespuestaLabs,
   mapStatusGlobal,
   mapStatusInstancia,
+  mapTandas,
   mapVersiones,
 } from "../mappers";
 import { canalDeProveedor, esLabs } from "../tipos";
@@ -213,5 +215,44 @@ describe("labs", () => {
     });
     expect(h.messages).toHaveLength(2);
     expect(h.messages[1].role).toBe("assistant");
+  });
+});
+
+describe("prospección", () => {
+  it("mapea tandas con su funnel completo", () => {
+    const tandas = mapTandas({
+      tandas: [{
+        id: 3, plantilla: "saludo_zakumi", notas: "primera tanda Ubaté",
+        creado_en: "2026-08-20T15:00:00+00:00",
+        funnel: { pendiente: 2, enviado: 1, entregado: 4, leido: 3, respondido: 2, fallido: 1 },
+        interesados: 1,
+      }],
+    });
+    expect(tandas[0].funnel.respondido).toBe(2);
+    expect(tandas[0].interesados).toBe(1);
+  });
+
+  it("mapea prospectos y degrada estados desconocidos a pendiente", () => {
+    const prospectos = mapProspectos({
+      prospectos: [
+        {
+          id: 7, tanda_id: 3, telefono: "573124916869", negocio_id: "uuid-wengue",
+          contexto: { nombre: "Wengué", categoria: "manufacturer", ciudad: "ubate" },
+          estado_envio: "respondido", interesado: true,
+          interes_resumen: "quiere bot para pedidos", error: null,
+          creado_en: "2026-08-20T15:01:00+00:00", actualizado_en: "2026-08-20T16:00:00+00:00",
+        },
+        { id: 8, tanda_id: 3, telefono: "573001", estado_envio: "raro-nuevo" },
+      ],
+    });
+    expect(prospectos[0].contexto.nombre).toBe("Wengué");
+    expect(prospectos[0].interesado).toBe(true);
+    expect(prospectos[1].estado_envio).toBe("pendiente");
+    expect(prospectos[1].negocio_id).toBeNull();
+  });
+
+  it("con basura devuelve listas vacías, no un crash", () => {
+    expect(mapTandas(null)).toEqual([]);
+    expect(mapProspectos({ prospectos: "nada" })).toEqual([]);
   });
 });
