@@ -9,6 +9,7 @@ import type { StatusGlobal } from "@/lib/bots/tipos";
 const SECCIONES = [
   { href: "/admin/mapa", label: "Mapa" },
   { href: "/admin/negocios", label: "Negocios" },
+  { href: "/admin/zak", label: "Zak" },
   { href: "/admin/clientes", label: "Clientes" },
   { href: "/admin/bots", label: "Bots" },
 ] as const;

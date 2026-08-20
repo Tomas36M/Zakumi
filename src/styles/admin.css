@@ -1571,3 +1571,58 @@ a.adm-bot-card {
 .adm-salud--ok       { background: var(--live); }
 .adm-salud--atencion { background: var(--estado-contactado); }
 .adm-salud--problema { background: var(--orange); }
+
+/* ——— Cockpit de Zak ——— */
+
+.adm-zak-rol {
+  font-family: var(--font-playfair), "Playfair Display", serif;
+  font-style: italic;
+  font-weight: 400;
+  font-size: 1rem;
+  color: var(--orange);
+  margin-left: 0.5rem;
+}
+
+.adm-tab-conteo {
+  display: inline-block;
+  margin-left: 0.4rem;
+  padding: 0 0.4rem;
+  background: var(--orange);
+  color: var(--black);
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.adm-zak-interesados,
+.adm-zak-metricas {
+  margin-top: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.adm-zak-tandas {
+  margin-top: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.adm-zak-tanda {
+  border: 1px solid var(--hairline);
+  background: var(--superficie);
+  padding: 1.1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.adm-zak-funnel {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 0.75rem;
+}
+
+.adm-zak-funnel--interes {
+  border-color: color-mix(in srgb, var(--orange) 45%, transparent);
+}

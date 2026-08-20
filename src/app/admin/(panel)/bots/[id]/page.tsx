@@ -1,5 +1,6 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { verifySession } from "@/lib/admin/dal";
+import { ID_ZAK } from "@/lib/bots/tipos";
 import {
   listarVersiones,
   obtenerInstancia,
@@ -23,6 +24,7 @@ export default async function BotPage({
   const [{ id }, { tab }] = await Promise.all([params, searchParams]);
   const iid = Number(id);
   if (!Number.isInteger(iid) || iid <= 0) notFound();
+  if (iid === ID_ZAK) redirect("/admin/zak"); // Zak vive en su cockpit
 
   const [instancia, prompt, versiones, status] = await Promise.all([
     obtenerInstancia(iid),
