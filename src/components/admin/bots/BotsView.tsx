@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
-import { PROVEEDORES, type StatusGlobal } from "@/lib/bots/tipos";
+import { ID_ZAK, PROVEEDORES, type StatusGlobal } from "@/lib/bots/tipos";
 import { NuevoBotForm } from "./NuevoBotForm";
 
 const INTERVALO_MS = 30_000;
@@ -90,12 +90,13 @@ export function BotsView({ inicial }: { inicial: StatusGlobal | null }) {
         <p className="adm-tabla-vacia">Cargando…</p>
       )}
 
-      {status && status.instancias.length === 0 && (
+      {status && status.instancias.filter((i) => i.id !== ID_ZAK).length === 0 && (
         <p className="adm-tabla-vacia">Todavía no hay bots creados.</p>
       )}
 
       <div className="adm-bots-grid">
-        {(status?.instancias ?? []).map((inst) => {
+        {/* Zak no se lista aquí: es el motor del negocio y vive en /admin/zak. */}
+        {(status?.instancias ?? []).filter((i) => i.id !== ID_ZAK).map((inst) => {
           const colaInst = porInstancia.get(inst.id);
           return (
             <Link key={inst.id} href={`/admin/bots/${inst.id}`} className="adm-bot-card">
