@@ -1,6 +1,7 @@
 export const EMAIL = "zakumiestudio@gmail.com";
 
-export const WHATSAPP_NUMBER = "573134276879";
+// Número oficial de Zak en la API de WhatsApp (Cloud API, migrado 20 ago 2026).
+export const WHATSAPP_NUMBER = "573180889780";
 export const WHATSAPP_MESSAGE =
   "Hola Zakumi, vi su sitio y quiero hablar sobre un proyecto.";
 export const WHATSAPP_URL = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(

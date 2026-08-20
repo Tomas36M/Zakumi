@@ -3,7 +3,7 @@ import { SERVICIOS, SERVICE_SLUGS } from "@/components/zakumi/services";
 /** Datos estructurados para Colombia (schema.org) — mejora cómo Google entiende la marca */
 export function JsonLd() {
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://zakumistudio.com";
-  const phone = "+573134276879";
+  const phone = "+573180889780";
   const graph = {
     "@context": "https://schema.org",
     "@graph": [

@@ -8,7 +8,7 @@ import {
 
 describe("contact", () => {
   it("WHATSAPP_URL apunta a wa.me con el número y mensaje codificado", () => {
-    expect(WHATSAPP_URL).toContain("https://wa.me/573134276879");
+    expect(WHATSAPP_URL).toContain("https://wa.me/573180889780");
     expect(WHATSAPP_URL).toContain("text=");
     expect(WHATSAPP_URL).not.toContain(" "); // mensaje URL-encoded
   });
