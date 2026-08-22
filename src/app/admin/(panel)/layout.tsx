@@ -1,4 +1,4 @@
-import { AdminNav } from "@/components/admin/AdminNav";
+import { Sidebar } from "@/components/admin/Sidebar";
 
 // Chrome del panel. SIN check de sesión a propósito: en Next 16 los layouts
 // no se re-renderizan al navegar, así que la auth vive en el proxy y en
@@ -9,9 +9,11 @@ export default function PanelLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <>
-      <AdminNav />
-      <main className="adm-main">{children}</main>
-    </>
+    <div className="flex min-h-dvh gap-aire p-aire">
+      <Sidebar />
+      <main className="adm-main barra-fina min-w-0 flex-1 overflow-y-auto rounded-isla bg-isla">
+        {children}
+      </main>
+    </div>
   );
 }

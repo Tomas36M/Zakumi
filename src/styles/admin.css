@@ -37,9 +37,6 @@ body {
   --superficie: color-mix(in srgb, var(--paper) 4%, transparent);
   --superficie-alta: color-mix(in srgb, var(--paper) 7%, transparent);
 
-  min-height: 100dvh;
-  display: flex;
-  flex-direction: column;
   background: var(--black);
   color: var(--paper);
   font-family: var(--font-sans), "Instrument Sans", system-ui, sans-serif;
@@ -61,65 +58,9 @@ body {
   }
 }
 
-/* ——— Topbar ——— */
-
-.adm-topbar {
-  display: flex;
-  align-items: center;
-  gap: 2.5rem;
-  padding: 0.85rem 1.5rem;
-  border-bottom: 1px solid var(--hairline);
-}
-
-.adm-topbar-marca {
-  color: var(--paper);
-  text-decoration: none;
-  font-weight: 600;
-  letter-spacing: 0.14em;
-  font-size: 0.9rem;
-}
-
-.adm-topbar-panel {
-  margin-left: 0.6rem;
-  color: var(--orange);
-  font-family: var(--font-playfair), "Playfair Display", serif;
-  font-style: italic;
-  font-weight: 400;
-  letter-spacing: 0.02em;
-  text-transform: none;
-}
-
-.adm-topbar-secciones {
-  display: flex;
-  gap: 1.75rem;
-  flex: 1;
-}
-
-.adm-topbar-link {
-  color: var(--ink-2);
-  text-decoration: none;
-  text-transform: uppercase;
-  letter-spacing: 0.22em;
-  font-size: 0.72rem;
-  font-weight: 500;
-  padding: 0.35rem 0;
-  border-bottom: 1px solid transparent;
-  transition: color 140ms ease, border-color 140ms ease;
-}
-
-.adm-topbar-link:hover {
-  color: var(--paper);
-}
-
-.adm-topbar-link--activo {
-  color: var(--paper);
-  border-bottom-color: var(--orange);
-}
-
 /* ——— Contenido ——— */
 
 .adm-main {
-  flex: 1;
   display: flex;
   flex-direction: column;
   min-height: 0; /* los hijos con scroll propio (mapa) lo necesitan */
@@ -1573,20 +1514,7 @@ a.adm-bot-card {
   margin-top: 0.4rem;
 }
 
-/* ——— Semáforo de salud de los bots en el nav ——— */
 
-.adm-salud {
-  display: inline-block;
-  width: 7px;
-  height: 7px;
-  transform: rotate(45deg);
-  margin-left: 0.45rem;
-  vertical-align: middle;
-}
-
-.adm-salud--ok       { background: var(--live); }
-.adm-salud--atencion { background: var(--estado-contactado); }
-.adm-salud--problema { background: var(--orange); }
 
 /* ——— Cockpit de Zak ——— */
 
