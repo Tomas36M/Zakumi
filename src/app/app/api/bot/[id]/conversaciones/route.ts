@@ -1,19 +1,22 @@
 import { NextResponse } from "next/server";
-import { getSesionAdmin } from "@/lib/admin/dal";
+import { getSesion } from "@/lib/auth/sesion";
+import { instanciaDelCliente } from "@/lib/portal/dal";
 import { listarConversaciones } from "@/lib/bots/api";
 
+// SOLO LECTURA: el cliente ve las conversaciones de SU bot. Pausar, enviar
+// manual y borrar historial son operaciones del admin y no existen aquí.
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const sesion = await getSesionAdmin();
+  const sesion = await getSesion();
   if (!sesion) {
     return NextResponse.json({ error: "no_autorizado" }, { status: 401 });
   }
   const { id } = await params;
-  const iid = Number(id);
-  if (!Number.isInteger(iid) || iid <= 0) {
-    return NextResponse.json({ error: "bot_invalido" }, { status: 400 });
+  const iid = await instanciaDelCliente(sesion, id);
+  if (iid === null) {
+    return NextResponse.json({ error: "no_existe" }, { status: 404 });
   }
   const offset = Math.max(
     Number(new URL(request.url).searchParams.get("offset") ?? 0) || 0,
