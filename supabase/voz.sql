@@ -161,7 +161,12 @@ begin
     end if;
   end if;
 
-  return jsonb_build_object('status', 'ok', 'llamada_id', v_llamada_id, 'lead', v_lead);
+  return jsonb_build_object(
+    'status', 'ok',
+    'llamada_id', v_llamada_id,
+    'lead', v_lead,
+    'agente_nombre', v_agente.nombre
+  );
 end;
 $$;
 
