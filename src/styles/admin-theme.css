@@ -29,7 +29,7 @@
   --color-peligro: #FF375F;
   --color-hairline: rgb(238 238 240 / 0.08);
 
-  /* Estados del pipeline (mismos valores que .adm-shell en admin.css) */
+  /* Estados del pipeline (paleta histórica del CRM) */
   --color-estado-nuevo: #76828E;
   --color-estado-contactado: #E8B24A;
   --color-estado-respondido: #5FA8D3;

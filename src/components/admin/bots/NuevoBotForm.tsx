@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { X } from "lucide-react";
 import { crearBot } from "@/lib/admin/bots-actions";
 import {
   ACUSE_ESCALADO_DEFAULT,
@@ -8,6 +9,11 @@ import {
   PLANTILLAS,
 } from "@/lib/bots/plantillas";
 import { PROVEEDORES, type Proveedor } from "@/lib/bots/tipos";
+import { Banner } from "@/components/admin/ui/Banner";
+import { Button } from "@/components/admin/ui/Button";
+import { Field, Input, Select, TextArea } from "@/components/admin/ui/Field";
+import { IconButton } from "@/components/admin/ui/IconButton";
+import { Island } from "@/components/admin/ui/Island";
 
 type Props = {
   onCreado: (id: number) => void;
@@ -49,7 +55,6 @@ export function NuevoBotForm({ onCreado, onCancelar }: Props) {
 
   return (
     <form
-      className="adm-nuevo-form adm-bot-form"
       onSubmit={(e) => {
         e.preventDefault();
         setError(null);
@@ -72,204 +77,173 @@ export function NuevoBotForm({ onCreado, onCancelar }: Props) {
         });
       }}
     >
-      <div className="adm-ficha-cabecera">
-        <div>
-          <h2 className="adm-ficha-nombre">Bot nuevo</h2>
-          <p className="adm-ficha-meta">
-            Nace con la plantilla elegida como prompt v1: se afina después en el editor.
-          </p>
+      <Island className="flex max-w-2xl flex-col gap-4 bg-isla-alta/50">
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <h2 className="text-base font-semibold text-tinta">Bot nuevo</h2>
+            <p className="text-xs text-tinta-40">
+              Nace con la plantilla elegida como prompt v1: se afina después en el editor.
+            </p>
+          </div>
+          <IconButton etiqueta="Cancelar" onClick={onCancelar}>
+            <X className="h-4 w-4" />
+          </IconButton>
         </div>
-        <button
-          type="button"
-          className="adm-ficha-cerrar"
-          aria-label="Cancelar"
-          onClick={onCancelar}
+
+        <fieldset className="flex flex-col gap-3">
+          <legend className="mb-2 text-xs font-semibold tracking-wide text-tinta-60 uppercase">
+            Identidad
+          </legend>
+          <Field label="Nombre *">
+            <Input
+              value={nombre}
+              onChange={(e) => {
+                setNombre(e.target.value);
+                if (!slugTocado) setSlug(slugDeNombre(e.target.value));
+              }}
+              required
+              maxLength={120}
+              autoFocus
+              placeholder="Panadería La Espiga"
+            />
+          </Field>
+          <Field label="Slug (identificador técnico)">
+            <Input
+              value={slug}
+              onChange={(e) => {
+                setSlugTocado(true);
+                setSlug(e.target.value);
+              }}
+              pattern="[a-z0-9-]{2,40}"
+              title="Letras minúsculas, números y guiones"
+              required
+            />
+          </Field>
+        </fieldset>
+
+        <fieldset className="flex flex-col gap-3">
+          <legend className="mb-2 text-xs font-semibold tracking-wide text-tinta-60 uppercase">
+            Canal
+          </legend>
+          <Field label="Proveedor de WhatsApp">
+            <Select
+              value={proveedor}
+              onChange={(e) => setProveedor(e.target.value as Proveedor)}
+            >
+              {PROVEEDORES.map((p) => (
+                <option key={p.valor} value={p.valor}>
+                  {p.label}
+                </option>
+              ))}
+            </Select>
+          </Field>
+
+          {proveedor === "green" ? (
+            <>
+              <Field label="Green API — URL">
+                <Input
+                  value={cred("green_api_url")}
+                  onChange={(e) => setCred("green_api_url", e.target.value)}
+                  placeholder="https://7105.api.greenapi.com"
+                />
+              </Field>
+              <Field label="Green API — Instance ID">
+                <Input
+                  value={cred("green_instance_id")}
+                  onChange={(e) => setCred("green_instance_id", e.target.value)}
+                />
+              </Field>
+              <Field label="Green API — Token">
+                <Input
+                  value={cred("green_api_token")}
+                  onChange={(e) => setCred("green_api_token", e.target.value)}
+                />
+              </Field>
+              <Field label="Green API — Token del webhook">
+                <Input
+                  value={cred("green_webhook_token")}
+                  onChange={(e) => setCred("green_webhook_token", e.target.value)}
+                />
+              </Field>
+            </>
+          ) : (
+            <>
+              <Field label="Meta — Phone Number ID">
+                <Input
+                  value={cred("meta_phone_number_id")}
+                  onChange={(e) => setCred("meta_phone_number_id", e.target.value)}
+                />
+              </Field>
+              <Field label="Meta — WABA ID">
+                <Input
+                  value={cred("meta_waba_id")}
+                  onChange={(e) => setCred("meta_waba_id", e.target.value)}
+                />
+              </Field>
+              <Field label="Meta — Access token">
+                <Input
+                  value={cred("meta_access_token")}
+                  onChange={(e) => setCred("meta_access_token", e.target.value)}
+                />
+              </Field>
+            </>
+          )}
+
+          <Field label="Avisar escalados a (WhatsApp)">
+            <Input
+              type="tel"
+              value={notificarA}
+              onChange={(e) => setNotificarA(e.target.value)}
+              placeholder="573001234567"
+            />
+          </Field>
+        </fieldset>
+
+        <fieldset className="flex flex-col gap-3">
+          <legend className="mb-2 text-xs font-semibold tracking-wide text-tinta-60 uppercase">
+            Cerebro
+          </legend>
+          <Field label="Plantilla de prompt">
+            <Select value={plantilla} onChange={(e) => setPlantilla(e.target.value)}>
+              {PLANTILLAS.map((p) => (
+                <option key={p.slug} value={p.slug}>
+                  {p.label}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <p className="text-xs text-tinta-40">
+            {PLANTILLAS.find((p) => p.slug === plantilla)?.descripcion}
+          </p>
+          <Field label="Acuse cuando escala a humano">
+            <TextArea
+              value={acuse}
+              onChange={(e) => setAcuse(e.target.value)}
+              rows={2}
+              required
+            />
+          </Field>
+          <Field label="Respuesta de respaldo (si el agente falla)">
+            <TextArea
+              value={fallback}
+              onChange={(e) => setFallback(e.target.value)}
+              rows={2}
+              required
+            />
+          </Field>
+        </fieldset>
+
+        {error ? <Banner variante="error">{error}</Banner> : null}
+
+        <Button
+          variante="primaria"
+          type="submit"
+          className="self-start"
+          disabled={guardando || !nombre.trim() || !slug.trim()}
         >
-          ×
-        </button>
-      </div>
-
-      <fieldset className="adm-bot-form-grupo">
-        <legend className="adm-field-label">Identidad</legend>
-        <label className="adm-field">
-          <span className="adm-field-label">Nombre *</span>
-          <input
-            className="adm-input"
-            value={nombre}
-            onChange={(e) => {
-              setNombre(e.target.value);
-              if (!slugTocado) setSlug(slugDeNombre(e.target.value));
-            }}
-            required
-            maxLength={120}
-            autoFocus
-            placeholder="Panadería La Espiga"
-          />
-        </label>
-        <label className="adm-field">
-          <span className="adm-field-label">Slug (identificador técnico)</span>
-          <input
-            className="adm-input"
-            value={slug}
-            onChange={(e) => {
-              setSlugTocado(true);
-              setSlug(e.target.value);
-            }}
-            pattern="[a-z0-9-]{2,40}"
-            title="Letras minúsculas, números y guiones"
-            required
-          />
-        </label>
-      </fieldset>
-
-      <fieldset className="adm-bot-form-grupo">
-        <legend className="adm-field-label">Canal</legend>
-        <label className="adm-field">
-          <span className="adm-field-label">Proveedor de WhatsApp</span>
-          <select
-            className="adm-select"
-            value={proveedor}
-            onChange={(e) => setProveedor(e.target.value as Proveedor)}
-          >
-            {PROVEEDORES.map((p) => (
-              <option key={p.valor} value={p.valor}>
-                {p.label}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        {proveedor === "green" ? (
-          <>
-            <label className="adm-field">
-              <span className="adm-field-label">Green API — URL</span>
-              <input
-                className="adm-input"
-                value={cred("green_api_url")}
-                onChange={(e) => setCred("green_api_url", e.target.value)}
-                placeholder="https://7105.api.greenapi.com"
-              />
-            </label>
-            <label className="adm-field">
-              <span className="adm-field-label">Green API — Instance ID</span>
-              <input
-                className="adm-input"
-                value={cred("green_instance_id")}
-                onChange={(e) => setCred("green_instance_id", e.target.value)}
-              />
-            </label>
-            <label className="adm-field">
-              <span className="adm-field-label">Green API — Token</span>
-              <input
-                className="adm-input"
-                value={cred("green_api_token")}
-                onChange={(e) => setCred("green_api_token", e.target.value)}
-              />
-            </label>
-            <label className="adm-field">
-              <span className="adm-field-label">Green API — Token del webhook</span>
-              <input
-                className="adm-input"
-                value={cred("green_webhook_token")}
-                onChange={(e) => setCred("green_webhook_token", e.target.value)}
-              />
-            </label>
-          </>
-        ) : (
-          <>
-            <label className="adm-field">
-              <span className="adm-field-label">Meta — Phone Number ID</span>
-              <input
-                className="adm-input"
-                value={cred("meta_phone_number_id")}
-                onChange={(e) => setCred("meta_phone_number_id", e.target.value)}
-              />
-            </label>
-            <label className="adm-field">
-              <span className="adm-field-label">Meta — WABA ID</span>
-              <input
-                className="adm-input"
-                value={cred("meta_waba_id")}
-                onChange={(e) => setCred("meta_waba_id", e.target.value)}
-              />
-            </label>
-            <label className="adm-field">
-              <span className="adm-field-label">Meta — Access token</span>
-              <input
-                className="adm-input"
-                value={cred("meta_access_token")}
-                onChange={(e) => setCred("meta_access_token", e.target.value)}
-              />
-            </label>
-          </>
-        )}
-
-        <label className="adm-field">
-          <span className="adm-field-label">Avisar escalados a (WhatsApp)</span>
-          <input
-            className="adm-input"
-            type="tel"
-            value={notificarA}
-            onChange={(e) => setNotificarA(e.target.value)}
-            placeholder="573001234567"
-          />
-        </label>
-      </fieldset>
-
-      <fieldset className="adm-bot-form-grupo">
-        <legend className="adm-field-label">Cerebro</legend>
-        <label className="adm-field">
-          <span className="adm-field-label">Plantilla de prompt</span>
-          <select
-            className="adm-select"
-            value={plantilla}
-            onChange={(e) => setPlantilla(e.target.value)}
-          >
-            {PLANTILLAS.map((p) => (
-              <option key={p.slug} value={p.slug}>
-                {p.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <p className="adm-ficha-meta">
-          {PLANTILLAS.find((p) => p.slug === plantilla)?.descripcion}
-        </p>
-        <label className="adm-field">
-          <span className="adm-field-label">Acuse cuando escala a humano</span>
-          <textarea
-            className="adm-textarea"
-            value={acuse}
-            onChange={(e) => setAcuse(e.target.value)}
-            rows={2}
-            required
-          />
-        </label>
-        <label className="adm-field">
-          <span className="adm-field-label">Respuesta de respaldo (si el agente falla)</span>
-          <textarea
-            className="adm-textarea"
-            value={fallback}
-            onChange={(e) => setFallback(e.target.value)}
-            rows={2}
-            required
-          />
-        </label>
-      </fieldset>
-
-      {error ? (
-        <p className="adm-error" role="alert">
-          {error}
-        </p>
-      ) : null}
-
-      <button
-        className="adm-cta"
-        type="submit"
-        disabled={guardando || !nombre.trim() || !slug.trim()}
-      >
-        {guardando ? "Creando…" : "Crear bot"}
-      </button>
+          {guardando ? "Creando…" : "Crear bot"}
+        </Button>
+      </Island>
     </form>
   );
 }

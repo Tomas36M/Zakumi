@@ -10,6 +10,9 @@ import type {
   StatusInstancia,
   VersionPrompt,
 } from "@/lib/bots/tipos";
+import { Banner } from "@/components/admin/ui/Banner";
+import { Button } from "@/components/admin/ui/Button";
+import { Tabs } from "@/components/admin/ui/Tabs";
 import { Actividad } from "./Actividad";
 import { Conversaciones } from "./Conversaciones";
 import { LabsChat } from "./LabsChat";
@@ -17,11 +20,11 @@ import { PromptEditor } from "./PromptEditor";
 
 export type Pestana = "prompt" | "labs" | "conversaciones" | "actividad";
 
-const PESTANAS: readonly { valor: Pestana; label: string; lista: boolean }[] = [
-  { valor: "prompt", label: "Prompt", lista: true },
-  { valor: "labs", label: "Labs", lista: true },
-  { valor: "conversaciones", label: "Conversaciones", lista: true },
-  { valor: "actividad", label: "Actividad", lista: true },
+const PESTANAS: readonly { id: Pestana; label: string }[] = [
+  { id: "prompt", label: "Prompt" },
+  { id: "labs", label: "Labs" },
+  { id: "conversaciones", label: "Conversaciones" },
+  { id: "actividad", label: "Actividad" },
 ] as const;
 
 type Props = {
@@ -80,17 +83,17 @@ export function AgenteView({ id, instancia, prompt, versiones, status, tabInicia
   }
 
   return (
-    <section className="adm-seccion">
-      <div className="adm-toolbar">
+    <section>
+      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-hairline px-5 py-4">
         <div>
-          <h1 className="adm-titulo">
-            <Link href="/admin/bots" className="adm-bot-volver">
+          <h1 className="text-lg font-semibold text-tinta">
+            <Link href="/admin/bots" className="text-tinta-60 hover:text-tinta">
               Bots
             </Link>{" "}
             / {instancia?.nombre ?? `#${id}`}
           </h1>
           {instancia && (
-            <p className="adm-bot-meta">
+            <p className="text-xs text-tinta-60">
               {instancia.canal === "voz" ? "Voz" : "WhatsApp"} ·{" "}
               {instancia.proveedor === "green" ? "Green API" : "Meta Cloud API"} · prompt v
               {instancia.prompt_version}
@@ -99,74 +102,51 @@ export function AgenteView({ id, instancia, prompt, versiones, status, tabInicia
           )}
         </div>
         {uso && (
-          <span className="adm-toolbar-conteo">
+          <span className="text-xs text-tinta-40">
             hoy: {uso.llamadas} llamadas · {uso.tokens_entrada + uso.tokens_salida} tokens ·{" "}
             {status?.conversaciones ?? 0} conversaciones
           </span>
         )}
         {instancia && (
-          <div className="adm-ficha-acciones">
-            <button
-              type="button"
-              className="adm-cta-ghost"
-              disabled={operando}
-              onClick={duplicar}
-            >
+          <div className="flex flex-wrap items-center gap-2">
+            <Button disabled={operando} onClick={duplicar}>
               Duplicar
-            </button>
-            <button
-              type="button"
-              className="adm-cta-ghost"
+            </Button>
+            <Button
+              variante={instancia.activo ? "peligro" : "fantasma"}
               disabled={operando}
               onClick={alternarEncendido}
             >
               {instancia.activo ? "Apagar bot" : "Encender bot"}
-            </button>
+            </Button>
           </div>
         )}
+      </header>
+
+      <div className="flex flex-col gap-4 px-5 py-4">
+        {!instancia && (
+          <Banner>
+            Sin conexión con el bot: se muestra lo último conocido. Recarga en un momento.
+          </Banner>
+        )}
+        {avisoOperacion && <Banner variante="error">{avisoOperacion}</Banner>}
+
+        <Tabs pestanas={PESTANAS} activa={tab} onCambiar={setTab} />
+
+        {tab === "prompt" && (
+          <PromptEditor
+            instanciaId={id}
+            prompt={prompt}
+            versiones={versiones}
+            onProbarEnLabs={() => setTab("labs")}
+          />
+        )}
+        {tab === "labs" && (
+          <LabsChat instanciaId={id} prompt={prompt} onEditarPrompt={() => setTab("prompt")} />
+        )}
+        {tab === "conversaciones" && <Conversaciones instanciaId={id} />}
+        {tab === "actividad" && <Actividad instanciaId={id} />}
       </div>
-
-      {!instancia && (
-        <p className="adm-aviso">
-          Sin conexión con el bot: se muestra lo último conocido. Recarga en un momento.
-        </p>
-      )}
-      {avisoOperacion && (
-        <p className="adm-error" role="alert">
-          {avisoOperacion}
-        </p>
-      )}
-
-      <div className="adm-tabs" role="tablist">
-        {PESTANAS.map((p) => (
-          <button
-            key={p.valor}
-            type="button"
-            role="tab"
-            aria-selected={tab === p.valor}
-            className={tab === p.valor ? "adm-tab adm-tab--activa" : "adm-tab"}
-            onClick={() => setTab(p.valor)}
-            disabled={!p.lista}
-            title={p.lista ? undefined : "Próximamente"}
-          >
-            {p.label}
-          </button>
-        ))}
-      </div>
-
-      {tab === "prompt" && (
-        <PromptEditor
-          instanciaId={id}
-          prompt={prompt}
-          versiones={versiones}
-          onProbarEnLabs={() => setTab("labs")}
-        />
-      )}
-      {tab === "labs" && (
-        <LabsChat instanciaId={id} prompt={prompt} onEditarPrompt={() => setTab("prompt")} />
-      )}
-      {tab === "conversaciones" && <Conversaciones instanciaId={id} />}
-      {tab === "actividad" && <Actividad instanciaId={id} />}
     </section>
   );
 }

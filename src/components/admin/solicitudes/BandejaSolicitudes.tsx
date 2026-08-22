@@ -13,13 +13,30 @@ import { servicioDelSlug } from "@/lib/catalogo";
 import {
   esTerminal,
   labelEstado,
+  type EstadoSolicitud,
   type Solicitud,
 } from "@/lib/portal/solicitudes";
+import { Badge, type TonoBadge } from "@/components/admin/ui/Badge";
+import { Banner } from "@/components/admin/ui/Banner";
+import { Button } from "@/components/admin/ui/Button";
+import { EmptyState } from "@/components/admin/ui/EmptyState";
+import { Field, Input, Select } from "@/components/admin/ui/Field";
+import { Island } from "@/components/admin/ui/Island";
 
 export type PerfilResumen = {
   email: string | null;
   nombre: string | null;
   clienteId: string | null;
+};
+
+// El funnel de venta reusa la paleta del pipeline del CRM.
+const TONO_SOLICITUD: Record<EstadoSolicitud, TonoBadge> = {
+  nueva: "nuevo",
+  cotizada: "contactado",
+  link_enviado: "respondido",
+  pagada: "interesado",
+  activa: "cliente",
+  rechazada: "descartado",
 };
 
 type Props = {
@@ -33,18 +50,18 @@ export function BandejaSolicitudes({ solicitudes, perfiles }: Props) {
 
   if (solicitudes.length === 0) {
     return (
-      <p className="adm-ficha-sin">
-        Nada por ahora. Cuando alguien pida un servicio en el portal, aparece
-        aquí (y te llega el aviso por WhatsApp).
-      </p>
+      <EmptyState
+        titulo="Nada por ahora."
+        detalle="Cuando alguien pida un servicio en el portal, aparece aquí (y te llega el aviso por WhatsApp)."
+      />
     );
   }
 
   return (
     <>
-      <div className="adm-sol-lista">
+      <div className="flex flex-col gap-aire">
         {abiertas.length === 0 ? (
-          <p className="adm-ficha-sin">Sin solicitudes por atender.</p>
+          <p className="text-sm text-tinta-40">Sin solicitudes por atender.</p>
         ) : (
           abiertas.map((s) => (
             <TarjetaSolicitud key={s.id} solicitud={s} perfil={perfiles[s.user_id]} />
@@ -54,8 +71,10 @@ export function BandejaSolicitudes({ solicitudes, perfiles }: Props) {
 
       {cerradas.length > 0 && (
         <>
-          <h2 className="adm-field-label adm-sol-cerradas">Cerradas recientes</h2>
-          <div className="adm-sol-lista">
+          <h2 className="mt-6 mb-3 text-xs font-semibold tracking-wide text-tinta-60 uppercase">
+            Cerradas recientes
+          </h2>
+          <div className="flex flex-col gap-aire">
             {cerradas.map((s) => (
               <TarjetaSolicitud key={s.id} solicitud={s} perfil={perfiles[s.user_id]} />
             ))}
@@ -97,94 +116,92 @@ function TarjetaSolicitud({
   }
 
   return (
-    <article className="adm-sol-card">
-      <header className="adm-sol-cabecera">
-        <div>
-          <strong>{servicio?.nombre ?? s.servicio_slug}</strong>
-          <span className="adm-ficha-meta"> · {quien}</span>
-          {perfil?.clienteId && (
-            <Link
-              className="adm-sol-vinculo"
-              href={`/admin/clientes/${perfil.clienteId}`}
-            >
-              ficha 360 →
-            </Link>
-          )}
-        </div>
-        <div className="adm-sol-meta">
-          <span className={`adm-sol-estado adm-sol-estado--${s.estado}`}>
-            {labelEstado(s.estado)}
-          </span>
-          <span className="adm-ficha-meta">{fechaCorta(s.created_at)}</span>
-        </div>
-      </header>
+    <Island className="bg-isla-alta/50">
+      <article className="flex flex-col gap-3">
+        <header className="flex flex-wrap items-start justify-between gap-2">
+          <div className="text-sm text-tinta">
+            <strong>{servicio?.nombre ?? s.servicio_slug}</strong>
+            <span className="text-xs text-tinta-40"> · {quien}</span>
+            {perfil?.clienteId && (
+              <Link
+                className="ml-2 text-sm font-medium text-acento hover:underline"
+                href={`/admin/clientes/${perfil.clienteId}`}
+              >
+                ficha 360 →
+              </Link>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <Badge tono={TONO_SOLICITUD[s.estado]}>{labelEstado(s.estado)}</Badge>
+            <span className="text-xs text-tinta-40">{fechaCorta(s.created_at)}</span>
+          </div>
+        </header>
 
-      {s.mensaje && <p className="adm-sol-mensaje">“{s.mensaje}”</p>}
+        {s.mensaje && <p className="text-sm text-tinta-85 italic">“{s.mensaje}”</p>}
 
-      {s.cotizacion_monto !== null && (
-        <p className="adm-ficha-meta">
-          Cotizado: <strong>{formatearCOP(Number(s.cotizacion_monto))}</strong>
-          {s.cotizacion_ciclo ? ` (${s.cotizacion_ciclo})` : ""}
-          {s.cotizacion_nota ? ` — ${s.cotizacion_nota}` : ""}
-        </p>
-      )}
-      {s.link_pago && (
-        <p className="adm-ficha-meta">
-          Link: <span className="adm-sol-link">{s.link_pago}</span>
-        </p>
-      )}
+        {s.cotizacion_monto !== null && (
+          <p className="text-xs text-tinta-60">
+            Cotizado:{" "}
+            <strong className="text-tinta">
+              {formatearCOP(Number(s.cotizacion_monto))}
+            </strong>
+            {s.cotizacion_ciclo ? ` (${s.cotizacion_ciclo})` : ""}
+            {s.cotizacion_nota ? ` — ${s.cotizacion_nota}` : ""}
+          </p>
+        )}
+        {s.link_pago && (
+          <p className="text-xs text-tinta-60">
+            Link: <span className="break-all text-tinta-85">{s.link_pago}</span>
+          </p>
+        )}
 
-      {error && (
-        <p className="adm-error" role="alert">
-          {error}
-        </p>
-      )}
+        {error && <Banner variante="error">{error}</Banner>}
 
-      {s.estado === "nueva" && (
-        <FormCotizar
-          ocupado={ocupado}
-          sugerida={servicio?.tarifaSugerida ?? 0}
-          cicloSugerido={servicio?.cicloSugerido ?? "mensual"}
-          onCotizar={(monto, ciclo, nota) =>
-            correr(() => cotizarSolicitud(s.id, { monto, ciclo, nota }))
-          }
-          onRechazar={(motivo) => correr(() => rechazarSolicitud(s.id, motivo))}
-        />
-      )}
-
-      {s.estado === "cotizada" && (
-        <FormLink
-          ocupado={ocupado}
-          onEnviar={(link) => correr(() => marcarLinkEnviado(s.id, link))}
-          onRechazar={(motivo) => correr(() => rechazarSolicitud(s.id, motivo))}
-        />
-      )}
-
-      {(s.estado === "link_enviado" || s.estado === "pagada") && (
-        <div className="adm-sol-acciones">
-          <button
-            type="button"
-            className="adm-cta"
-            disabled={ocupado}
-            onClick={() => {
-              if (
-                window.confirm(
-                  "¿Confirmas que el pago llegó? Esto crea el cliente y su producto, registra el primer pago y activa el servicio.",
-                )
-              ) {
-                correr(() => activarSolicitud(s.id));
-              }
-            }}
-          >
-            {ocupado ? "Activando…" : "Confirmar pago y activar"}
-          </button>
-          <BotonRechazar
+        {s.estado === "nueva" && (
+          <FormCotizar
             ocupado={ocupado}
+            sugerida={servicio?.tarifaSugerida ?? 0}
+            cicloSugerido={servicio?.cicloSugerido ?? "mensual"}
+            onCotizar={(monto, ciclo, nota) =>
+              correr(() => cotizarSolicitud(s.id, { monto, ciclo, nota }))
+            }
             onRechazar={(motivo) => correr(() => rechazarSolicitud(s.id, motivo))}
           />
-        </div>
-      )}
-    </article>
+        )}
+
+        {s.estado === "cotizada" && (
+          <FormLink
+            ocupado={ocupado}
+            onEnviar={(link) => correr(() => marcarLinkEnviado(s.id, link))}
+            onRechazar={(motivo) => correr(() => rechazarSolicitud(s.id, motivo))}
+          />
+        )}
+
+        {(s.estado === "link_enviado" || s.estado === "pagada") && (
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variante="primaria"
+              disabled={ocupado}
+              onClick={() => {
+                if (
+                  window.confirm(
+                    "¿Confirmas que el pago llegó? Esto crea el cliente y su producto, registra el primer pago y activa el servicio.",
+                  )
+                ) {
+                  correr(() => activarSolicitud(s.id));
+                }
+              }}
+            >
+              {ocupado ? "Activando…" : "Confirmar pago y activar"}
+            </Button>
+            <BotonRechazar
+              ocupado={ocupado}
+              onRechazar={(motivo) => correr(() => rechazarSolicitud(s.id, motivo))}
+            />
+          </div>
+        )}
+      </article>
+    </Island>
   );
 }
 
@@ -206,49 +223,41 @@ function FormCotizar({
   const [nota, setNota] = useState("");
 
   return (
-    <div className="adm-sol-form">
-      <label className="adm-field">
-        <span className="adm-field-label">Monto (COP)</span>
-        <input
-          className="adm-input"
-          inputMode="numeric"
-          value={monto}
-          onChange={(e) => setMonto(e.target.value)}
-        />
-      </label>
-      <label className="adm-field">
-        <span className="adm-field-label">Ciclo</span>
-        <select
-          className="adm-select"
-          value={ciclo}
-          onChange={(e) => setCiclo(e.target.value as Ciclo)}
-        >
-          {CICLOS.map((c) => (
-            <option key={c.valor} value={c.valor}>
-              {c.label}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label className="adm-field adm-sol-nota">
-        <span className="adm-field-label">Nota para el cliente (opcional)</span>
-        <input
-          className="adm-input"
+    <div className="flex flex-col gap-3">
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Field label="Monto (COP)">
+          <Input
+            inputMode="numeric"
+            value={monto}
+            onChange={(e) => setMonto(e.target.value)}
+          />
+        </Field>
+        <Field label="Ciclo">
+          <Select value={ciclo} onChange={(e) => setCiclo(e.target.value as Ciclo)}>
+            {CICLOS.map((c) => (
+              <option key={c.valor} value={c.valor}>
+                {c.label}
+              </option>
+            ))}
+          </Select>
+        </Field>
+      </div>
+      <Field label="Nota para el cliente (opcional)">
+        <Input
           value={nota}
           maxLength={2000}
           onChange={(e) => setNota(e.target.value)}
           placeholder="Qué incluye, tiempos, condiciones…"
         />
-      </label>
-      <div className="adm-sol-acciones">
-        <button
-          type="button"
-          className="adm-cta"
+      </Field>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button
+          variante="primaria"
           disabled={ocupado || !Number.isFinite(Number(monto)) || Number(monto) <= 0}
           onClick={() => onCotizar(Number(monto), ciclo, nota)}
         >
           {ocupado ? "Guardando…" : "Cotizar"}
-        </button>
+        </Button>
         <BotonRechazar ocupado={ocupado} onRechazar={onRechazar} />
       </div>
     </div>
@@ -266,26 +275,23 @@ function FormLink({
 }) {
   const [link, setLink] = useState("");
   return (
-    <div className="adm-sol-form">
-      <label className="adm-field adm-sol-nota">
-        <span className="adm-field-label">Link de pago (Wompi / Bold)</span>
-        <input
-          className="adm-input"
+    <div className="flex flex-col gap-3">
+      <Field label="Link de pago (Wompi / Bold)">
+        <Input
           type="url"
           value={link}
           onChange={(e) => setLink(e.target.value)}
           placeholder="https://checkout.wompi.co/…"
         />
-      </label>
-      <div className="adm-sol-acciones">
-        <button
-          type="button"
-          className="adm-cta"
+      </Field>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button
+          variante="primaria"
           disabled={ocupado || !/^https:\/\/\S+$/i.test(link.trim())}
           onClick={() => onEnviar(link.trim())}
         >
           {ocupado ? "Publicando…" : "Publicar link al cliente"}
-        </button>
+        </Button>
         <BotonRechazar ocupado={ocupado} onRechazar={onRechazar} />
       </div>
     </div>
@@ -304,33 +310,23 @@ function BotonRechazar({
 
   if (!abierto) {
     return (
-      <button
-        type="button"
-        className="adm-cta-ghost"
-        disabled={ocupado}
-        onClick={() => setAbierto(true)}
-      >
+      <Button disabled={ocupado} onClick={() => setAbierto(true)}>
         Rechazar
-      </button>
+      </Button>
     );
   }
   return (
-    <span className="adm-sol-rechazo">
-      <input
-        className="adm-input"
+    <span className="flex flex-1 flex-wrap items-center gap-2">
+      <Input
+        className="min-w-48 flex-1"
         value={motivo}
         maxLength={2000}
         onChange={(e) => setMotivo(e.target.value)}
         placeholder="Motivo (el cliente lo ve)"
       />
-      <button
-        type="button"
-        className="adm-cta-ghost adm-cta--peligro"
-        disabled={ocupado}
-        onClick={() => onRechazar(motivo)}
-      >
+      <Button variante="peligro" disabled={ocupado} onClick={() => onRechazar(motivo)}>
         Confirmar rechazo
-      </button>
+      </Button>
     </span>
   );
 }

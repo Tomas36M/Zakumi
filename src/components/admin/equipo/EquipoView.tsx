@@ -7,6 +7,11 @@ import {
   cambiarRolPerfil,
   type PerfilBuscado,
 } from "@/lib/admin/perfiles-actions";
+import { Banner } from "@/components/admin/ui/Banner";
+import { Button } from "@/components/admin/ui/Button";
+import { Input } from "@/components/admin/ui/Field";
+import { Island } from "@/components/admin/ui/Island";
+import { ListRow } from "@/components/admin/ui/ListRow";
 
 type Props = {
   admins: PerfilBuscado[];
@@ -48,110 +53,117 @@ export function EquipoView({ admins, miUserId }: Props) {
   }
 
   return (
-    <>
-      <h2 className="adm-field-label">Admins actuales</h2>
-      {admins.length === 0 ? (
-        <p className="adm-ficha-sin">
-          No hay admins todavía — corre supabase/perfiles.sql (el seed) primero.
-        </p>
-      ) : (
-        <ul className="adm-notas-lista">
-          {admins.map((p) => (
-            <li key={p.userId} className="adm-nota">
-              <span className="adm-nota-texto">
-                {p.nombre ? `${p.nombre} · ` : ""}
-                {p.email ?? p.userId}
-                {p.userId === miUserId && <em> — tú</em>}
-              </span>
-              <button
-                type="button"
-                className="adm-cta-ghost adm-cta--peligro"
-                disabled={ocupado || p.userId === miUserId}
-                title={
-                  p.userId === miUserId
-                    ? "No puedes quitarte el rol a ti mismo"
-                    : undefined
-                }
-                onClick={() => {
-                  if (
-                    window.confirm(
-                      `¿Quitar el rol de admin a ${p.email ?? "esta cuenta"}? Pasará a ser cliente del portal y dejará de ver el CRM.`,
-                    )
-                  ) {
-                    cambiar(p.userId, "cliente");
-                  }
-                }}
-              >
-                Quitar admin
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-
-      <h2 className="adm-field-label adm-sol-cerradas">Promover una cuenta</h2>
-      <p className="adm-ficha-meta">
-        La persona primero se registra en zakumistudio.com/app y luego la buscas
-        aquí por su correo.
-      </p>
-      <div className="adm-sol-rechazo">
-        <input
-          className="adm-input"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="Buscar cuenta por correo…"
-          onKeyDown={(e) => {
-            if (e.key === "Enter") buscar();
-          }}
-        />
-        <button
-          type="button"
-          className="adm-cta-ghost"
-          disabled={ocupado || q.trim().length < 3}
-          onClick={buscar}
-        >
-          Buscar
-        </button>
-      </div>
-
-      {error && (
-        <p className="adm-error" role="alert">
-          {error}
-        </p>
-      )}
-
-      {resultados !== null &&
-        (resultados.length === 0 ? (
-          <p className="adm-ficha-sin">Sin cuentas con ese correo.</p>
+    <div className="flex flex-col gap-aire">
+      <Island className="bg-isla-alta/50" titulo="Admins actuales">
+        {admins.length === 0 ? (
+          <p className="text-sm text-tinta-40">
+            No hay admins todavía — corre supabase/perfiles.sql (el seed) primero.
+          </p>
         ) : (
-          <ul className="adm-notas-lista">
-            {resultados.map((p) => (
-              <li key={p.userId} className="adm-nota">
-                <span className="adm-nota-texto">
-                  {p.nombre ? `${p.nombre} · ` : ""}
-                  {p.email ?? p.userId}
-                  {p.clienteId && <em> — es cliente con servicios activos</em>}
-                </span>
-                <button
-                  type="button"
-                  className="adm-cta-ghost"
-                  disabled={ocupado}
-                  onClick={() => {
-                    if (
-                      window.confirm(
-                        `¿Hacer admin a ${p.email ?? "esta cuenta"}? Verá todo el CRM, los clientes, los pagos y todos los bots.`,
-                      )
-                    ) {
-                      cambiar(p.userId, "admin");
-                    }
-                  }}
+          <ul className="flex flex-col gap-1">
+            {admins.map((p) => (
+              <li key={p.userId}>
+                <ListRow
+                  interactiva={false}
+                  className="flex items-center justify-between gap-2"
                 >
-                  Hacer admin
-                </button>
+                  <span className="min-w-0 truncate text-sm text-tinta">
+                    {p.nombre ? `${p.nombre} · ` : ""}
+                    {p.email ?? p.userId}
+                    {p.userId === miUserId && <em className="text-tinta-40"> — tú</em>}
+                  </span>
+                  <Button
+                    variante="peligro"
+                    disabled={ocupado || p.userId === miUserId}
+                    title={
+                      p.userId === miUserId
+                        ? "No puedes quitarte el rol a ti mismo"
+                        : undefined
+                    }
+                    onClick={() => {
+                      if (
+                        window.confirm(
+                          `¿Quitar el rol de admin a ${p.email ?? "esta cuenta"}? Pasará a ser cliente del portal y dejará de ver el CRM.`,
+                        )
+                      ) {
+                        cambiar(p.userId, "cliente");
+                      }
+                    }}
+                  >
+                    Quitar admin
+                  </Button>
+                </ListRow>
               </li>
             ))}
           </ul>
-        ))}
-    </>
+        )}
+      </Island>
+
+      <Island className="bg-isla-alta/50" titulo="Promover una cuenta">
+        <div className="flex flex-col gap-3">
+          <p className="text-xs text-tinta-40">
+            La persona primero se registra en zakumistudio.com/app y luego la buscas
+            aquí por su correo.
+          </p>
+          <div className="flex gap-2">
+            <Input
+              className="flex-1"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Buscar cuenta por correo…"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") buscar();
+              }}
+            />
+            <Button disabled={ocupado || q.trim().length < 3} onClick={buscar}>
+              Buscar
+            </Button>
+          </div>
+
+          {error && <Banner variante="error">{error}</Banner>}
+
+          {resultados !== null &&
+            (resultados.length === 0 ? (
+              <p className="text-sm text-tinta-40">Sin cuentas con ese correo.</p>
+            ) : (
+              <ul className="flex flex-col gap-1">
+                {resultados.map((p) => (
+                  <li key={p.userId}>
+                    <ListRow
+                      interactiva={false}
+                      className="flex items-center justify-between gap-2"
+                    >
+                      <span className="min-w-0 truncate text-sm text-tinta">
+                        {p.nombre ? `${p.nombre} · ` : ""}
+                        {p.email ?? p.userId}
+                        {p.clienteId && (
+                          <em className="text-tinta-40">
+                            {" "}
+                            — es cliente con servicios activos
+                          </em>
+                        )}
+                      </span>
+                      <Button
+                        disabled={ocupado}
+                        onClick={() => {
+                          if (
+                            window.confirm(
+                              `¿Hacer admin a ${p.email ?? "esta cuenta"}? Verá todo el CRM, los clientes, los pagos y todos los bots.`,
+                            )
+                          ) {
+                            cambiar(p.userId, "admin");
+                          }
+                        }}
+                      >
+                        Hacer admin
+                      </Button>
+                    </ListRow>
+                  </li>
+                ))}
+              </ul>
+            ))}
+        </div>
+      </Island>
+    </div>
   );
 }

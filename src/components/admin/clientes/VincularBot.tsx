@@ -2,6 +2,8 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { vincularInstancia } from "@/lib/admin/cartera-actions";
+import { Button } from "@/components/admin/ui/Button";
+import { Select } from "@/components/admin/ui/Field";
 
 type InstanciaCorta = { id: number; slug: string; nombre: string; activo: boolean };
 
@@ -41,32 +43,31 @@ export function VincularBot({ productoId, onVinculado }: Props) {
 
   if (!abierto) {
     return (
-      <button type="button" className="adm-cta-ghost" onClick={() => setAbierto(true)}>
+      <Button className="mt-1 self-start" onClick={() => setAbierto(true)}>
         Vincular bot
-      </button>
+      </Button>
     );
   }
 
   return (
-    <div className="adm-vincular">
-      {instancias === null && <span className="adm-ficha-sin">Cargando bots…</span>}
+    <div className="mt-1 flex flex-wrap items-center gap-2">
+      {instancias === null && (
+        <span className="text-sm text-tinta-40">Cargando bots…</span>
+      )}
       {instancias && instancias.length > 0 && (
         <>
-          <select
-            className="adm-select"
-            value={eleccion}
-            onChange={(e) => setEleccion(e.target.value)}
-          >
-            <option value="">— elige la instancia —</option>
-            {instancias.map((i) => (
-              <option key={i.id} value={String(i.id)}>
-                {i.nombre} ({i.slug}){i.activo ? "" : " · apagado"}
-              </option>
-            ))}
-          </select>
-          <button
-            type="button"
-            className="adm-cta"
+          <span className="w-56">
+            <Select value={eleccion} onChange={(e) => setEleccion(e.target.value)}>
+              <option value="">— elige la instancia —</option>
+              {instancias.map((i) => (
+                <option key={i.id} value={String(i.id)}>
+                  {i.nombre} ({i.slug}){i.activo ? "" : " · apagado"}
+                </option>
+              ))}
+            </Select>
+          </span>
+          <Button
+            variante="primaria"
             disabled={guardando || !eleccion}
             onClick={() => {
               setError(null);
@@ -81,20 +82,18 @@ export function VincularBot({ productoId, onVinculado }: Props) {
             }}
           >
             {guardando ? "Guardando…" : "Vincular"}
-          </button>
+          </Button>
         </>
       )}
       {instancias?.length === 0 && !error && (
-        <span className="adm-ficha-sin">No hay bots creados todavía.</span>
+        <span className="text-sm text-tinta-40">No hay bots creados todavía.</span>
       )}
       {error && (
-        <span className="adm-error" role="alert">
+        <span className="text-sm text-peligro" role="alert">
           {error}
         </span>
       )}
-      <button type="button" className="adm-cta-ghost" onClick={() => setAbierto(false)}>
-        Cancelar
-      </button>
+      <Button onClick={() => setAbierto(false)}>Cancelar</Button>
     </div>
   );
 }

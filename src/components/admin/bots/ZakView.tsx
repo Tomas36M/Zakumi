@@ -13,6 +13,13 @@ import {
   type Tanda,
   type VersionPrompt,
 } from "@/lib/bots/tipos";
+import { Banner } from "@/components/admin/ui/Banner";
+import { Button } from "@/components/admin/ui/Button";
+import { EmptyState } from "@/components/admin/ui/EmptyState";
+import { Island } from "@/components/admin/ui/Island";
+import { ListRow } from "@/components/admin/ui/ListRow";
+import { Tabs } from "@/components/admin/ui/Tabs";
+import { cn } from "@/lib/cn";
 import { Actividad } from "./Actividad";
 import { Conversaciones } from "./Conversaciones";
 import { LabsChat } from "./LabsChat";
@@ -106,15 +113,38 @@ export function ZakView({
   );
   const respondidos = tandas.reduce((t, x) => t + x.funnel.respondido, 0);
 
+  const pestanas = PESTANAS.map((p) => ({
+    id: p.valor,
+    label:
+      p.valor === "interesados" && interesados.length > 0 ? (
+        <span className="inline-flex items-center gap-1.5">
+          {p.label}
+          <span
+            className={cn(
+              "rounded-full px-1.5 text-[0.7rem] font-bold",
+              tab === "interesados" ? "bg-white/25 text-white" : "bg-acento text-white",
+            )}
+          >
+            {interesados.length}
+          </span>
+        </span>
+      ) : (
+        p.label
+      ),
+  }));
+
   return (
-    <section className="adm-seccion">
-      <div className="adm-toolbar">
+    <section>
+      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-hairline px-5 py-4">
         <div>
-          <h1 className="adm-titulo">
-            Zak <span className="adm-zak-rol">el cerebro comercial</span>
+          <h1 className="text-lg font-semibold text-tinta">
+            Zak{" "}
+            <span className="font-editorial text-base font-normal italic text-acento">
+              el cerebro comercial
+            </span>
           </h1>
           {instancia && (
-            <p className="adm-bot-meta">
+            <p className="text-xs text-tinta-60">
               {instancia.nombre} · {instancia.proveedor === "cloud" ? "API oficial de Meta" : "Green API"} ·
               prompt v{instancia.prompt_version}
               {!instancia.activo && " · APAGADO"}
@@ -122,186 +152,173 @@ export function ZakView({
           )}
         </div>
         {uso && (
-          <span className="adm-toolbar-conteo">
+          <span className="text-xs text-tinta-40">
             hoy: {uso.llamadas} llamadas · {uso.tokens_entrada + uso.tokens_salida} tokens ·{" "}
             {interesados.length} interesados en total
           </span>
         )}
-      </div>
+      </header>
 
-      {!instancia && (
-        <p className="adm-aviso">
-          Sin conexión con el bot: se muestra lo último conocido. Recarga en un momento.
-        </p>
-      )}
-      {avisoSync && (
-        <p className="adm-aviso" role="status">
-          {avisoSync}
-        </p>
-      )}
+      <div className="flex flex-col gap-4 px-5 py-4">
+        {!instancia && (
+          <Banner>
+            Sin conexión con el bot: se muestra lo último conocido. Recarga en un momento.
+          </Banner>
+        )}
+        {avisoSync && <Banner>{avisoSync}</Banner>}
 
-      <div className="adm-tabs" role="tablist">
-        {PESTANAS.map((p) => (
-          <button
-            key={p.valor}
-            type="button"
-            role="tab"
-            aria-selected={tab === p.valor}
-            className={tab === p.valor ? "adm-tab adm-tab--activa" : "adm-tab"}
-            onClick={() => setTab(p.valor)}
-          >
-            {p.label}
-            {p.valor === "interesados" && interesados.length > 0 && (
-              <span className="adm-tab-conteo">{interesados.length}</span>
+        <Tabs pestanas={pestanas} activa={tab} onCambiar={setTab} />
+
+        {tab === "bandeja" && (
+          <Conversaciones instanciaId={ID_ZAK} esZak abrirInicial={telefonoInicial} />
+        )}
+
+        {tab === "interesados" && (
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="text-sm text-tinta-60">
+                Negocios que Zak calentó y están listos para que tú cierres.
+              </p>
+              <Button disabled={sincronizando} onClick={() => sincronizar(false)}>
+                {sincronizando ? "Sincronizando…" : "Sincronizar con el CRM"}
+              </Button>
+            </div>
+            {interesados.length === 0 ? (
+              <EmptyState
+                titulo="Todavía nadie levanta la mano."
+                detalle="Manda una tanda desde Negocios y deja que Zak caliente."
+              />
+            ) : (
+              <ul className="flex flex-col">
+                {interesados.map((p) => (
+                  <li key={p.id}>
+                    <ListRow
+                      interactiva={false}
+                      className="flex items-start justify-between gap-3"
+                    >
+                      <div className="min-w-0">
+                        <strong className="text-sm font-semibold text-tinta">
+                          {p.contexto.nombre ?? p.telefono}
+                        </strong>
+                        <span className="text-xs text-tinta-40">
+                          {" "}· {p.telefono} · {fechaCorta(p.actualizado_en)}
+                        </span>
+                        <p className="text-xs text-tinta-60">
+                          {p.interes_resumen ?? "interés sin detalle"}
+                        </p>
+                      </div>
+                      <Button onClick={() => setTab("bandeja")}>Abrir chat</Button>
+                    </ListRow>
+                  </li>
+                ))}
+              </ul>
             )}
-          </button>
-        ))}
-      </div>
-
-      {tab === "bandeja" && (
-        <Conversaciones instanciaId={ID_ZAK} esZak abrirInicial={telefonoInicial} />
-      )}
-
-      {tab === "interesados" && (
-        <div className="adm-zak-interesados">
-          <div className="adm-conv-cabecera">
-            <p className="adm-ficha-meta">
-              Negocios que Zak calentó y están listos para que tú cierres.
-            </p>
-            <button
-              type="button"
-              className="adm-cta-ghost"
-              disabled={sincronizando}
-              onClick={() => sincronizar(false)}
-            >
-              {sincronizando ? "Sincronizando…" : "Sincronizar con el CRM"}
-            </button>
           </div>
-          {interesados.length === 0 ? (
-            <p className="adm-ficha-sin">
-              Todavía nadie levanta la mano. Manda una tanda desde Negocios y
-              deja que Zak caliente.
-            </p>
-          ) : (
-            <ul className="adm-editor-versiones">
-              {interesados.map((p) => (
-                <li key={p.id} className="adm-editor-version">
-                  <div>
-                    <strong>{p.contexto.nombre ?? p.telefono}</strong>
-                    <span className="adm-editor-fecha">
-                      {" "}· {p.telefono} · {fechaCorta(p.actualizado_en)}
+        )}
+
+        {tab === "tandas" && (
+          <div className="flex flex-col gap-4">
+            {tandas.length === 0 && (
+              <EmptyState
+                titulo="Sin tandas todavía."
+                detalle="En Negocios: selecciona prospectos y dale a «Que Zak los contacte»."
+              />
+            )}
+            {tandas.map((t) => {
+              const total =
+                t.funnel.pendiente + t.funnel.enviado + t.funnel.entregado +
+                t.funnel.leido + t.funnel.respondido + t.funnel.fallido;
+              return (
+                <Island
+                  key={t.id}
+                  className="bg-isla-alta"
+                  titulo={
+                    <>
+                      Tanda #{t.id} · {fechaCorta(t.creado_en)}
+                    </>
+                  }
+                  acciones={
+                    <span className="text-xs text-tinta-40">
+                      {t.plantilla} · {total} prospectos
                     </span>
-                    <p className="adm-editor-notas">
-                      {p.interes_resumen ?? "interés sin detalle"}
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    className="adm-cta-ghost"
-                    onClick={() => setTab("bandeja")}
-                  >
-                    Abrir chat
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      )}
-
-      {tab === "tandas" && (
-        <div className="adm-zak-tandas">
-          {tandas.length === 0 && (
-            <p className="adm-ficha-sin">
-              Sin tandas todavía. En Negocios: selecciona prospectos y dale a
-              «Que Zak los contacte».
-            </p>
-          )}
-          {tandas.map((t) => {
-            const total =
-              t.funnel.pendiente + t.funnel.enviado + t.funnel.entregado +
-              t.funnel.leido + t.funnel.respondido + t.funnel.fallido;
-            return (
-              <article key={t.id} className="adm-zak-tanda">
-                <header className="adm-conv-cabecera">
-                  <h2 className="adm-360-oportunidad-nombre">
-                    Tanda #{t.id} · {fechaCorta(t.creado_en)}
-                  </h2>
-                  <span className="adm-editor-fecha">
-                    {t.plantilla} · {total} prospectos
-                  </span>
-                </header>
-                <div className="adm-zak-funnel">
-                  {([
-                    ["pendiente", "En cola"],
-                    ["enviado", "Enviado"],
-                    ["entregado", "Entregado"],
-                    ["leido", "Leído"],
-                    ["respondido", "Respondió"],
-                  ] as const).map(([clave, label]) => (
-                    <div key={clave} className="adm-cifra-bloque">
-                      <span className="adm-cifra">{t.funnel[clave]}</span>
-                      <span className="adm-cifra-label">{label}</span>
+                  }
+                >
+                  <div className="flex flex-col gap-3">
+                    <div className="grid grid-cols-[repeat(auto-fit,minmax(110px,1fr))] gap-aire">
+                      {([
+                        ["pendiente", "En cola"],
+                        ["enviado", "Enviado"],
+                        ["entregado", "Entregado"],
+                        ["leido", "Leído"],
+                        ["respondido", "Respondió"],
+                      ] as const).map(([clave, label]) => (
+                        <div key={clave} className="flex flex-col gap-0.5 rounded-fila bg-isla p-3">
+                          <span className="text-2xl font-semibold text-tinta">
+                            {t.funnel[clave]}
+                          </span>
+                          <span className="text-xs text-tinta-60">{label}</span>
+                        </div>
+                      ))}
+                      <div className="flex flex-col gap-0.5 rounded-fila bg-acento-10 p-3">
+                        <span className="text-2xl font-semibold text-acento">{t.interesados}</span>
+                        <span className="text-xs text-tinta-60">Interesados 🧡</span>
+                      </div>
                     </div>
-                  ))}
-                  <div className="adm-cifra-bloque adm-zak-funnel--interes">
-                    <span className="adm-cifra">{t.interesados}</span>
-                    <span className="adm-cifra-label">Interesados 🧡</span>
+                    {t.funnel.fallido > 0 && (
+                      <Banner variante="error">
+                        {t.funnel.fallido} envío(s) fallidos — si el error menciona la
+                        plantilla, revisa que «{t.plantilla}» esté aprobada en Meta.
+                      </Banner>
+                    )}
+                    {t.notas && <p className="text-xs text-tinta-60">{t.notas}</p>}
                   </div>
-                </div>
-                {t.funnel.fallido > 0 && (
-                  <p className="adm-error">
-                    {t.funnel.fallido} envío(s) fallidos — si el error menciona la
-                    plantilla, revisa que «{t.plantilla}» esté aprobada en Meta.
-                  </p>
-                )}
-                {t.notas && <p className="adm-editor-notas">{t.notas}</p>}
-              </article>
-            );
-          })}
-        </div>
-      )}
-
-      {tab === "metricas" && (
-        <div className="adm-zak-metricas">
-          <div className="adm-actividad-cifras">
-            <div className="adm-cifra-bloque">
-              <span className="adm-cifra">
-                {enviados > 0 ? `${Math.round((respondidos / enviados) * 100)}%` : "—"}
-              </span>
-              <span className="adm-cifra-label">
-                tasa de respuesta de la prospección ({respondidos}/{enviados})
-              </span>
-            </div>
-            <div className="adm-cifra-bloque">
-              <span className="adm-cifra">{interesados.length}</span>
-              <span className="adm-cifra-label">interesados en total</span>
-            </div>
-            <div className="adm-cifra-bloque">
-              <span className="adm-cifra">{tandas.length}</span>
-              <span className="adm-cifra-label">tandas enviadas</span>
-            </div>
+                </Island>
+              );
+            })}
           </div>
-          <Actividad instanciaId={ID_ZAK} />
-        </div>
-      )}
+        )}
 
-      {tab === "prompt" && (
-        <PromptEditor
-          instanciaId={ID_ZAK}
-          prompt={prompt}
-          versiones={versiones}
-          onProbarEnLabs={() => setTab("labs")}
-        />
-      )}
+        {tab === "metricas" && (
+          <div className="flex flex-col gap-6">
+            <div className="grid grid-cols-[repeat(auto-fit,minmax(160px,1fr))] gap-aire">
+              <div className="flex flex-col gap-0.5 rounded-fila bg-isla-alta p-4">
+                <span className="text-2xl font-semibold text-tinta">
+                  {enviados > 0 ? `${Math.round((respondidos / enviados) * 100)}%` : "—"}
+                </span>
+                <span className="text-xs text-tinta-60">
+                  tasa de respuesta de la prospección ({respondidos}/{enviados})
+                </span>
+              </div>
+              <div className="flex flex-col gap-0.5 rounded-fila bg-isla-alta p-4">
+                <span className="text-2xl font-semibold text-tinta">{interesados.length}</span>
+                <span className="text-xs text-tinta-60">interesados en total</span>
+              </div>
+              <div className="flex flex-col gap-0.5 rounded-fila bg-isla-alta p-4">
+                <span className="text-2xl font-semibold text-tinta">{tandas.length}</span>
+                <span className="text-xs text-tinta-60">tandas enviadas</span>
+              </div>
+            </div>
+            <Actividad instanciaId={ID_ZAK} />
+          </div>
+        )}
 
-      {tab === "labs" && (
-        <LabsChat
-          instanciaId={ID_ZAK}
-          prompt={prompt}
-          onEditarPrompt={() => setTab("prompt")}
-        />
-      )}
+        {tab === "prompt" && (
+          <PromptEditor
+            instanciaId={ID_ZAK}
+            prompt={prompt}
+            versiones={versiones}
+            onProbarEnLabs={() => setTab("labs")}
+          />
+        )}
+
+        {tab === "labs" && (
+          <LabsChat
+            instanciaId={ID_ZAK}
+            prompt={prompt}
+            onEditarPrompt={() => setTab("prompt")}
+          />
+        )}
+      </div>
     </section>
   );
 }

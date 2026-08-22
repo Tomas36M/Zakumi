@@ -106,7 +106,7 @@ export default async function Cliente360Page({
         botStatus={botStatus}
         hoy={hoyBogota()}
       />
-      <section className="adm-seccion">
+      <section className="px-5 pb-4">
         <AccesoPortal
           clienteId={id}
           vinculados={vinculados}

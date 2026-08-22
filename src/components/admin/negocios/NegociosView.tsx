@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { Bot, MessageSquare, Trash2 } from "lucide-react";
 import { actualizarNegocio, cambiarEstadoLote, eliminarNegocios } from "@/lib/admin/actions";
 import {
   CIUDADES,
@@ -14,11 +15,29 @@ import {
 import { sinMas } from "@/lib/admin/telefono";
 import { agruparPorVertical, contactables } from "@/lib/admin/zak";
 import { enviarTandaZak } from "@/lib/admin/zak-actions";
+import { Banner } from "@/components/admin/ui/Banner";
+import { Button } from "@/components/admin/ui/Button";
+import { EmptyState } from "@/components/admin/ui/EmptyState";
+import { Field, Input, Select } from "@/components/admin/ui/Field";
+import { ListRow } from "@/components/admin/ui/ListRow";
 
 const LABEL_CIUDAD = new Map<string, string>(
   CIUDADES.map((c) => [c.valor, c.label]),
 );
 LABEL_CIUDAD.set("otra", "Otra");
+
+// Punto de color del pipeline (clases literales: Tailwind no ve plantillas).
+const COLOR_ESTADO: Record<EstadoNegocio, string> = {
+  nuevo: "bg-estado-nuevo",
+  contactado: "bg-estado-contactado",
+  respondido: "bg-estado-respondido",
+  interesado: "bg-estado-interesado",
+  cliente: "bg-estado-cliente",
+  descartado: "bg-estado-descartado",
+};
+
+const GRID_FILA =
+  "grid grid-cols-[auto_minmax(0,3fr)_minmax(0,1fr)_minmax(0,1.4fr)_auto_2.5rem] items-center gap-3";
 
 type FiltroTelefono = "todos" | "con" | "sin";
 
@@ -151,115 +170,110 @@ export function NegociosView({ negocios }: { negocios: Negocio[] }) {
   }
 
   return (
-    <div className="adm-negocios">
-      <div className="adm-filtros" role="search">
-        <label className="adm-field adm-filtro-q">
-          <span className="adm-field-label">Buscar por nombre</span>
-          <input
-            className="adm-input"
-            type="search"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="El Tornillo…"
-          />
-        </label>
-        <label className="adm-field">
-          <span className="adm-field-label">Ciudad</span>
-          <select
-            className="adm-select"
-            value={ciudad}
-            onChange={(e) => setCiudad(e.target.value as Ciudad | "todas")}
-          >
-            <option value="todas">Todas</option>
-            {CIUDADES.map((c) => (
-              <option key={c.valor} value={c.valor}>
-                {c.label}
-              </option>
-            ))}
-            <option value="otra">Otra</option>
-          </select>
-        </label>
-        <label className="adm-field">
-          <span className="adm-field-label">Estado</span>
-          <select
-            className="adm-select"
-            value={estado}
-            onChange={(e) =>
-              setEstado(e.target.value as EstadoNegocio | "todos")
-            }
-          >
-            <option value="todos">Todos</option>
-            {ESTADOS.map((e) => (
-              <option key={e.valor} value={e.valor}>
-                {e.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="adm-field">
-          <span className="adm-field-label">Categoría</span>
-          <select
-            className="adm-select"
-            value={categoria}
-            onChange={(e) => setCategoria(e.target.value)}
-          >
-            <option value="todas">Todas</option>
-            {categorias.map((c) => (
-              <option key={c} value={c}>
-                {c.replaceAll("_", " ")}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="adm-field">
-          <span className="adm-field-label">Teléfono</span>
-          <select
-            className="adm-select"
-            value={telefono}
-            onChange={(e) => setTelefono(e.target.value as FiltroTelefono)}
-          >
-            <option value="todos">Todos</option>
-            <option value="con">Con teléfono</option>
-            <option value="sin">Sin teléfono</option>
-          </select>
-        </label>
-        <span className="adm-filtros-conteo">
-          <strong className="adm-cifra">{filtrados.length}</strong> de{" "}
-          {negocios.length}
-        </span>
-      </div>
-
-      {seleccionActiva.length > 0 ? (
-        <div className="adm-lote-bar">
-          <span>
-            <strong className="adm-cifra">{seleccionActiva.length}</strong>{" "}
-            seleccionados
-          </span>
-          <label className="adm-field adm-lote-select">
-            <span className="adm-field-label">Pasar a</span>
-            <select
-              className="adm-select"
-              value={estadoLote}
-              onChange={(e) => setEstadoLote(e.target.value as EstadoNegocio)}
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-wrap items-end gap-3" role="search">
+        <div className="min-w-48 flex-1">
+          <Field label="Buscar por nombre">
+            <Input
+              type="search"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="El Tornillo…"
+            />
+          </Field>
+        </div>
+        <div className="w-36">
+          <Field label="Ciudad">
+            <Select
+              value={ciudad}
+              onChange={(e) => setCiudad(e.target.value as Ciudad | "todas")}
             >
+              <option value="todas">Todas</option>
+              {CIUDADES.map((c) => (
+                <option key={c.valor} value={c.valor}>
+                  {c.label}
+                </option>
+              ))}
+              <option value="otra">Otra</option>
+            </Select>
+          </Field>
+        </div>
+        <div className="w-36">
+          <Field label="Estado">
+            <Select
+              value={estado}
+              onChange={(e) =>
+                setEstado(e.target.value as EstadoNegocio | "todos")
+              }
+            >
+              <option value="todos">Todos</option>
               {ESTADOS.map((e) => (
                 <option key={e.valor} value={e.valor}>
                   {e.label}
                 </option>
               ))}
-            </select>
+            </Select>
+          </Field>
+        </div>
+        <div className="w-40">
+          <Field label="Categoría">
+            <Select
+              value={categoria}
+              onChange={(e) => setCategoria(e.target.value)}
+            >
+              <option value="todas">Todas</option>
+              {categorias.map((c) => (
+                <option key={c} value={c}>
+                  {c.replaceAll("_", " ")}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        </div>
+        <div className="w-36">
+          <Field label="Teléfono">
+            <Select
+              value={telefono}
+              onChange={(e) => setTelefono(e.target.value as FiltroTelefono)}
+            >
+              <option value="todos">Todos</option>
+              <option value="con">Con teléfono</option>
+              <option value="sin">Sin teléfono</option>
+            </Select>
+          </Field>
+        </div>
+        <span className="h-control content-center text-sm text-tinta-60">
+          <strong className="text-tinta">{filtrados.length}</strong> de{" "}
+          {negocios.length}
+        </span>
+      </div>
+
+      {seleccionActiva.length > 0 ? (
+        <div className="flex flex-wrap items-center gap-3 rounded-fila bg-isla-alta px-4 py-2.5">
+          <span className="text-sm text-tinta">
+            <strong>{seleccionActiva.length}</strong> seleccionados
+          </span>
+          <label className="flex items-center gap-2 text-xs font-medium text-tinta-60">
+            Pasar a
+            <span className="w-40">
+              <Select
+                className="bg-isla"
+                value={estadoLote}
+                onChange={(e) => setEstadoLote(e.target.value as EstadoNegocio)}
+              >
+                {ESTADOS.map((e) => (
+                  <option key={e.valor} value={e.valor}>
+                    {e.label}
+                  </option>
+                ))}
+              </Select>
+            </span>
           </label>
-          <button
-            className="adm-cta"
-            type="button"
-            disabled={guardando}
-            onClick={aplicarLote}
-          >
+          <Button disabled={guardando} onClick={aplicarLote}>
             {guardando ? "Aplicando…" : `Aplicar a ${seleccionActiva.length}`}
-          </button>
-          <button
-            className="adm-cta"
-            type="button"
+          </Button>
+          <Button
+            variante="primaria"
             disabled={guardando || contactablesZak.length === 0}
             title={
               contactablesZak.length === 0
@@ -268,127 +282,117 @@ export function NegociosView({ negocios }: { negocios: Negocio[] }) {
             }
             onClick={contactarConZak}
           >
-            🧡 Que Zak los contacte ({contactablesZak.length})
-          </button>
-          <button
-            className="adm-cta-ghost adm-cta--peligro"
-            type="button"
-            disabled={guardando}
-            onClick={eliminarLote}
-          >
-            🗑 Eliminar ({seleccionActiva.length})
-          </button>
+            <Bot className="h-4 w-4" /> Que Zak los contacte ({contactablesZak.length})
+          </Button>
+          <Button variante="peligro" disabled={guardando} onClick={eliminarLote}>
+            <Trash2 className="h-4 w-4" /> Eliminar ({seleccionActiva.length})
+          </Button>
         </div>
       ) : null}
 
-      {aviso ? (
-        <p className="adm-aviso" role="status">
-          {aviso}
-        </p>
-      ) : null}
+      {aviso ? <Banner>{aviso}</Banner> : null}
 
       {negocios.length === 0 ? (
-        <p className="adm-tabla-vacia">
-          Todavía no hay negocios. Ve al Mapa, busca «ferreterías en Ubaté» e
-          importa los que tengan teléfono.
-        </p>
+        <EmptyState
+          titulo="Todavía no hay negocios."
+          detalle="Ve al Mapa, busca «ferreterías en Ubaté» e importa los que tengan teléfono."
+        />
       ) : filtrados.length === 0 ? (
-        <p className="adm-tabla-vacia">
-          Ningún negocio coincide con esos filtros.
-        </p>
+        <EmptyState titulo="Ningún negocio coincide con esos filtros." />
       ) : (
-        <div className="adm-tabla-scroll">
-          <table className="adm-tabla">
-            <thead>
-              <tr>
-                <th className="adm-th-check">
-                  <input
-                    type="checkbox"
-                    aria-label="Seleccionar todos los filtrados"
-                    checked={
-                      filtrados.length > 0 &&
-                      seleccionActiva.length === filtrados.length
-                    }
-                    onChange={alternarTodos}
+        <div className="barra-fina overflow-x-auto">
+          <div className="flex min-w-[680px] flex-col gap-1">
+            <div className={`${GRID_FILA} px-3 py-1.5 text-xs font-medium text-tinta-40`}>
+              <input
+                type="checkbox"
+                className="accent-acento"
+                aria-label="Seleccionar todos los filtrados"
+                checked={
+                  filtrados.length > 0 &&
+                  seleccionActiva.length === filtrados.length
+                }
+                onChange={alternarTodos}
+              />
+              <span>Negocio</span>
+              <span>Ciudad</span>
+              <span>Teléfono</span>
+              <span>Estado</span>
+              <span aria-label="Acciones" />
+            </div>
+            {filtrados.map((n) => (
+              <ListRow
+                key={n.id}
+                interactiva={false}
+                activa={seleccionados.has(n.id)}
+                className={GRID_FILA}
+              >
+                <input
+                  type="checkbox"
+                  className="accent-acento"
+                  aria-label={`Seleccionar ${n.nombre}`}
+                  checked={seleccionados.has(n.id)}
+                  onChange={() => alternar(n.id)}
+                />
+                <span className="min-w-0">
+                  <span className="block truncate text-sm font-medium text-tinta">
+                    {n.nombre}
+                  </span>
+                  {n.categoria ? (
+                    <span className="block truncate text-xs text-tinta-40">
+                      {n.categoria.replaceAll("_", " ")}
+                    </span>
+                  ) : null}
+                </span>
+                <span className="truncate text-sm text-tinta-60">
+                  {LABEL_CIUDAD.get(n.ciudad)}
+                </span>
+                <span className="text-sm text-tinta-60">
+                  {n.telefono ?? <span className="text-tinta-40">—</span>}
+                  {n.tipo_telefono === "fijo" ? (
+                    <span className="text-xs text-tinta-40"> fijo</span>
+                  ) : null}
+                </span>
+                <label className="flex items-center gap-1.5">
+                  <span
+                    aria-hidden
+                    className={`h-2 w-2 shrink-0 rounded-full ${COLOR_ESTADO[n.estado]}`}
                   />
-                </th>
-                <th>Negocio</th>
-                <th>Ciudad</th>
-                <th>Teléfono</th>
-                <th>Estado</th>
-                <th aria-label="Acciones" />
-              </tr>
-            </thead>
-            <tbody>
-              {filtrados.map((n) => (
-                <tr
-                  key={n.id}
-                  className={seleccionados.has(n.id) ? "adm-tr--activa" : ""}
-                >
-                  <td className="adm-th-check">
-                    <input
-                      type="checkbox"
-                      aria-label={`Seleccionar ${n.nombre}`}
-                      checked={seleccionados.has(n.id)}
-                      onChange={() => alternar(n.id)}
-                    />
-                  </td>
-                  <td>
-                    <span className="adm-tabla-nombre">{n.nombre}</span>
-                    {n.categoria ? (
-                      <span className="adm-tabla-categoria">
-                        {n.categoria.replaceAll("_", " ")}
-                      </span>
-                    ) : null}
-                  </td>
-                  <td className="adm-tabla-ciudad">
-                    {LABEL_CIUDAD.get(n.ciudad)}
-                  </td>
-                  <td className="adm-tabla-telefono">
-                    {n.telefono ?? <span className="adm-ficha-sin">—</span>}
-                    {n.tipo_telefono === "fijo" ? (
-                      <span className="adm-tabla-fijo"> fijo</span>
-                    ) : null}
-                  </td>
-                  <td>
-                    <label className="adm-badge-select">
-                      <span className={`adm-badge adm-badge--${n.estado}`} />
-                      <select
-                        className="adm-select adm-select-estado"
-                        value={n.estado}
-                        aria-label={`Estado de ${n.nombre}`}
-                        disabled={guardando}
-                        onChange={(e) => {
-                          startGuardar(async () => {
-                            await actualizarNegocio(n.id, {
-                              estado: e.target.value as EstadoNegocio,
-                            });
-                            router.refresh();
-                          });
-                        }}
-                      >
-                        {ESTADOS.map((e) => (
-                          <option key={e.valor} value={e.valor}>
-                            {e.label}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                  </td>
-                  <td className="adm-tabla-acciones">
-                    {n.telefono && n.tipo_telefono === "movil" ? (
-                      <Link
-                        className="adm-tabla-wa"
-                        href={`/admin/zak?telefono=${sinMas(n.telefono)}`}
-                      >
-                        Chat Zak
-                      </Link>
-                    ) : null}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                  <Select
+                    className="h-8 w-36 text-xs"
+                    value={n.estado}
+                    aria-label={`Estado de ${n.nombre}`}
+                    disabled={guardando}
+                    onChange={(e) => {
+                      startGuardar(async () => {
+                        await actualizarNegocio(n.id, {
+                          estado: e.target.value as EstadoNegocio,
+                        });
+                        router.refresh();
+                      });
+                    }}
+                  >
+                    {ESTADOS.map((e) => (
+                      <option key={e.valor} value={e.valor}>
+                        {e.label}
+                      </option>
+                    ))}
+                  </Select>
+                </label>
+                <span className="flex justify-end">
+                  {n.telefono && n.tipo_telefono === "movil" ? (
+                    <Link
+                      title="Chat Zak"
+                      aria-label={`Chat de Zak con ${n.nombre}`}
+                      href={`/admin/zak?telefono=${sinMas(n.telefono)}`}
+                      className="inline-flex h-9 w-9 items-center justify-center rounded-full text-tinta-60 transition-colors hover:bg-isla-alta hover:text-tinta"
+                    >
+                      <MessageSquare className="h-4 w-4" />
+                    </Link>
+                  ) : null}
+                </span>
+              </ListRow>
+            ))}
+          </div>
         </div>
       )}
     </div>

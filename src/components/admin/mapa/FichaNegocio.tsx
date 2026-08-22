@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { X } from "lucide-react";
 import { actualizarNegocio, agregarNota } from "@/lib/admin/actions";
 import { convertirNegocioEnCliente } from "@/lib/admin/cartera-actions";
 import {
@@ -14,6 +15,13 @@ import {
 import Link from "next/link";
 import { sinMas } from "@/lib/admin/telefono";
 import { createSupabaseBrowser } from "@/lib/supabase/browser";
+import { Banner } from "@/components/admin/ui/Banner";
+import { Button } from "@/components/admin/ui/Button";
+import { Field, Input, Select, TextArea } from "@/components/admin/ui/Field";
+import { IconButton } from "@/components/admin/ui/IconButton";
+import { Island } from "@/components/admin/ui/Island";
+import { ListRow } from "@/components/admin/ui/ListRow";
+import { Skeleton } from "@/components/admin/ui/Skeleton";
 
 const LABEL_CIUDAD = new Map<string, string>(
   CIUDADES.map((c) => [c.valor, c.label]),
@@ -75,11 +83,11 @@ export function FichaNegocio({ negocio, onCambio, onCerrar }: Props) {
   }
 
   return (
-    <div className="adm-ficha-contenido">
-      <div className="adm-ficha-cabecera">
+    <div className="flex flex-col gap-4">
+      <div className="flex items-start justify-between gap-2">
         <div>
-          <h2 className="adm-ficha-nombre">{negocio.nombre}</h2>
-          <p className="adm-ficha-meta">
+          <h2 className="text-base font-semibold text-tinta">{negocio.nombre}</h2>
+          <p className="text-xs text-tinta-40">
             {[
               negocio.categoria?.replaceAll("_", " "),
               LABEL_CIUDAD.get(negocio.ciudad),
@@ -89,24 +97,17 @@ export function FichaNegocio({ negocio, onCambio, onCerrar }: Props) {
               .join(" · ")}
           </p>
         </div>
-        <button
-          type="button"
-          className="adm-ficha-cerrar"
-          aria-label="Cerrar ficha"
-          onClick={onCerrar}
-        >
-          ×
-        </button>
+        <IconButton etiqueta="Cerrar ficha" onClick={onCerrar}>
+          <X className="h-4 w-4" />
+        </IconButton>
       </div>
 
       {negocio.direccion ? (
-        <p className="adm-ficha-direccion">{negocio.direccion}</p>
+        <p className="text-sm text-tinta-60">{negocio.direccion}</p>
       ) : null}
 
-      <label className="adm-field">
-        <span className="adm-field-label">Estado</span>
-        <select
-          className="adm-select"
+      <Field label="Estado">
+        <Select
           value={negocio.estado}
           disabled={guardando}
           onChange={(e) => guardar({ estado: e.target.value as EstadoNegocio })}
@@ -116,74 +117,69 @@ export function FichaNegocio({ negocio, onCambio, onCerrar }: Props) {
               {e.label}
             </option>
           ))}
-        </select>
-      </label>
+        </Select>
+      </Field>
 
-      <div className="adm-field">
-        <span className="adm-field-label">Teléfono</span>
+      <div className="flex flex-col gap-1.5">
+        <span className="text-xs font-medium text-tinta-60">Teléfono</span>
         {telefonoEdit === null ? (
-          <div className="adm-ficha-telefono">
-            <span className={negocio.telefono ? "" : "adm-ficha-sin"}>
+          <div className="flex items-center justify-between gap-2">
+            <span
+              className={negocio.telefono ? "text-sm text-tinta" : "text-sm text-tinta-40"}
+            >
               {negocio.telefono ?? "Sin teléfono"}
               {negocio.tipo_telefono === "fijo" ? " · fijo, sin WhatsApp" : ""}
             </span>
-            <button
-              type="button"
-              className="adm-ficha-editar"
-              onClick={() => setTelefonoEdit(negocio.telefono ?? "")}
-            >
+            <Button onClick={() => setTelefonoEdit(negocio.telefono ?? "")}>
               Editar
-            </button>
+            </Button>
           </div>
         ) : (
           <form
-            className="adm-ficha-telefono-form"
+            className="flex gap-2"
             onSubmit={(e) => {
               e.preventDefault();
               guardar({ telefono: telefonoEdit });
               setTelefonoEdit(null);
             }}
           >
-            <input
-              className="adm-input"
+            <Input
+              className="flex-1"
               type="tel"
               value={telefonoEdit}
               onChange={(e) => setTelefonoEdit(e.target.value)}
               placeholder="310 1234567"
               autoFocus
             />
-            <button className="adm-cta-ghost" type="submit" disabled={guardando}>
+            <Button type="submit" disabled={guardando}>
               Guardar
-            </button>
+            </Button>
           </form>
         )}
       </div>
 
-      {error ? (
-        <p className="adm-error" role="alert">
-          {error}
-        </p>
-      ) : null}
+      {error ? <Banner variante="error">{error}</Banner> : null}
 
-      <div className="adm-ficha-acciones">
+      <div className="flex flex-wrap gap-2">
         {negocio.telefono && negocio.tipo_telefono === "movil" ? (
-          <Link className="adm-cta" href={`/admin/zak?telefono=${sinMas(negocio.telefono)}`}>
+          <Link
+            href={`/admin/zak?telefono=${sinMas(negocio.telefono)}`}
+            className="inline-flex h-control items-center justify-center gap-2 rounded-full bg-acento px-4 text-sm font-medium text-white transition-colors hover:bg-acento-85"
+          >
             Chat con Zak
           </Link>
         ) : null}
         {negocio.sitio_web ? (
           <a
-            className="adm-cta-ghost"
             href={negocio.sitio_web}
             target="_blank"
             rel="noopener noreferrer"
+            className="inline-flex h-control items-center justify-center gap-2 rounded-full bg-isla-alta px-4 text-sm font-medium text-tinta-85 transition-colors hover:bg-acento-10 hover:text-tinta"
           >
             Sitio web
           </a>
         ) : null}
-        <button
-          type="button"
-          className="adm-cta-ghost"
+        <Button
           disabled={guardando}
           onClick={() => {
             setError(null);
@@ -199,13 +195,12 @@ export function FichaNegocio({ negocio, onCambio, onCerrar }: Props) {
           }}
         >
           Convertir en cliente
-        </button>
+        </Button>
       </div>
 
-      <section className="adm-notas" aria-label="Notas del negocio">
-        <h3 className="adm-notas-titulo">Notas</h3>
+      <Island className="bg-isla-alta/50" titulo="Notas" aria-label="Notas del negocio">
         <form
-          className="adm-notas-form"
+          className="mb-3 flex flex-col gap-2"
           onSubmit={(e) => {
             e.preventDefault();
             const texto = notaNueva.trim();
@@ -222,51 +217,58 @@ export function FichaNegocio({ negocio, onCambio, onCerrar }: Props) {
             });
           }}
         >
-          <textarea
-            className="adm-textarea"
+          <TextArea
             value={notaNueva}
             onChange={(e) => setNotaNueva(e.target.value)}
             placeholder="Qué pasó con este negocio…"
             rows={2}
             maxLength={4000}
           />
-          <button
-            className="adm-cta-ghost"
+          <Button
             type="submit"
+            className="self-start"
             disabled={guardando || !notaNueva.trim()}
           >
             Anotar
-          </button>
+          </Button>
         </form>
 
         {notas === null ? (
-          <p className="adm-notas-cargando">Cargando notas…</p>
+          <div className="flex flex-col gap-2">
+            <Skeleton className="h-3 w-2/3" />
+            <Skeleton className="h-3 w-1/2" />
+          </div>
         ) : notas.length === 0 ? (
-          <p className="adm-notas-vacias">
+          <p className="text-sm text-tinta-40">
             Todavía no hay notas. La primera se escribe sola al cambiar el
             estado.
           </p>
         ) : (
-          <ul className="adm-notas-lista">
+          <ul className="flex flex-col gap-1">
             {notas.map((n) => (
-              <li
-                key={n.id}
-                className={n.automatica ? "adm-nota adm-nota--auto" : "adm-nota"}
-              >
-                <span className="adm-nota-fecha">
-                  {new Date(n.created_at).toLocaleDateString("es-CO", {
-                    day: "2-digit",
-                    month: "short",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                </span>
-                <span className="adm-nota-texto">{n.texto}</span>
+              <li key={n.id}>
+                <ListRow interactiva={false} className="flex flex-col gap-0.5">
+                  <span className="text-xs text-tinta-40">
+                    {new Date(n.created_at).toLocaleDateString("es-CO", {
+                      day: "2-digit",
+                      month: "short",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </span>
+                  <span
+                    className={
+                      n.automatica ? "text-sm text-tinta-60 italic" : "text-sm text-tinta"
+                    }
+                  >
+                    {n.texto}
+                  </span>
+                </ListRow>
               </li>
             ))}
           </ul>
         )}
-      </section>
+      </Island>
     </div>
   );
 }

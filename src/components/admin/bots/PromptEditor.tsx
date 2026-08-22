@@ -5,6 +5,12 @@ import { useState, useTransition } from "react";
 import { guardarPrompt, restaurarVersion } from "@/lib/admin/bots-actions";
 import { fechaCorta } from "@/lib/admin/formato";
 import type { PromptActivo, VersionPrompt } from "@/lib/bots/tipos";
+import { Badge } from "@/components/admin/ui/Badge";
+import { Banner } from "@/components/admin/ui/Banner";
+import { Button } from "@/components/admin/ui/Button";
+import { Field, Input, TextArea } from "@/components/admin/ui/Field";
+import { Island } from "@/components/admin/ui/Island";
+import { ListRow } from "@/components/admin/ui/ListRow";
 
 type Props = {
   instanciaId: number;
@@ -94,32 +100,39 @@ export function PromptEditor({ instanciaId, prompt, versiones, onProbarEnLabs }:
   }
 
   return (
-    <div className="adm-editor-layout">
+    <div className="grid items-start gap-aire min-[900px]:grid-cols-[minmax(0,1fr)_280px]">
       <form
-        className="adm-editor"
+        className="flex min-w-0 flex-col gap-4"
         onSubmit={(e) => {
           e.preventDefault();
           guardar(baseVersion);
         }}
       >
         {conflicto && (
-          <div className="adm-editor-conflicto" role="alert">
-            <p className="adm-error">
+          <div
+            className="flex flex-col gap-3 rounded-fila border border-peligro/30 p-4"
+            role="alert"
+          >
+            <Banner variante="error">
               Se guardó la v{conflicto.activa} mientras editabas. Compara y decide:
-            </p>
+            </Banner>
             {conflicto.remoto && (
-              <div className="adm-editor-diff">
-                <div>
-                  <h3 className="adm-field-label">v{conflicto.activa} (la activa)</h3>
-                  <pre className="adm-editor-pre">
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="min-w-0">
+                  <h3 className="mb-1.5 text-xs font-medium text-tinta-60">
+                    v{conflicto.activa} (la activa)
+                  </h3>
+                  <pre className="barra-fina max-h-80 overflow-auto rounded-fila bg-isla-alta p-3 text-xs leading-relaxed whitespace-pre-wrap text-tinta-60">
                     {conflicto.remoto.system_prompt}
                     {"\n\n---\n\n"}
                     {conflicto.remoto.knowledge}
                   </pre>
                 </div>
-                <div>
-                  <h3 className="adm-field-label">Tu versión (sin guardar)</h3>
-                  <pre className="adm-editor-pre">
+                <div className="min-w-0">
+                  <h3 className="mb-1.5 text-xs font-medium text-tinta-60">
+                    Tu versión (sin guardar)
+                  </h3>
+                  <pre className="barra-fina max-h-80 overflow-auto rounded-fila bg-isla-alta p-3 text-xs leading-relaxed whitespace-pre-wrap text-tinta-60">
                     {system}
                     {"\n\n---\n\n"}
                     {knowledge}
@@ -127,105 +140,91 @@ export function PromptEditor({ instanciaId, prompt, versiones, onProbarEnLabs }:
                 </div>
               </div>
             )}
-            <div className="adm-ficha-acciones">
-              <button
-                type="button"
-                className="adm-cta"
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variante="primaria"
                 disabled={guardando}
                 onClick={() => guardar(conflicto.activa)}
               >
                 Guardar la mía encima (crea v{conflicto.activa + 1})
-              </button>
-              <button
-                type="button"
-                className="adm-cta-ghost"
-                onClick={() => setConflicto(null)}
-              >
-                Seguir editando
-              </button>
+              </Button>
+              <Button onClick={() => setConflicto(null)}>Seguir editando</Button>
             </div>
           </div>
         )}
 
-        <label className="adm-field">
-          <span className="adm-field-label">Instrucciones (quién es y cómo se comporta)</span>
-          <textarea
-            className="adm-textarea adm-editor-textarea"
+        <Field label="Instrucciones (quién es y cómo se comporta)">
+          <TextArea
             value={system}
             onChange={(e) => setSystem(e.target.value)}
             rows={14}
             required
           />
-        </label>
+        </Field>
 
-        <label className="adm-field">
-          <span className="adm-field-label">
-            Base de conocimiento (precios, horarios, catálogo)
-          </span>
-          <textarea
-            className="adm-textarea adm-editor-textarea"
+        <Field label="Base de conocimiento (precios, horarios, catálogo)">
+          <TextArea
             value={knowledge}
             onChange={(e) => setKnowledge(e.target.value)}
             rows={10}
           />
-        </label>
+        </Field>
 
-        <label className="adm-field">
-          <span className="adm-field-label">Notas de esta versión (opcional)</span>
-          <input
-            className="adm-input"
+        <Field label="Notas de esta versión (opcional)">
+          <Input
             value={notas}
             onChange={(e) => setNotas(e.target.value)}
             placeholder="qué cambió y por qué"
             maxLength={300}
           />
-        </label>
+        </Field>
 
-        {exito && <p className="adm-aviso">{exito}</p>}
-        {error && (
-          <p className="adm-error" role="alert">
-            {error}
-          </p>
-        )}
+        {exito && <Banner>{exito}</Banner>}
+        {error && <Banner variante="error">{error}</Banner>}
 
-        <div className="adm-ficha-acciones">
-          <button className="adm-cta" type="submit" disabled={guardando || !system.trim()}>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variante="primaria"
+            type="submit"
+            disabled={guardando || !system.trim()}
+          >
             {guardando ? "Guardando…" : `Guardar y activar (crea v${baseVersion + 1})`}
-          </button>
-          <button type="button" className="adm-cta-ghost" onClick={onProbarEnLabs}>
-            Probar en Labs
-          </button>
+          </Button>
+          <Button onClick={onProbarEnLabs}>Probar en Labs</Button>
         </div>
       </form>
 
-      <aside className="adm-editor-historial">
-        <h2 className="adm-field-label">Historial</h2>
+      <Island className="bg-isla-alta/50" titulo="Historial">
         {versiones.length === 0 && (
-          <p className="adm-ficha-sin">Sin versiones todavía.</p>
+          <p className="text-sm text-tinta-40">Sin versiones todavía.</p>
         )}
-        <ul className="adm-editor-versiones">
+        <ul className="flex flex-col gap-1">
           {versiones.map((v) => (
-            <li key={v.version} className="adm-editor-version">
-              <div>
-                <strong>v{v.version}</strong>
-                {v.activa && <span className="adm-editor-activa"> · activa</span>}
-                <span className="adm-editor-fecha"> · {fechaCorta(v.creado_en)}</span>
-                {v.notas && <p className="adm-editor-notas">{v.notas}</p>}
-              </div>
-              {!v.activa && (
-                <button
-                  type="button"
-                  className="adm-cta-ghost"
-                  disabled={guardando}
-                  onClick={() => restaurar(v.version)}
-                >
-                  Restaurar
-                </button>
-              )}
+            <li key={v.version}>
+              <ListRow
+                interactiva={false}
+                className="flex items-start justify-between gap-2"
+              >
+                <div className="min-w-0 text-sm text-tinta">
+                  <strong>v{v.version}</strong>
+                  {v.activa && (
+                    <Badge tono="vivo" className="ml-1.5">
+                      activa
+                    </Badge>
+                  )}
+                  <span className="text-xs text-tinta-40"> · {fechaCorta(v.creado_en)}</span>
+                  {v.notas && <p className="text-sm text-tinta-60">{v.notas}</p>}
+                </div>
+                {!v.activa && (
+                  <Button disabled={guardando} onClick={() => restaurar(v.version)}>
+                    Restaurar
+                  </Button>
+                )}
+              </ListRow>
             </li>
           ))}
         </ul>
-      </aside>
+      </Island>
     </div>
   );
 }

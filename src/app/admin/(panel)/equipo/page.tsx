@@ -22,14 +22,18 @@ export default async function EquipoPage() {
   }));
 
   return (
-    <section className="adm-seccion">
-      <h1 className="adm-titulo">Equipo</h1>
-      <p className="adm-lead">
-        Quién administra Zakumi. Un admin ve TODO: CRM, clientes, pagos y todos
-        los bots — promueve solo a gente de la casa. Las cuentas de clientes
-        del portal no se tocan desde aquí (eso vive en la ficha de cada cliente).
-      </p>
-      <EquipoView admins={admins} miUserId={sesion.userId} />
+    <section>
+      <header className="border-b border-hairline px-5 py-4">
+        <h1 className="text-lg font-semibold text-tinta">Equipo</h1>
+        <p className="text-xs text-tinta-60">
+          Quién administra Zakumi. Un admin ve TODO: CRM, clientes, pagos y todos
+          los bots — promueve solo a gente de la casa. Las cuentas de clientes
+          del portal no se tocan desde aquí (eso vive en la ficha de cada cliente).
+        </p>
+      </header>
+      <div className="px-5 py-4">
+        <EquipoView admins={admins} miUserId={sesion.userId} />
+      </div>
     </section>
   );
 }

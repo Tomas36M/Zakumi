@@ -9,6 +9,12 @@ import {
   type Lead,
   type StatusInstancia,
 } from "@/lib/bots/tipos";
+import { Badge } from "@/components/admin/ui/Badge";
+import { Banner } from "@/components/admin/ui/Banner";
+import { Button } from "@/components/admin/ui/Button";
+import { Island } from "@/components/admin/ui/Island";
+import { ListRow } from "@/components/admin/ui/ListRow";
+import { Skeleton } from "@/components/admin/ui/Skeleton";
 
 type Props = { instanciaId: number };
 
@@ -59,85 +65,97 @@ export function Actividad({ instanciaId }: Props) {
     });
   }
 
-  if (error) return <p className="adm-aviso">{error}</p>;
-  if (!datos) return <p className="adm-tabla-vacia">Cargando…</p>;
+  if (error) return <Banner>{error}</Banner>;
+  if (!datos) {
+    return (
+      <div className="flex flex-col gap-2">
+        <Skeleton className="h-3 w-2/3" />
+        <Skeleton className="h-3 w-1/2" />
+        <Skeleton className="h-3 w-3/5" />
+      </div>
+    );
+  }
 
   const uso = datos.status.uso_hoy;
 
+  const cifras = [
+    { valor: String(uso.llamadas), label: "llamadas a Claude hoy" },
+    {
+      valor: (uso.tokens_entrada + uso.tokens_salida).toLocaleString("es-CO"),
+      label: "tokens hoy (entrada + salida)",
+    },
+    { valor: String(datos.status.conversaciones), label: "conversaciones totales" },
+    { valor: String(datos.status.pausados), label: "chats pausados" },
+  ];
+
   return (
-    <div className="adm-actividad">
-      <div className="adm-actividad-cifras">
-        <div className="adm-cifra-bloque">
-          <span className="adm-cifra">{uso.llamadas}</span>
-          <span className="adm-cifra-label">llamadas a Claude hoy</span>
-        </div>
-        <div className="adm-cifra-bloque">
-          <span className="adm-cifra">
-            {(uso.tokens_entrada + uso.tokens_salida).toLocaleString("es-CO")}
-          </span>
-          <span className="adm-cifra-label">tokens hoy (entrada + salida)</span>
-        </div>
-        <div className="adm-cifra-bloque">
-          <span className="adm-cifra">{datos.status.conversaciones}</span>
-          <span className="adm-cifra-label">conversaciones totales</span>
-        </div>
-        <div className="adm-cifra-bloque">
-          <span className="adm-cifra">{datos.status.pausados}</span>
-          <span className="adm-cifra-label">chats pausados</span>
-        </div>
+    <div className="flex flex-col gap-aire">
+      <div className="grid grid-cols-2 gap-aire md:grid-cols-4">
+        {cifras.map((c) => (
+          <div key={c.label} className="rounded-fila bg-isla-alta px-4 py-3">
+            <span className="block text-2xl font-semibold text-tinta">{c.valor}</span>
+            <span className="text-xs text-tinta-60">{c.label}</span>
+          </div>
+        ))}
       </div>
 
-      <section>
-        <h2 className="adm-field-label">Jobs fallidos</h2>
+      <Island className="bg-isla-alta/50" titulo="Jobs fallidos">
         {avisoJob && (
-          <p className="adm-error" role="alert">
+          <Banner variante="error" className="mb-2">
             {avisoJob}
-          </p>
+          </Banner>
         )}
         {datos.jobs.length === 0 ? (
-          <p className="adm-ficha-sin">Ninguno. Todo respondido. ✓</p>
+          <p className="text-sm text-tinta-40">Ninguno. Todo respondido. ✓</p>
         ) : (
-          <ul className="adm-actividad-jobs">
+          <ul className="flex flex-col gap-1">
             {datos.jobs.map((j) => (
-              <li key={j.id} className="adm-actividad-job">
-                <div>
-                  <strong>{j.telefono}</strong>
-                  <span className="adm-editor-fecha"> · {fechaCorta(j.creado_en)}</span>
-                  <p className="adm-editor-notas">
-                    “{j.texto.slice(0, 120)}” — {j.error ?? "sin detalle"} (
-                    {j.intentos} intentos)
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  className="adm-cta-ghost"
-                  disabled={operando}
-                  onClick={() => reintentar(j.id)}
+              <li key={j.id}>
+                <ListRow
+                  interactiva={false}
+                  className="flex items-start justify-between gap-3"
                 >
-                  Reintentar
-                </button>
+                  <div className="min-w-0">
+                    <p className="text-sm text-tinta">
+                      <strong>{j.telefono}</strong>
+                      <span className="text-xs text-tinta-40"> · {fechaCorta(j.creado_en)}</span>
+                    </p>
+                    <p className="text-sm text-tinta-60">
+                      “{j.texto.slice(0, 120)}” — {j.error ?? "sin detalle"} (
+                      {j.intentos} intentos)
+                    </p>
+                  </div>
+                  <Button disabled={operando} onClick={() => reintentar(j.id)}>
+                    Reintentar
+                  </Button>
+                </ListRow>
               </li>
             ))}
           </ul>
         )}
-      </section>
+      </Island>
 
-      <section>
-        <h2 className="adm-field-label">Leads capturados</h2>
+      <Island className="bg-isla-alta/50" titulo="Leads capturados">
         {datos.leads.length === 0 ? (
-          <p className="adm-ficha-sin">Todavía no hay leads.</p>
+          <p className="text-sm text-tinta-40">Todavía no hay leads.</p>
         ) : (
-          <ul className="adm-actividad-leads">
+          <ul className="flex flex-col gap-1">
             {datos.leads.map((l, i) => (
-              <li key={`${l.phone}-${i}`} className="adm-actividad-lead">
-                <strong>{l.phone}</strong>
-                {esLabs(l.phone) && <span className="adm-conv-prueba"> Prueba</span>}
-                <span className="adm-editor-notas"> — {resumenLead(l.datos)}</span>
+              <li key={`${l.phone}-${i}`}>
+                <ListRow interactiva={false} className="text-sm text-tinta">
+                  <strong>{l.phone}</strong>
+                  {esLabs(l.phone) && (
+                    <Badge tono="neutro" className="ml-1.5">
+                      Prueba
+                    </Badge>
+                  )}
+                  <span className="text-tinta-60"> — {resumenLead(l.datos)}</span>
+                </ListRow>
               </li>
             ))}
           </ul>
         )}
-      </section>
+      </Island>
     </div>
   );
 }

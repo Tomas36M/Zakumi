@@ -7,6 +7,11 @@ import {
   vincularPerfilACliente,
   type PerfilBuscado,
 } from "@/lib/admin/perfiles-actions";
+import { Banner } from "@/components/admin/ui/Banner";
+import { Button } from "@/components/admin/ui/Button";
+import { Input } from "@/components/admin/ui/Field";
+import { Island } from "@/components/admin/ui/Island";
+import { ListRow } from "@/components/admin/ui/ListRow";
 
 type Props = {
   clienteId: string;
@@ -55,112 +60,118 @@ export function AccesoPortal({ clienteId, vinculados, sugerencia }: Props) {
   }
 
   return (
-    <section className="adm-notas" aria-label="Acceso al portal">
-      <h2 className="adm-field-label">Acceso al portal</h2>
-
-      {vinculados.length === 0 ? (
-        <p className="adm-ficha-sin">
-          Ninguna cuenta del portal ve a este cliente todavía.
-        </p>
-      ) : (
-        <ul className="adm-notas-lista">
-          {vinculados.map((p) => (
-            <li key={p.userId} className="adm-nota">
-              <span className="adm-nota-texto">
-                {p.nombre ? `${p.nombre} · ` : ""}
-                {p.email ?? p.userId}
-              </span>
-              <button
-                type="button"
-                className="adm-cta-ghost adm-cta--peligro"
-                disabled={ocupado}
-                onClick={() => {
-                  if (
-                    window.confirm(
-                      "¿Desvincular esta cuenta? Dejará de ver los productos y el bot de este cliente en el portal.",
-                    )
-                  ) {
-                    vincular(p.userId, null);
-                  }
-                }}
-              >
-                Desvincular
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-
-      {sugerencia && (
-        <p className="adm-aviso">
-          <strong>{sugerencia.email}</strong> se registró en el portal con el
-          mismo correo de este cliente.{" "}
-          <button
-            type="button"
-            className="adm-cta-ghost"
-            disabled={ocupado}
-            onClick={() => vincular(sugerencia.userId, clienteId)}
-          >
-            Vincular
-          </button>
-        </p>
-      )}
-
-      <div className="adm-sol-rechazo">
-        <input
-          className="adm-input"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="Buscar cuenta por correo…"
-          onKeyDown={(e) => {
-            if (e.key === "Enter") buscar();
-          }}
-        />
-        <button
-          type="button"
-          className="adm-cta-ghost"
-          disabled={ocupado || q.trim().length < 3}
-          onClick={buscar}
-        >
-          Buscar
-        </button>
-      </div>
-
-      {error && (
-        <p className="adm-error" role="alert">
-          {error}
-        </p>
-      )}
-
-      {resultados !== null &&
-        (resultados.length === 0 ? (
-          <p className="adm-ficha-sin">Sin cuentas con ese correo.</p>
+    <Island
+      className="bg-isla-alta/50"
+      titulo="Acceso al portal"
+      aria-label="Acceso al portal"
+    >
+      <div className="flex flex-col gap-3">
+        {vinculados.length === 0 ? (
+          <p className="text-sm text-tinta-40">
+            Ninguna cuenta del portal ve a este cliente todavía.
+          </p>
         ) : (
-          <ul className="adm-notas-lista">
-            {resultados.map((p) => (
-              <li key={p.userId} className="adm-nota">
-                <span className="adm-nota-texto">
-                  {p.nombre ? `${p.nombre} · ` : ""}
-                  {p.email ?? p.userId}
-                  {p.clienteId && p.clienteId !== clienteId && (
-                    <em> — ya vinculada a otro cliente</em>
-                  )}
-                  {p.clienteId === clienteId && <em> — ya vinculada</em>}
-                </span>
-                {p.clienteId !== clienteId && (
-                  <button
-                    type="button"
-                    className="adm-cta-ghost"
+          <ul className="flex flex-col gap-1">
+            {vinculados.map((p) => (
+              <li key={p.userId}>
+                <ListRow
+                  interactiva={false}
+                  className="flex items-center justify-between gap-2"
+                >
+                  <span className="min-w-0 truncate text-sm text-tinta">
+                    {p.nombre ? `${p.nombre} · ` : ""}
+                    {p.email ?? p.userId}
+                  </span>
+                  <Button
+                    variante="peligro"
                     disabled={ocupado}
-                    onClick={() => vincular(p.userId, clienteId)}
+                    onClick={() => {
+                      if (
+                        window.confirm(
+                          "¿Desvincular esta cuenta? Dejará de ver los productos y el bot de este cliente en el portal.",
+                        )
+                      ) {
+                        vincular(p.userId, null);
+                      }
+                    }}
                   >
-                    Vincular
-                  </button>
-                )}
+                    Desvincular
+                  </Button>
+                </ListRow>
               </li>
             ))}
           </ul>
-        ))}
-    </section>
+        )}
+
+        {sugerencia && (
+          <Banner>
+            <span className="flex flex-wrap items-center gap-2">
+              <span>
+                <strong>{sugerencia.email}</strong> se registró en el portal con el
+                mismo correo de este cliente.
+              </span>
+              <Button
+                disabled={ocupado}
+                onClick={() => vincular(sugerencia.userId, clienteId)}
+              >
+                Vincular
+              </Button>
+            </span>
+          </Banner>
+        )}
+
+        <div className="flex gap-2">
+          <Input
+            className="flex-1"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Buscar cuenta por correo…"
+            onKeyDown={(e) => {
+              if (e.key === "Enter") buscar();
+            }}
+          />
+          <Button disabled={ocupado || q.trim().length < 3} onClick={buscar}>
+            Buscar
+          </Button>
+        </div>
+
+        {error && <Banner variante="error">{error}</Banner>}
+
+        {resultados !== null &&
+          (resultados.length === 0 ? (
+            <p className="text-sm text-tinta-40">Sin cuentas con ese correo.</p>
+          ) : (
+            <ul className="flex flex-col gap-1">
+              {resultados.map((p) => (
+                <li key={p.userId}>
+                  <ListRow
+                    interactiva={false}
+                    className="flex items-center justify-between gap-2"
+                  >
+                    <span className="min-w-0 truncate text-sm text-tinta">
+                      {p.nombre ? `${p.nombre} · ` : ""}
+                      {p.email ?? p.userId}
+                      {p.clienteId && p.clienteId !== clienteId && (
+                        <em className="text-tinta-40"> — ya vinculada a otro cliente</em>
+                      )}
+                      {p.clienteId === clienteId && (
+                        <em className="text-tinta-40"> — ya vinculada</em>
+                      )}
+                    </span>
+                    {p.clienteId !== clienteId && (
+                      <Button
+                        disabled={ocupado}
+                        onClick={() => vincular(p.userId, clienteId)}
+                      >
+                        Vincular
+                      </Button>
+                    )}
+                  </ListRow>
+                </li>
+              ))}
+            </ul>
+          ))}
+      </div>
+    </Island>
   );
 }

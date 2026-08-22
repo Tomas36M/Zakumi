@@ -7,12 +7,38 @@ import {
   Map as GoogleMap,
   useMap,
 } from "@vis.gl/react-google-maps";
-import { CIUDADES, ESTADOS, type Ciudad, type Negocio } from "@/lib/admin/negocios";
+import {
+  CIUDADES,
+  ESTADOS,
+  type Ciudad,
+  type EstadoNegocio,
+  type Negocio,
+} from "@/lib/admin/negocios";
 import type { ResultadoPlace } from "@/lib/admin/places";
+import { cn } from "@/lib/cn";
 import type { Seleccion } from "./MapaView";
 
 const MADRID = CIUDADES[0];
 const LABEL_ESTADO = new Map(ESTADOS.map((e) => [e.valor, e.label]));
+
+// Rombos por estado — mismo lenguaje que chips y badges (clases literales).
+const COLOR_PIN: Record<EstadoNegocio, string> = {
+  nuevo: "bg-estado-nuevo",
+  contactado: "bg-estado-contactado",
+  respondido: "bg-estado-respondido",
+  interesado: "bg-estado-interesado",
+  cliente: "bg-estado-cliente",
+  descartado: "bg-estado-descartado",
+};
+
+const PIN_BASE =
+  "h-4 w-4 rotate-45 border-[1.5px] border-black/80 shadow-[0_1px_4px_rgba(0,0,0,0.5)] transition-transform duration-150";
+const PIN_ACTIVO = "scale-[1.45] border-white";
+
+/** Padding de 9px = target táctil ~34px sobre el pin de 16px. */
+function PinHit({ children }: { children: React.ReactNode }) {
+  return <div className="cursor-pointer p-[9px]">{children}</div>;
+}
 
 type Props = {
   negocios: Negocio[];
@@ -30,11 +56,13 @@ export function MapCanvas(props: Props) {
 
   if (!apiKey || !mapId) {
     return (
-      <div className="adm-map-vacio">
+      <div className="grid h-full place-items-center rounded-isla border border-dashed border-hairline p-8 text-center text-sm text-tinta-60">
         <p>
-          El mapa necesita <code>NEXT_PUBLIC_GOOGLE_MAPS_API_KEY</code> y{" "}
-          <code>NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID</code> en <code>.env.local</code>.
-          La plantilla está en <code>.env.example</code>.
+          El mapa necesita{" "}
+          <code className="text-[0.8em] text-acento">NEXT_PUBLIC_GOOGLE_MAPS_API_KEY</code> y{" "}
+          <code className="text-[0.8em] text-acento">NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID</code> en{" "}
+          <code className="text-[0.8em] text-acento">.env.local</code>. La plantilla está en{" "}
+          <code className="text-[0.8em] text-acento">.env.example</code>.
         </p>
       </div>
     );
@@ -43,7 +71,7 @@ export function MapCanvas(props: Props) {
   return (
     <APIProvider apiKey={apiKey}>
       <GoogleMap
-        className={props.modoCaptura ? "adm-map adm-map--captura" : "adm-map"}
+        className={cn("h-full w-full", props.modoCaptura && "cursor-crosshair")}
         mapId={mapId}
         defaultCenter={MADRID.centro}
         defaultZoom={14}
@@ -68,15 +96,11 @@ export function MapCanvas(props: Props) {
               zIndex={activo ? 20 : 1}
               onClick={() => props.onSeleccionar({ tipo: "negocio", id: n.id })}
             >
-              <div className="adm-pin-hit">
+              <PinHit>
                 <div
-                  className={
-                    activo
-                      ? `adm-pin adm-pin--${n.estado} adm-pin--activo`
-                      : `adm-pin adm-pin--${n.estado}`
-                  }
+                  className={cn(PIN_BASE, COLOR_PIN[n.estado], activo && PIN_ACTIVO)}
                 />
-              </div>
+              </PinHit>
             </AdvancedMarker>
           );
         })}
@@ -97,15 +121,15 @@ export function MapCanvas(props: Props) {
                   props.onSeleccionar({ tipo: "resultado", placeId: r.placeId })
                 }
               >
-                <div className="adm-pin-hit">
+                <PinHit>
                   <div
-                    className={
-                      activo
-                        ? "adm-pin adm-pin--resultado adm-pin--activo"
-                        : "adm-pin adm-pin--resultado"
-                    }
+                    className={cn(
+                      PIN_BASE,
+                      "border-2 border-acento bg-transparent",
+                      activo && PIN_ACTIVO,
+                    )}
                   />
-                </div>
+                </PinHit>
               </AdvancedMarker>
             );
           })}
@@ -116,9 +140,9 @@ export function MapCanvas(props: Props) {
             title="Negocio nuevo"
             zIndex={30}
           >
-            <div className="adm-pin-hit">
-              <div className="adm-pin adm-pin--nuevo-manual adm-pin--activo" />
-            </div>
+            <PinHit>
+              <div className={cn(PIN_BASE, "border-acento bg-white", PIN_ACTIVO)} />
+            </PinHit>
           </AdvancedMarker>
         ) : null}
       </GoogleMap>

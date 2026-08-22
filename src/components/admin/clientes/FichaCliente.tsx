@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState, useTransition } from "react";
+import { X } from "lucide-react";
 import { registrarPago } from "@/lib/admin/cartera-actions";
 import {
   CICLOS,
@@ -12,12 +13,27 @@ import {
   type Cliente,
   type Pago,
   type ProductoConCliente,
+  type Semaforo,
 } from "@/lib/admin/cartera";
 import { createSupabaseBrowser } from "@/lib/supabase/browser";
+import { Banner } from "@/components/admin/ui/Banner";
+import { Button } from "@/components/admin/ui/Button";
+import { Field, Input } from "@/components/admin/ui/Field";
+import { IconButton } from "@/components/admin/ui/IconButton";
+import { Island } from "@/components/admin/ui/Island";
+import { ListRow } from "@/components/admin/ui/ListRow";
+import { Skeleton } from "@/components/admin/ui/Skeleton";
 import { ProductoForm } from "./ProductoForm";
 
 const LABEL_TIPO = new Map(TIPOS_PRODUCTO.map((t) => [t.valor, t.label]));
 const LABEL_CICLO = new Map(CICLOS.map((c) => [c.valor, c.label]));
+
+const COLOR_SEMAFORO: Record<Semaforo, string> = {
+  al_dia: "bg-vivo",
+  por_vencer: "bg-estado-contactado",
+  vencido: "bg-peligro",
+  sin_programar: "bg-tinta-40/40",
+};
 
 async function fetchPagos(productoIds: string[]): Promise<Pago[]> {
   if (productoIds.length === 0) return [];
@@ -63,135 +79,129 @@ export function FichaCliente({ cliente, productos, hoy, onCambio, onCerrar }: Pr
   }
 
   return (
-    <div className="adm-ficha-contenido">
-      <div className="adm-ficha-cabecera">
+    <div className="flex flex-col gap-4">
+      <div className="flex items-start justify-between gap-2">
         <div>
-          <h2 className="adm-ficha-nombre">{cliente.nombre}</h2>
-          <p className="adm-ficha-meta">
+          <h2 className="text-base font-semibold text-tinta">{cliente.nombre}</h2>
+          <p className="text-xs text-tinta-40">
             {[cliente.telefono, cliente.email].filter(Boolean).join(" · ") ||
               "Sin datos de contacto"}
           </p>
-          <Link href={`/admin/clientes/${cliente.id}`} className="adm-360-link">
+          <Link
+            href={`/admin/clientes/${cliente.id}`}
+            className="text-sm font-medium text-acento hover:underline"
+          >
             Ver ficha completa →
           </Link>
         </div>
-        <button
-          type="button"
-          className="adm-ficha-cerrar"
-          aria-label="Cerrar ficha"
-          onClick={onCerrar}
-        >
-          ×
-        </button>
+        <IconButton etiqueta="Cerrar ficha" onClick={onCerrar}>
+          <X className="h-4 w-4" />
+        </IconButton>
       </div>
 
-      {error ? (
-        <p className="adm-error" role="alert">
-          {error}
-        </p>
-      ) : null}
+      {error ? <Banner variante="error">{error}</Banner> : null}
 
-      <section className="adm-productos" aria-label="Productos contratados">
-        <h3 className="adm-notas-titulo">Productos</h3>
+      <Island
+        className="bg-isla-alta/50"
+        titulo="Productos"
+        aria-label="Productos contratados"
+      >
         {productos.length === 0 ? (
-          <p className="adm-notas-vacias">
+          <p className="mb-3 text-sm text-tinta-40">
             Nada contratado todavía. Agrégale su primer producto.
           </p>
         ) : (
-          <ul className="adm-productos-lista">
+          <ul className="mb-3 flex flex-col gap-1">
             {productos.map((p) => {
               const estado = semaforoCobro(p.proxima_fecha, hoy);
               return (
-                <li key={p.id} className="adm-producto">
-                  <div className="adm-producto-fila">
-                    <span className={`adm-badge adm-badge--sem-${estado}`} />
-                    <div className="adm-producto-info">
-                      <span className="adm-tabla-nombre">
-                        {p.nombre}
-                        {!p.activo ? " · inactivo" : ""}
-                      </span>
-                      <span className="adm-tabla-categoria">
-                        {LABEL_TIPO.get(p.tipo)} · {formatearCOP(p.tarifa)}{" "}
-                        {LABEL_CICLO.get(p.ciclo)?.toLowerCase()} ·{" "}
-                        {descripcionVencimiento(p.proxima_fecha, hoy)}
-                        {p.dominio ? ` · ${p.dominio}` : ""}
-                      </span>
+                <li key={p.id}>
+                  <ListRow interactiva={false} className="flex flex-col gap-2">
+                    <div className="flex items-center gap-2.5">
+                      <span
+                        className={`h-2 w-2 shrink-0 rounded-full ${COLOR_SEMAFORO[estado]}`}
+                        title={estado.replaceAll("_", " ")}
+                      />
+                      <div className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-medium text-tinta">
+                          {p.nombre}
+                          {!p.activo ? " · inactivo" : ""}
+                        </span>
+                        <span className="block text-xs text-tinta-40">
+                          {LABEL_TIPO.get(p.tipo)} · {formatearCOP(p.tarifa)}{" "}
+                          {LABEL_CICLO.get(p.ciclo)?.toLowerCase()} ·{" "}
+                          {descripcionVencimiento(p.proxima_fecha, hoy)}
+                          {p.dominio ? ` · ${p.dominio}` : ""}
+                        </span>
+                      </div>
+                      {p.activo ? (
+                        <Button
+                          onClick={() => setPagando(pagando === p.id ? null : p.id)}
+                        >
+                          {pagando === p.id ? "Cancelar" : "Registrar pago"}
+                        </Button>
+                      ) : null}
                     </div>
-                    {p.activo ? (
-                      <button
-                        type="button"
-                        className="adm-ficha-editar"
-                        onClick={() => setPagando(pagando === p.id ? null : p.id)}
-                      >
-                        {pagando === p.id ? "Cancelar" : "Registrar pago"}
-                      </button>
-                    ) : null}
-                  </div>
 
-                  {pagando === p.id ? (
-                    <form
-                      className="adm-pago-form"
-                      onSubmit={(e) => {
-                        e.preventDefault();
-                        const form = e.currentTarget;
-                        const monto = Number(
-                          (form.elements.namedItem("monto") as HTMLInputElement).value,
-                        );
-                        const fecha = (
-                          form.elements.namedItem("fecha") as HTMLInputElement
-                        ).value;
-                        const nota = (
-                          form.elements.namedItem("nota") as HTMLInputElement
-                        ).value;
-                        setError(null);
-                        startGuardar(async () => {
-                          const res = await registrarPago(p.id, { monto, fecha, nota });
-                          if (res.error) {
-                            setError(res.error);
-                            return;
-                          }
-                          setPagando(null);
-                          onCambio();
-                          void recargarPagos();
-                        });
-                      }}
-                    >
-                      <label className="adm-field">
-                        <span className="adm-field-label">Monto</span>
-                        <input
-                          className="adm-input"
-                          name="monto"
-                          type="number"
-                          min={1}
-                          step="any"
-                          defaultValue={p.tarifa}
-                          required
-                        />
-                      </label>
-                      <label className="adm-field">
-                        <span className="adm-field-label">Fecha</span>
-                        <input
-                          className="adm-input"
-                          name="fecha"
-                          type="date"
-                          defaultValue={hoy}
-                          required
-                        />
-                      </label>
-                      <label className="adm-field">
-                        <span className="adm-field-label">Nota</span>
-                        <input
-                          className="adm-input"
-                          name="nota"
-                          placeholder="transferencia, efectivo…"
-                          maxLength={2000}
-                        />
-                      </label>
-                      <button className="adm-cta" type="submit" disabled={guardando}>
-                        {guardando ? "Guardando…" : "Guardar pago"}
-                      </button>
-                    </form>
-                  ) : null}
+                    {pagando === p.id ? (
+                      <form
+                        className="flex flex-col gap-3"
+                        onSubmit={(e) => {
+                          e.preventDefault();
+                          const form = e.currentTarget;
+                          const monto = Number(
+                            (form.elements.namedItem("monto") as HTMLInputElement).value,
+                          );
+                          const fecha = (
+                            form.elements.namedItem("fecha") as HTMLInputElement
+                          ).value;
+                          const nota = (
+                            form.elements.namedItem("nota") as HTMLInputElement
+                          ).value;
+                          setError(null);
+                          startGuardar(async () => {
+                            const res = await registrarPago(p.id, { monto, fecha, nota });
+                            if (res.error) {
+                              setError(res.error);
+                              return;
+                            }
+                            setPagando(null);
+                            onCambio();
+                            void recargarPagos();
+                          });
+                        }}
+                      >
+                        <Field label="Monto">
+                          <Input
+                            name="monto"
+                            type="number"
+                            min={1}
+                            step="any"
+                            defaultValue={p.tarifa}
+                            required
+                          />
+                        </Field>
+                        <Field label="Fecha">
+                          <Input name="fecha" type="date" defaultValue={hoy} required />
+                        </Field>
+                        <Field label="Nota">
+                          <Input
+                            name="nota"
+                            placeholder="transferencia, efectivo…"
+                            maxLength={2000}
+                          />
+                        </Field>
+                        <Button
+                          variante="primaria"
+                          type="submit"
+                          className="self-start"
+                          disabled={guardando}
+                        >
+                          {guardando ? "Guardando…" : "Guardar pago"}
+                        </Button>
+                      </form>
+                    ) : null}
+                  </ListRow>
                 </li>
               );
             })}
@@ -209,41 +219,39 @@ export function FichaCliente({ cliente, productos, hoy, onCambio, onCerrar }: Pr
             onCancelar={() => setAgregando(false)}
           />
         ) : (
-          <button
-            type="button"
-            className="adm-cta-ghost"
-            onClick={() => setAgregando(true)}
-          >
-            Agregar producto
-          </button>
+          <Button onClick={() => setAgregando(true)}>Agregar producto</Button>
         )}
-      </section>
+      </Island>
 
-      <section className="adm-notas" aria-label="Pagos recientes">
-        <h3 className="adm-notas-titulo">Pagos recientes</h3>
+      <Island className="bg-isla-alta/50" titulo="Pagos recientes" aria-label="Pagos recientes">
         {pagos === null ? (
-          <p className="adm-notas-cargando">Cargando pagos…</p>
+          <div className="flex flex-col gap-2">
+            <Skeleton className="h-3 w-2/3" />
+            <Skeleton className="h-3 w-1/2" />
+          </div>
         ) : pagos.length === 0 ? (
-          <p className="adm-notas-vacias">Sin pagos registrados todavía.</p>
+          <p className="text-sm text-tinta-40">Sin pagos registrados todavía.</p>
         ) : (
-          <ul className="adm-notas-lista">
+          <ul className="flex flex-col gap-1">
             {pagos.map((pg) => {
               const producto = productos.find((p) => p.id === pg.producto_id);
               return (
-                <li key={pg.id} className="adm-nota">
-                  <span className="adm-nota-fecha">
-                    {pg.fecha} · {producto?.nombre ?? "producto"}
-                  </span>
-                  <span className="adm-nota-texto">
-                    {formatearCOP(pg.monto)}
-                    {pg.nota ? ` — ${pg.nota}` : ""}
-                  </span>
+                <li key={pg.id}>
+                  <ListRow interactiva={false} className="flex flex-col gap-0.5">
+                    <span className="text-xs text-tinta-40">
+                      {pg.fecha} · {producto?.nombre ?? "producto"}
+                    </span>
+                    <span className="text-sm text-tinta">
+                      {formatearCOP(pg.monto)}
+                      {pg.nota ? ` — ${pg.nota}` : ""}
+                    </span>
+                  </ListRow>
                 </li>
               );
             })}
           </ul>
         )}
-      </section>
+      </Island>
     </div>
   );
 }
