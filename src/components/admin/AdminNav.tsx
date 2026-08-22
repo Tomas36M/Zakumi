@@ -10,6 +10,7 @@ const SECCIONES = [
   { href: "/admin/mapa", label: "Mapa" },
   { href: "/admin/negocios", label: "Negocios" },
   { href: "/admin/zak", label: "Zak" },
+  { href: "/admin/solicitudes", label: "Solicitudes" },
   { href: "/admin/clientes", label: "Clientes" },
   { href: "/admin/bots", label: "Bots" },
 ] as const;
