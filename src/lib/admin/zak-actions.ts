@@ -10,6 +10,7 @@ import { normalizarTelefonoCO, sinMas } from "./telefono";
 import {
   PLANTILLA_SALUDO,
   PLANTILLA_SALUDO_TEXTO,
+  VERTICAL_GENERICO,
   agruparPorVertical,
   avancesDeEstado,
   componentesSaludo,
@@ -62,6 +63,8 @@ export async function enviarTandaZak(negocioIds: string[]): Promise<
   let algunaOk = false;
 
   for (const { vertical, negocios } of grupos) {
+    // El folleto del nicho: mismo header de imagen para toda la tanda.
+    const componentes = componentesSaludo(vertical);
     const r = await crearTanda(ID_ZAK, {
       plantilla: vertical.plantilla,
       lang: "es",
@@ -75,7 +78,7 @@ export async function enviarTandaZak(negocioIds: string[]): Promise<
           ciudad: n.ciudad,
           angulo: vertical.angulo,
         },
-        componentes: componentesSaludo(n),
+        componentes,
       })),
     });
     if (!r.ok) {
@@ -146,6 +149,7 @@ export async function abrirChatZak(
     plantilla: PLANTILLA_SALUDO,
     lang: "es",
     texto: PLANTILLA_SALUDO_TEXTO,
+    componentes: componentesSaludo(VERTICAL_GENERICO),
   });
   if (!r.ok) {
     if (r.error === "bot_error") {
