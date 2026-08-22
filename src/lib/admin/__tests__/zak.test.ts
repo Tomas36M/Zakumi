@@ -1,12 +1,7 @@
-import { existsSync } from "node:fs";
-import path from "node:path";
-
 import { describe, expect, it } from "vitest";
 
 import type { Negocio } from "../negocios";
 import {
-  VERTICAL_GENERICO,
-  VERTICALES_PROSPECCION,
   agruparPorVertical,
   avancesDeEstado,
   componentesSaludo,
@@ -71,31 +66,8 @@ describe("contactables", () => {
 });
 
 describe("componentesSaludo", () => {
-  it("manda el folleto del vertical como header de imagen (URL absoluta)", () => {
-    const [header] = componentesSaludo(verticalPara("bakery")) as {
-      type: string;
-      parameters: { type: string; image: { link: string } }[];
-    }[];
-    expect(header.type).toBe("header");
-    expect(header.parameters).toHaveLength(1);
-    expect(header.parameters[0].type).toBe("image");
-    expect(header.parameters[0].image.link).toMatch(
-      /^https:\/\/.+\/folletos\/panaderia\.png$/,
-    );
-  });
-
-  it("el genérico también lleva su folleto", () => {
-    const [header] = componentesSaludo(VERTICAL_GENERICO) as {
-      parameters: { image: { link: string } }[];
-    }[];
-    expect(header.parameters[0].image.link).toMatch(/\/folletos\/generico\.png$/);
-  });
-
-  it("cada folleto del catálogo existe en public/folletos/", () => {
-    for (const v of [...VERTICALES_PROSPECCION, VERTICAL_GENERICO]) {
-      const ruta = path.join(process.cwd(), "public", "folletos", v.folleto);
-      expect(existsSync(ruta), `falta public/folletos/${v.folleto} (${v.slug})`).toBe(true);
-    }
+  it("saludo_zakumi no tiene variables: null (el bot omite components)", () => {
+    expect(componentesSaludo(negocio({}))).toBeNull();
   });
 });
 

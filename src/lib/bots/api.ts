@@ -307,13 +307,7 @@ export function crearTanda(
  * reabre uno con la ventana de 24h cerrada. */
 export function enviarPlantillaDirecta(
   id: number,
-  datos: {
-    telefono: string;
-    plantilla: string;
-    lang?: string;
-    texto?: string;
-    componentes?: unknown[] | null;
-  },
+  datos: { telefono: string; plantilla: string; lang?: string; texto?: string },
 ): Promise<Resultado<{ wamid: string | null }>> {
   return pedir("POST", `/instancias/${id}/plantilla`, (j) => ({
     wamid: ((j ?? {}) as { wamid?: unknown }).wamid as string | null ?? null,

@@ -18,34 +18,14 @@ export function contactables(negocios: Negocio[]): Negocio[] {
   );
 }
 
-// Dominio público donde viven los folletos (public/folletos/). Meta descarga
-// la imagen de este link EN el envío, así que tiene que ser alcanzable desde
-// internet — el fallback de producción, jamás localhost.
-const SITE_URL = (
-  process.env.NEXT_PUBLIC_SITE_URL ?? "https://zakumistudio.com"
-).replace(/\/+$/, "");
-
-export function urlFolleto(vertical: VerticalProspeccion): string {
-  return `${SITE_URL}/folletos/${vertical.folleto}`;
-}
-
 /**
- * Los components de la plantilla de un vertical: el folleto del nicho viaja
- * como header de imagen. El body sigue SIN variables (verificado 20 ago 2026);
- * si Meta algún día aprueba un {{1}}, el body se arma aquí — el bot reenvía
- * los components tal cual y no hay que tocarlo.
- *
- * OJO: exige que la plantilla esté aprobada en Meta CON header de imagen.
- * Contra la versión solo-texto, mandar el header es un 4xx permanente
- * (el prospecto queda 'fallido' en el funnel).
+ * Los components de la plantilla saludo_zakumi para este negocio.
+ * La plantilla quedó SIN variables (verificado 20 ago 2026) → null.
+ * Si Meta algún día la aprueba con {{1}}, aquí se arma el body —
+ * el bot los reenvía tal cual y no hay que tocarlo.
  */
-export function componentesSaludo(vertical: VerticalProspeccion): unknown[] {
-  return [
-    {
-      type: "header",
-      parameters: [{ type: "image", image: { link: urlFolleto(vertical) } }],
-    },
-  ];
+export function componentesSaludo(_negocio: Negocio): unknown[] | null {
+  return null;
 }
 
 // El cuerpo visible de saludo_zakumi: se guarda como mensaje del asistente al
@@ -70,7 +50,6 @@ export type VerticalProspeccion = {
   texto: string; // cuerpo visible (espejo de la plantilla)
   angulo: string; // cómo hablarle a este tipo de negocio
   matchers: string[]; // substrings de negocios.categoria (Google Places)
-  folleto: string; // archivo en public/folletos/ — header de imagen de la plantilla
 };
 
 const _SALUDO = (queHacemos: string, emoji: string) =>
@@ -84,7 +63,6 @@ export const VERTICALES_PROSPECCION: readonly VerticalProspeccion[] = [
     plantilla: "saludo_restaurante",
     texto: _SALUDO("a restaurantes a tomar pedidos y reservas por WhatsApp 24/7, sin perder llamadas en hora pico", "🍽️"),
     angulo: "Pedidos completos y reservas sin perder llamadas en hora pico: el agente toma el pedido con dirección y forma de pago mientras la cocina trabaja.",
-    folleto: "restaurante.png",
     matchers: ["restaurant", "food", "cafe", "coffee", "burger", "pizza", "comida"],
   },
   {
@@ -93,7 +71,6 @@ export const VERTICALES_PROSPECCION: readonly VerticalProspeccion[] = [
     plantilla: "saludo_panaderia",
     texto: _SALUDO("a panaderías a vender el surtido del día y tomar encargos de tortas por WhatsApp 24/7", "🥐"),
     angulo: "Encargos de tortas y pedidos del día sin ocupar el mostrador; el agente confirma sabores, porciones y fecha de entrega.",
-    folleto: "panaderia.png",
     matchers: ["bakery", "pastry", "panader"],
   },
   {
@@ -102,7 +79,6 @@ export const VERTICALES_PROSPECCION: readonly VerticalProspeccion[] = [
     plantilla: "saludo_ferreteria",
     texto: _SALUDO("a ferreterías a responder precios y disponibilidad y tomar pedidos por WhatsApp 24/7, sin filas en el mostrador", "🔧"),
     angulo: "Los '¿tienen X? ¿a cómo?' respondidos al instante desde el catálogo; pedidos listos para recoger o despachar a obra.",
-    folleto: "ferreteria.png",
     matchers: ["hardware", "building materials", "paint", "ferreter", "electrical supply", "plumbing"],
   },
   {
@@ -111,7 +87,6 @@ export const VERTICALES_PROSPECCION: readonly VerticalProspeccion[] = [
     plantilla: "saludo_veterinaria",
     texto: _SALUDO("a veterinarias a agendar citas y responder a los dueños de mascotas a toda hora", "🐾"),
     angulo: "Citas y recordatorios de vacunas; los dueños preguntan a cualquier hora y el agente agenda sin interrumpir la consulta.",
-    folleto: "veterinaria.png",
     matchers: ["veterinar", "pet"],
   },
   {
@@ -120,7 +95,6 @@ export const VERTICALES_PROSPECCION: readonly VerticalProspeccion[] = [
     plantilla: "saludo_farmacia",
     texto: _SALUDO("a droguerías a tomar pedidos a domicilio y responder disponibilidad al instante", "💊"),
     angulo: "Domicilios y disponibilidad al momento, con el teléfono siempre desocupado.",
-    folleto: "farmacia.png",
     matchers: ["pharmacy", "drugstore", "drogueria", "droguería"],
   },
   {
@@ -129,7 +103,6 @@ export const VERTICALES_PROSPECCION: readonly VerticalProspeccion[] = [
     plantilla: "saludo_belleza",
     texto: _SALUDO("a salones y barberías a llenar la agenda por WhatsApp 24/7, sin interrumpir el servicio", "💇"),
     angulo: "Agenda llena sin soltar las tijeras: el agente da citas, reagenda y manda recordatorios.",
-    folleto: "belleza.png",
     matchers: ["beauty", "hair", "barber", "nail", "spa", "peluquer"],
   },
   {
@@ -138,7 +111,6 @@ export const VERTICALES_PROSPECCION: readonly VerticalProspeccion[] = [
     plantilla: "saludo_taller",
     texto: _SALUDO("a talleres a agendar revisiones y cotizar repuestos por WhatsApp, sin soltar la herramienta", "🔩"),
     angulo: "Citas de revisión y cotización de repuestos mientras el equipo trabaja; el cliente sabe cuándo traer el carro.",
-    folleto: "taller.png",
     matchers: ["car repair", "auto parts", "motorcycle", "mechanic", "taller", "car wash", "tire"],
   },
   {
@@ -147,7 +119,6 @@ export const VERTICALES_PROSPECCION: readonly VerticalProspeccion[] = [
     plantilla: "saludo_hogar",
     texto: _SALUDO("a tiendas de muebles y hogar a cotizar productos y coordinar entregas por WhatsApp 24/7", "🛋️"),
     angulo: "Cotizaciones con medidas y fotos, y coordinación de entregas sin llamadas cruzadas.",
-    folleto: "hogar.png",
     matchers: ["furniture", "home goods", "appliance", "home improvement", "decor", "mueble"],
   },
   {
@@ -156,7 +127,6 @@ export const VERTICALES_PROSPECCION: readonly VerticalProspeccion[] = [
     plantilla: "saludo_moda",
     texto: _SALUDO("a tiendas de ropa a mostrar novedades, responder tallas y apartar prendas por WhatsApp", "👗"),
     angulo: "Novedades, tallas y apartados: el agente vende por chat mientras la tienda atiende.",
-    folleto: "moda.png",
     matchers: ["clothing", "shoe", "boutique", "fashion", "jewelry", "ropa"],
   },
   {
@@ -165,7 +135,6 @@ export const VERTICALES_PROSPECCION: readonly VerticalProspeccion[] = [
     plantilla: "saludo_comercio",
     texto: _SALUDO("a tiendas y comercios a responder clientes y tomar pedidos por WhatsApp 24/7", "🛍️"),
     angulo: "Pedidos y preguntas frecuentes respondidos al momento: la venta no se enfría esperando.",
-    folleto: "comercio.png",
     matchers: ["store", "shop", "market", "grocery", "supermarket", "convenience", "tienda", "florist", "garden"],
   },
 ] as const;
@@ -176,7 +145,6 @@ export const VERTICAL_GENERICO: VerticalProspeccion = {
   plantilla: PLANTILLA_SALUDO,
   texto: PLANTILLA_SALUDO_TEXTO,
   angulo: "Descubre a qué se dedica el negocio y muestra cómo un agente como tú le atendería clientes 24/7.",
-  folleto: "generico.png",
   matchers: [],
 };
 
