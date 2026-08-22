@@ -84,8 +84,11 @@ on conflict (user_id) do nothing;
 update public.perfiles set rol = 'admin'
 where email in (
   'tomasmunevar36@gmail.com',  -- Tomás
-  'zakumiestudio@gmail.com'    -- cuenta Zakumi
+  'catalinamcpg@outlook.com'   -- Catalina
 );
+-- Nota: zakumiestudio@gmail.com NO existe como cuenta en Supabase Auth
+-- (verificado 2026-08-22) — es el correo de Railway, no del panel. Los
+-- admins nuevos se promueven desde /admin/equipo, sin tocar este seed.
 
 -- ---- Helpers para RLS ---------------------------------------------------------
 -- STABLE: un solo valor por statement. Las políticas los llaman como
