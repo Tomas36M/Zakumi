@@ -5,6 +5,11 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { ID_ZAK, PROVEEDORES, type StatusGlobal } from "@/lib/bots/tipos";
 import { horaBogota } from "@/lib/admin/formato";
+import { Badge } from "@/components/admin/ui/Badge";
+import { Banner } from "@/components/admin/ui/Banner";
+import { Button } from "@/components/admin/ui/Button";
+import { EmptyState } from "@/components/admin/ui/EmptyState";
+import { Skeleton } from "@/components/admin/ui/Skeleton";
 import { NuevoBotForm } from "./NuevoBotForm";
 
 const INTERVALO_MS = 30_000;
@@ -48,75 +53,81 @@ export function BotsView({ inicial }: { inicial: StatusGlobal | null }) {
   );
 
   return (
-    <section className="adm-seccion">
-      <div className="adm-toolbar">
-        <h1 className="adm-titulo">Bots</h1>
+    <section>
+      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-hairline px-5 py-4">
+        <h1 className="text-lg font-semibold text-tinta">Bots</h1>
         {cola && (
-          <span className="adm-toolbar-conteo">
+          <span className="text-xs text-tinta-40">
             {cola.jobs_pendientes} en cola · {cola.jobs_trabajando} respondiendo ·{" "}
             {cola.jobs_fallidos} fallidos
           </span>
         )}
-        <button className="adm-cta" type="button" onClick={() => setCreando(true)}>
+        <Button variante="primaria" onClick={() => setCreando(true)}>
           Nuevo bot
-        </button>
-      </div>
+        </Button>
+      </header>
 
-      {creando && (
-        <NuevoBotForm
-          onCreado={(id) => {
-            setCreando(false);
-            router.push(`/admin/bots/${id}`);
-          }}
-          onCancelar={() => setCreando(false)}
-        />
-      )}
+      <div className="flex flex-col gap-4 px-5 py-4">
+        {creando && (
+          <NuevoBotForm
+            onCreado={(id) => {
+              setCreando(false);
+              router.push(`/admin/bots/${id}`);
+            }}
+            onCancelar={() => setCreando(false)}
+          />
+        )}
 
-      {sinConexionDesde && (
-        <p className="adm-aviso">
-          Sin conexión con el bot desde las {sinConexionDesde}. Se muestran los
-          últimos datos conocidos.
-        </p>
-      )}
+        {sinConexionDesde && (
+          <Banner>
+            Sin conexión con el bot desde las {sinConexionDesde}. Se muestran los
+            últimos datos conocidos.
+          </Banner>
+        )}
 
-      {!status && !sinConexionDesde && (
-        <p className="adm-tabla-vacia">Cargando…</p>
-      )}
+        {!status && !sinConexionDesde && (
+          <div className="flex flex-col gap-2">
+            <Skeleton className="h-3 w-2/3" />
+            <Skeleton className="h-3 w-1/2" />
+            <Skeleton className="h-3 w-3/5" />
+          </div>
+        )}
 
-      {status && status.instancias.filter((i) => i.id !== ID_ZAK).length === 0 && (
-        <p className="adm-tabla-vacia">Todavía no hay bots creados.</p>
-      )}
+        {status && status.instancias.filter((i) => i.id !== ID_ZAK).length === 0 && (
+          <EmptyState titulo="Todavía no hay bots creados." />
+        )}
 
-      <div className="adm-bots-grid">
-        {/* Zak no se lista aquí: es el motor del negocio y vive en /admin/zak. */}
-        {(status?.instancias ?? []).filter((i) => i.id !== ID_ZAK).map((inst) => {
-          const colaInst = porInstancia.get(inst.id);
-          return (
-            <Link key={inst.id} href={`/admin/bots/${inst.id}`} className="adm-bot-card">
-              <header className="adm-bot-cabecera">
-                <h2 className="adm-bot-nombre">{inst.nombre}</h2>
-                <span
-                  className={
-                    inst.activo
-                      ? "adm-bot-estado adm-bot-estado--activo"
-                      : "adm-bot-estado adm-bot-estado--apagado"
-                  }
-                >
-                  {inst.activo ? "Activo" : "Apagado"}
-                </span>
-              </header>
-              <p className="adm-bot-meta">
-                {inst.canal === "voz" ? "Voz" : "WhatsApp"} ·{" "}
-                {labelProveedor(inst.proveedor)} · prompt v{inst.prompt_version}
-              </p>
-              <p className="adm-bot-cola">
-                {colaInst
-                  ? `${colaInst.pendientes} en cola · ${colaInst.fallidos} fallidos`
-                  : "Sin actividad en cola"}
-              </p>
-            </Link>
-          );
-        })}
+        <div className="grid gap-aire md:grid-cols-2 xl:grid-cols-3">
+          {/* Zak no se lista aquí: es el motor del negocio y vive en /admin/zak. */}
+          {(status?.instancias ?? []).filter((i) => i.id !== ID_ZAK).map((inst) => {
+            const colaInst = porInstancia.get(inst.id);
+            return (
+              <Link
+                key={inst.id}
+                href={`/admin/bots/${inst.id}`}
+                className="flex flex-col gap-1 rounded-isla bg-isla-alta/50 p-4 transition-colors hover:bg-isla-alta"
+              >
+                <header className="flex items-center justify-between gap-2">
+                  <h2 className="truncate text-sm font-semibold text-tinta">
+                    {inst.nombre}
+                  </h2>
+                  <Badge tono={inst.activo ? "vivo" : "peligro"}>
+                    {inst.activo ? "Activo" : "Apagado"}
+                  </Badge>
+                </header>
+                <p className="text-xs text-tinta-60">
+                  {inst.canal === "voz" ? "Voz" : "WhatsApp"} ·{" "}
+                  {labelProveedor(inst.proveedor)} · prompt v{inst.prompt_version}
+                </p>
+                <p className="text-xs text-tinta-40">
+                  {colaInst
+                    ? `${colaInst.pendientes} en cola · ${colaInst.fallidos} fallidos`
+                    : "Sin actividad en cola"}
+                </p>
+              </Link>
+            );
+          })}
+        </div>
       </div>
     </section>
   );
