@@ -11,7 +11,7 @@ export default function PanelLayout({
   return (
     <div className="flex min-h-dvh gap-aire p-aire">
       <Sidebar />
-      <main className="adm-main barra-fina min-w-0 flex-1 overflow-y-auto rounded-isla bg-isla">
+      <main className="barra-fina min-w-0 flex-1 overflow-y-auto rounded-isla bg-isla">
         {children}
       </main>
     </div>

@@ -37,13 +37,17 @@ export default async function SolicitudesAdminPage() {
   }
 
   return (
-    <section className="adm-seccion">
-      <h1 className="adm-titulo">Solicitudes del portal</h1>
-      <p className="adm-lead">
-        Lo que los clientes piden en la tienda: cotiza, manda el link de pago y
-        activa. Cada activación crea el cliente y su producto en la cartera.
-      </p>
-      <BandejaSolicitudes solicitudes={solicitudes} perfiles={perfiles} />
+    <section>
+      <header className="border-b border-hairline px-5 py-4">
+        <h1 className="text-lg font-semibold text-tinta">Solicitudes del portal</h1>
+        <p className="text-xs text-tinta-60">
+          Lo que los clientes piden en la tienda: cotiza, manda el link de pago y
+          activa. Cada activación crea el cliente y su producto en la cartera.
+        </p>
+      </header>
+      <div className="px-5 py-4">
+        <BandejaSolicitudes solicitudes={solicitudes} perfiles={perfiles} />
+      </div>
     </section>
   );
 }

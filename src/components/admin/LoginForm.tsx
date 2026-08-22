@@ -2,6 +2,9 @@
 
 import { useActionState } from "react";
 import { login, type EstadoLogin } from "@/lib/admin/actions";
+import { Banner } from "@/components/admin/ui/Banner";
+import { Button } from "@/components/admin/ui/Button";
+import { Field, Input } from "@/components/admin/ui/Field";
 
 const INICIAL: EstadoLogin = { error: null };
 
@@ -9,36 +12,22 @@ export function LoginForm() {
   const [estado, accion, enviando] = useActionState(login, INICIAL);
 
   return (
-    <form action={accion} className="adm-login-form">
-      <label className="adm-field">
-        <span className="adm-field-label">Correo</span>
-        <input
-          className="adm-input"
-          type="email"
-          name="email"
-          autoComplete="email"
-          required
-          autoFocus
-        />
-      </label>
-      <label className="adm-field">
-        <span className="adm-field-label">Contraseña</span>
-        <input
-          className="adm-input"
+    <form action={accion} className="flex flex-col gap-4">
+      <Field label="Correo">
+        <Input type="email" name="email" autoComplete="email" required autoFocus />
+      </Field>
+      <Field label="Contraseña">
+        <Input
           type="password"
           name="password"
           autoComplete="current-password"
           required
         />
-      </label>
-      {estado.error ? (
-        <p className="adm-error" role="alert">
-          {estado.error}
-        </p>
-      ) : null}
-      <button className="adm-cta" type="submit" disabled={enviando}>
+      </Field>
+      {estado.error ? <Banner variante="error">{estado.error}</Banner> : null}
+      <Button variante="primaria" type="submit" disabled={enviando}>
         {enviando ? "Entrando…" : "Entrar"}
-      </button>
+      </Button>
     </form>
   );
 }

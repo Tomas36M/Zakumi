@@ -2,6 +2,11 @@
 
 import { useState } from "react";
 import type { ResultadoPlace } from "@/lib/admin/places";
+import { Badge } from "@/components/admin/ui/Badge";
+import { Banner } from "@/components/admin/ui/Banner";
+import { Button } from "@/components/admin/ui/Button";
+import { Field, Input } from "@/components/admin/ui/Field";
+import { ListRow } from "@/components/admin/ui/ListRow";
 
 type Props = {
   resultados: ResultadoPlace[];
@@ -22,18 +27,16 @@ export function SearchPanel(props: Props) {
   );
 
   return (
-    <div className="adm-busqueda">
+    <div className="flex flex-col gap-3">
       <form
-        className="adm-busqueda-form"
+        className="flex flex-col gap-2"
         onSubmit={(e) => {
           e.preventDefault();
           if (query.trim().length >= 2) props.onBuscar(query.trim());
         }}
       >
-        <label className="adm-field">
-          <span className="adm-field-label">Buscar negocios</span>
-          <input
-            className="adm-input"
+        <Field label="Buscar negocios">
+          <Input
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -41,82 +44,77 @@ export function SearchPanel(props: Props) {
             minLength={2}
             maxLength={120}
           />
-        </label>
-        <button
-          className="adm-cta"
+        </Field>
+        <Button
+          variante="primaria"
           type="submit"
+          className="self-start"
           disabled={props.buscando || query.trim().length < 2}
         >
           {props.buscando ? "Buscando…" : "Buscar"}
-        </button>
+        </Button>
       </form>
 
-      {props.error ? (
-        <p className="adm-error" role="alert">
-          {props.error}
-        </p>
-      ) : null}
+      {props.error ? <Banner variante="error">{props.error}</Banner> : null}
 
       {props.resultados.length > 0 ? (
         <>
-          <div className="adm-busqueda-lote">
-            <span className="adm-busqueda-conteo">
-              <strong>{props.resultados.length}</strong> con teléfono ·{" "}
-              <strong>{importables.length}</strong> sin importar
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="text-xs text-tinta-60">
+              <strong className="text-tinta-85">{props.resultados.length}</strong> con
+              teléfono ·{" "}
+              <strong className="text-tinta-85">{importables.length}</strong> sin
+              importar
             </span>
-            <button
-              className="adm-cta-ghost"
-              type="button"
+            <Button
               disabled={props.importando || importables.length === 0}
               onClick={() => props.onImportar(importables)}
             >
               {props.importando
                 ? "Importando…"
                 : `Importar los ${importables.length} nuevos`}
-            </button>
+            </Button>
           </div>
 
-          <ul className="adm-resultados">
+          <ul className="flex flex-col gap-1">
             {props.resultados.map((r) => (
-              <li
-                key={r.placeId}
-                className={
-                  props.seleccionPlaceId === r.placeId
-                    ? "adm-resultado adm-resultado--activo"
-                    : "adm-resultado"
-                }
-              >
-                <button
-                  type="button"
-                  className="adm-resultado-info"
+              <li key={r.placeId}>
+                <ListRow
+                  activa={props.seleccionPlaceId === r.placeId}
+                  className="flex items-center justify-between gap-2"
                   onClick={() => props.onSeleccionar(r.placeId)}
                 >
-                  <span className="adm-resultado-nombre">{r.nombre}</span>
-                  <span className="adm-resultado-meta">
-                    {r.telefono ?? "Sin teléfono"}
-                    {r.rating !== null ? ` · ${r.rating.toFixed(1)}★` : ""}
-                    {r.categoria ? ` · ${r.categoria.replaceAll("_", " ")}` : ""}
-                    {!r.operativo ? " · CERRADO" : ""}
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm font-medium text-tinta">
+                      {r.nombre}
+                    </span>
+                    <span className="block truncate text-xs text-tinta-40">
+                      {r.telefono ?? "Sin teléfono"}
+                      {r.rating !== null ? ` · ${r.rating.toFixed(1)}★` : ""}
+                      {r.categoria ? ` · ${r.categoria.replaceAll("_", " ")}` : ""}
+                      {!r.operativo ? " · CERRADO" : ""}
+                    </span>
                   </span>
-                </button>
-                {r.yaImportado ? (
-                  <span className="adm-resultado-ya">Ya está</span>
-                ) : (
-                  <button
-                    type="button"
-                    className="adm-cta-ghost adm-resultado-importar"
-                    disabled={props.importando}
-                    onClick={() => props.onImportar([r])}
-                  >
-                    Importar
-                  </button>
-                )}
+                  {r.yaImportado ? (
+                    <Badge tono="neutro">Ya está</Badge>
+                  ) : (
+                    <Button
+                      disabled={props.importando}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        props.onImportar([r]);
+                      }}
+                    >
+                      Importar
+                    </Button>
+                  )}
+                </ListRow>
               </li>
             ))}
           </ul>
         </>
       ) : (
-        <p className="adm-busqueda-vacia">
+        <p className="text-sm text-tinta-60">
           Busca por oficio y ciudad — «ferreterías en Ubaté», «panaderías en
           Madrid Cundinamarca». Solo aparecen negocios <strong>con teléfono</strong>:
           sin número no hay a quién venderle.

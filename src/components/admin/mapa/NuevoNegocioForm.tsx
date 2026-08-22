@@ -1,8 +1,13 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { X } from "lucide-react";
 import { crearNegocioManual } from "@/lib/admin/actions";
 import { CIUDADES, type Ciudad } from "@/lib/admin/negocios";
+import { Banner } from "@/components/admin/ui/Banner";
+import { Button } from "@/components/admin/ui/Button";
+import { Field, Input, Select } from "@/components/admin/ui/Field";
+import { IconButton } from "@/components/admin/ui/IconButton";
 
 type Props = {
   lat: number;
@@ -23,7 +28,7 @@ export function NuevoNegocioForm(props: Props) {
 
   return (
     <form
-      className="adm-ficha-contenido adm-nuevo-form"
+      className="flex flex-col gap-4"
       onSubmit={(e) => {
         e.preventDefault();
         setError(null);
@@ -45,92 +50,75 @@ export function NuevoNegocioForm(props: Props) {
         });
       }}
     >
-      <div className="adm-ficha-cabecera">
+      <div className="flex items-start justify-between gap-2">
         <div>
-          <h2 className="adm-ficha-nombre">Negocio nuevo</h2>
-          <p className="adm-ficha-meta">
+          <h2 className="text-base font-semibold text-tinta">Negocio nuevo</h2>
+          <p className="text-xs text-tinta-40">
             {props.lat.toFixed(5)}, {props.lng.toFixed(5)}
           </p>
         </div>
-        <button
-          type="button"
-          className="adm-ficha-cerrar"
-          aria-label="Cancelar"
-          onClick={props.onCancelar}
-        >
-          ×
-        </button>
+        <IconButton etiqueta="Cancelar" onClick={props.onCancelar}>
+          <X className="h-4 w-4" />
+        </IconButton>
       </div>
 
-      <label className="adm-field">
-        <span className="adm-field-label">Nombre *</span>
-        <input
-          className="adm-input"
+      <Field label="Nombre *">
+        <Input
           value={nombre}
           onChange={(e) => setNombre(e.target.value)}
           required
           maxLength={300}
           autoFocus
         />
-      </label>
+      </Field>
 
-      <label className="adm-field">
-        <span className="adm-field-label">Ciudad</span>
-        <select
-          className="adm-select"
-          value={ciudad}
-          onChange={(e) => setCiudad(e.target.value as Ciudad)}
-        >
+      <Field label="Ciudad">
+        <Select value={ciudad} onChange={(e) => setCiudad(e.target.value as Ciudad)}>
           {CIUDADES.map((c) => (
             <option key={c.valor} value={c.valor}>
               {c.label}
             </option>
           ))}
           <option value="otra">Otra</option>
-        </select>
-      </label>
+        </Select>
+      </Field>
 
-      <label className="adm-field">
-        <span className="adm-field-label">Teléfono</span>
-        <input
-          className="adm-input"
+      <Field label="Teléfono">
+        <Input
           type="tel"
           value={telefono}
           onChange={(e) => setTelefono(e.target.value)}
           placeholder="310 1234567"
         />
-      </label>
+      </Field>
 
-      <label className="adm-field">
-        <span className="adm-field-label">Oficio / categoría</span>
-        <input
-          className="adm-input"
+      <Field label="Oficio / categoría">
+        <Input
           value={categoria}
           onChange={(e) => setCategoria(e.target.value)}
           placeholder="ferretería, panadería…"
           maxLength={120}
         />
-      </label>
+      </Field>
 
-      <label className="adm-field">
-        <span className="adm-field-label">Dirección</span>
-        <input
-          className="adm-input"
+      <Field label="Dirección">
+        <Input
           value={direccion}
           onChange={(e) => setDireccion(e.target.value)}
           maxLength={300}
         />
-      </label>
+      </Field>
 
-      {error ? (
-        <p className="adm-error" role="alert">
-          {error}
-        </p>
-      ) : null}
+      {error ? <Banner variante="error">{error}</Banner> : null}
 
-      <button className="adm-cta" type="submit" disabled={guardando || !nombre.trim()}>
+      <Button
+        variante="primaria"
+        type="submit"
+        className="self-start"
+        disabled={guardando || !nombre.trim()}
+      >
         {guardando ? "Guardando…" : "Guardar negocio"}
-      </button>
+      </Button>
     </form>
   );
 }

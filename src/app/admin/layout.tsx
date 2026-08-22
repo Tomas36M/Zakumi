@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import "@/styles/admin.css";
 
 // El panel es interno: fuera de buscadores (el shallow-merge de metadata
 // hace que este robots cubra todo /admin) y fuera del sitemap. robots.ts
@@ -18,5 +17,5 @@ export default function AdminLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  return <div className="adm-shell panel">{children}</div>;
+  return <div className="panel">{children}</div>;
 }

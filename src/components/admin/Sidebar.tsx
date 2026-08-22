@@ -6,12 +6,14 @@ import { useEffect, useState } from "react";
 import {
   Bot,
   Boxes,
+  Inbox,
   LogOut,
   Map,
   Menu,
   PanelLeftClose,
   PanelLeftOpen,
   Store,
+  UserCog,
   Users,
   X,
 } from "lucide-react";
@@ -25,8 +27,10 @@ const SECCIONES = [
   { href: "/admin/mapa", label: "Mapa", Icono: Map },
   { href: "/admin/negocios", label: "Negocios", Icono: Store },
   { href: "/admin/zak", label: "Zak", Icono: Bot },
+  { href: "/admin/solicitudes", label: "Solicitudes", Icono: Inbox },
   { href: "/admin/clientes", label: "Clientes", Icono: Users },
   { href: "/admin/bots", label: "Bots", Icono: Boxes },
+  { href: "/admin/equipo", label: "Equipo", Icono: UserCog },
 ] as const;
 
 type Salud = "ok" | "atencion" | "problema";
