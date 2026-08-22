@@ -7,6 +7,7 @@ import {
   pausarChat,
   reanudarChat,
 } from "@/lib/admin/bots-actions";
+import { fechaCorta } from "@/lib/admin/formato";
 import { fueraDeVentana } from "@/lib/admin/zak";
 import { abrirChatZak } from "@/lib/admin/zak-actions";
 import { esLabs, type Conversacion, type Historial } from "@/lib/bots/tipos";
@@ -18,19 +19,6 @@ type Props = {
   /** Chat a abrir al montar (deep-link del CRM), exista o no en la lista. */
   abrirInicial?: string | null;
 };
-
-function fechaCorta(iso: string | null): string {
-  if (!iso) return "";
-  const fecha = new Date(iso);
-  if (Number.isNaN(fecha.getTime())) return iso;
-  return new Intl.DateTimeFormat("es-CO", {
-    day: "numeric",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone: "America/Bogota",
-  }).format(fecha);
-}
 
 /**
  * Conversaciones reales del bot: lista paginada, historial del chat elegido,

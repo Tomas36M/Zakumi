@@ -18,5 +18,5 @@ export default function AdminLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  return <div className="adm-shell">{children}</div>;
+  return <div className="adm-shell panel">{children}</div>;
 }

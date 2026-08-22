@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { guardarPrompt, restaurarVersion } from "@/lib/admin/bots-actions";
+import { fechaCorta } from "@/lib/admin/formato";
 import type { PromptActivo, VersionPrompt } from "@/lib/bots/tipos";
 
 type Props = {
@@ -11,18 +12,6 @@ type Props = {
   versiones: VersionPrompt[];
   onProbarEnLabs: () => void;
 };
-
-function fechaCorta(iso: string): string {
-  const fecha = new Date(iso);
-  if (Number.isNaN(fecha.getTime())) return iso;
-  return new Intl.DateTimeFormat("es-CO", {
-    day: "numeric",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone: "America/Bogota",
-  }).format(fecha);
-}
 
 /**
  * Editor de prompt con control optimista. Cada guardado crea la versión N+1 y

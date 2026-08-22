@@ -1,0 +1,90 @@
+/* ============================================================================
+   Design system del panel — tokens "islas Zakumi".
+   Vive en el grafo de globals.css para que @theme genere utilidades reales.
+   Look: islas flotantes redondeadas sobre el negro Zakumi, cero sombras
+   (profundidad por capas), un solo acento naranja, interactivos en píldora.
+   ========================================================================== */
+
+@theme {
+  /* Superficies (solo modo oscuro) */
+  --color-fondo: #0A0C12;
+  --color-isla: #10131B;
+  --color-isla-alta: #161A24;
+  --color-velo: rgb(22 26 36 / 0.6);
+
+  /* Acento — único: el naranja Zakumi */
+  --color-acento: #DB5227;
+  --color-acento-85: rgb(219 82 39 / 0.85);
+  --color-acento-25: rgb(219 82 39 / 0.25);
+  --color-acento-10: rgb(219 82 39 / 0.1);
+
+  /* Tinta — jerarquía por alpha */
+  --color-tinta: #EEEEF0;
+  --color-tinta-85: rgb(238 238 240 / 0.85);
+  --color-tinta-60: rgb(238 238 240 / 0.6);
+  --color-tinta-40: rgb(238 238 240 / 0.4);
+
+  /* Semánticos */
+  --color-vivo: #2EC27E;
+  --color-peligro: #FF375F;
+  --color-hairline: rgb(238 238 240 / 0.08);
+
+  /* Estados del pipeline (mismos valores que .adm-shell en admin.css) */
+  --color-estado-nuevo: #76828E;
+  --color-estado-contactado: #E8B24A;
+  --color-estado-respondido: #5FA8D3;
+  --color-estado-interesado: #DB5227;
+  --color-estado-cliente: #2EC27E;
+  --color-estado-descartado: #3F3A42;
+
+  /* Radios: isla para regiones, fila para items de lista; píldora = rounded-full */
+  --radius-isla: 24px;
+  --radius-fila: 14px;
+
+  /* Ritmo: aire entre islas, altura única de control */
+  --spacing-aire: 10px;
+  --spacing-control: 38px;
+
+  /* Playfair para acentos editoriales (la var la pone next/font en <html>) */
+  --font-editorial: var(--font-playfair), "Playfair Display", serif;
+}
+
+/* ——— Base del panel (bajo .panel, puesto por src/app/admin/layout.tsx) ——— */
+.panel {
+  min-height: 100dvh;
+  background: var(--color-fondo);
+  color: var(--color-tinta);
+  font-family: var(--font-sans), "Instrument Sans", system-ui, sans-serif;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+.panel *:focus-visible {
+  outline: 2px solid var(--color-acento);
+  outline-offset: 2px;
+}
+.panel ::selection {
+  background: var(--color-acento);
+  color: #fff;
+}
+@media (prefers-reduced-motion: reduce) {
+  .panel *,
+  .panel *::before,
+  .panel *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
+
+/* Scrollbar fino y VISIBLE para zonas de datos (opt-in; nunca ocultar). */
+.panel .barra-fina {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(238 238 240 / 0.15) transparent;
+}
+.panel .barra-fina::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.panel .barra-fina::-webkit-scrollbar-thumb {
+  background: rgb(238 238 240 / 0.15);
+  border-radius: 999px;
+}

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState, useTransition } from "react";
 import { reintentarJob } from "@/lib/admin/bots-actions";
+import { fechaCorta } from "@/lib/admin/formato";
 import {
   esLabs,
   type JobFallido,
@@ -16,18 +17,6 @@ type Datos = {
   jobs: JobFallido[];
   leads: Lead[];
 };
-
-function fechaCorta(iso: string): string {
-  const fecha = new Date(iso);
-  if (Number.isNaN(fecha.getTime())) return iso;
-  return new Intl.DateTimeFormat("es-CO", {
-    day: "numeric",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone: "America/Bogota",
-  }).format(fecha);
-}
 
 function resumenLead(datos: Record<string, unknown>): string {
   const partes = Object.entries(datos)
