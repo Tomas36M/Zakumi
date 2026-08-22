@@ -12,12 +12,30 @@ import {
   semaforoCobro,
   type Cliente,
   type ProductoConCliente,
+  type Semaforo,
 } from "@/lib/admin/cartera";
+import { Button } from "@/components/admin/ui/Button";
+import { EmptyState } from "@/components/admin/ui/EmptyState";
+import { ListRow } from "@/components/admin/ui/ListRow";
+import { Tabs } from "@/components/admin/ui/Tabs";
 import { FichaCliente } from "./FichaCliente";
 import { NuevoClienteForm } from "./NuevoClienteForm";
 
 const LABEL_TIPO = new Map(TIPOS_PRODUCTO.map((t) => [t.valor, t.label]));
 const LABEL_CICLO = new Map(CICLOS.map((c) => [c.valor, c.label]));
+
+// Punto de color del semáforo de cobro (clases literales para Tailwind).
+const COLOR_SEMAFORO: Record<Semaforo, string> = {
+  al_dia: "bg-vivo",
+  por_vencer: "bg-estado-contactado",
+  vencido: "bg-peligro",
+  sin_programar: "bg-tinta-40/40",
+};
+
+const GRID_COBRO =
+  "grid grid-cols-[auto_minmax(0,1.2fr)_minmax(0,1.6fr)_minmax(0,1fr)_minmax(0,1fr)] items-center gap-3";
+const GRID_CLIENTE =
+  "grid grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)_auto_minmax(0,0.8fr)] items-center gap-3";
 
 type Props = {
   productos: ProductoConCliente[];
@@ -26,6 +44,11 @@ type Props = {
 };
 
 type Vista = "cobros" | "clientes";
+
+const VISTAS = [
+  { id: "cobros", label: "Próximos cobros" },
+  { id: "clientes", label: "Clientes" },
+] as const;
 
 export function ClientesView({ productos, clientes, abrirInicial }: Props) {
   const router = useRouter();
@@ -51,166 +74,146 @@ export function ClientesView({ productos, clientes, abrirInicial }: Props) {
   );
 
   return (
-    <div className="adm-clientes">
-      <div className="adm-toolbar">
-        <div className="adm-chips" role="group" aria-label="Vista">
-          <button
-            type="button"
-            className={vista === "cobros" ? "adm-chip adm-chip--activa" : "adm-chip"}
-            onClick={() => setVista("cobros")}
-          >
-            Próximos cobros
-          </button>
-          <button
-            type="button"
-            className={vista === "clientes" ? "adm-chip adm-chip--activa" : "adm-chip"}
-            onClick={() => setVista("clientes")}
-          >
-            Clientes
-          </button>
-        </div>
-        <span className="adm-toolbar-conteo">
-          <strong className="adm-cifra">{clientes.length}</strong> clientes ·{" "}
-          <strong className="adm-cifra">{cobros.length}</strong> cobros activos
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <Tabs pestanas={VISTAS} activa={vista} onCambiar={setVista} />
+        <span className="text-xs text-tinta-40">
+          <strong className="text-tinta-85">{clientes.length}</strong> clientes ·{" "}
+          <strong className="text-tinta-85">{cobros.length}</strong> cobros activos
         </span>
-        <button
-          type="button"
-          className="adm-cta-ghost"
+        <Button
           onClick={() => {
             setCreando(true);
             setSeleccionId(null);
           }}
         >
           Nuevo cliente
-        </button>
+        </Button>
       </div>
 
-      <div className="adm-clientes-layout">
-        <div className="adm-clientes-tabla">
+      <div className="grid items-start gap-aire min-[1000px]:grid-cols-[minmax(0,1fr)_380px]">
+        <div className="min-w-0">
           {vista === "cobros" ? (
             cobros.length === 0 ? (
-              <p className="adm-tabla-vacia">
-                Todavía no hay cobros programados. Crea un cliente y agrégale su
-                primer producto — el bot, su página web, lo que le vendas.
-              </p>
+              <EmptyState
+                titulo="Todavía no hay cobros programados."
+                detalle="Crea un cliente y agrégale su primer producto — el bot, su página web, lo que le vendas."
+              />
             ) : (
-              <div className="adm-tabla-scroll">
-                <table className="adm-tabla">
-                  <thead>
-                    <tr>
-                      <th aria-label="Estado" className="adm-th-check" />
-                      <th>Cliente</th>
-                      <th>Producto</th>
-                      <th>Tarifa</th>
-                      <th>Próximo cobro</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {cobros.map((p) => {
-                      const estado = semaforoCobro(p.proxima_fecha, hoy);
-                      return (
-                        <tr
-                          key={p.id}
+              <div className="barra-fina overflow-x-auto">
+                <div className="flex min-w-[560px] flex-col gap-1">
+                  <div className={`${GRID_COBRO} px-3 py-1.5 text-xs font-medium text-tinta-40`}>
+                    <span className="w-2" aria-label="Estado" />
+                    <span>Cliente</span>
+                    <span>Producto</span>
+                    <span>Tarifa</span>
+                    <span>Próximo cobro</span>
+                  </div>
+                  {cobros.map((p) => {
+                    const estado = semaforoCobro(p.proxima_fecha, hoy);
+                    return (
+                      <ListRow
+                        key={p.id}
+                        activa={p.cliente_id === seleccionId}
+                        className={GRID_COBRO}
+                        onClick={() => {
+                          setCreando(false);
+                          setSeleccionId(p.cliente_id);
+                        }}
+                      >
+                        <span
+                          className={`h-2 w-2 shrink-0 rounded-full ${COLOR_SEMAFORO[estado]}`}
+                          title={estado.replaceAll("_", " ")}
+                        />
+                        <span className="truncate text-sm font-medium text-tinta">
+                          {p.clientes?.nombre ?? "—"}
+                        </span>
+                        <span className="min-w-0">
+                          <span className="block truncate text-sm font-medium text-tinta">
+                            {p.nombre}
+                          </span>
+                          <span className="block truncate text-xs text-tinta-40">
+                            {LABEL_TIPO.get(p.tipo)}
+                            {p.dominio ? ` · ${p.dominio}` : ""}
+                          </span>
+                        </span>
+                        <span className="text-sm text-tinta-60">
+                          {formatearCOP(p.tarifa)}
+                          <span className="text-xs text-tinta-40">
+                            {" "}
+                            {LABEL_CICLO.get(p.ciclo)}
+                          </span>
+                        </span>
+                        <span
                           className={
-                            p.cliente_id === seleccionId ? "adm-tr--activa" : ""
+                            estado === "vencido"
+                              ? "text-sm font-medium text-peligro"
+                              : "text-sm text-tinta-60"
                           }
-                          onClick={() => {
-                            setCreando(false);
-                            setSeleccionId(p.cliente_id);
-                          }}
                         >
-                          <td className="adm-th-check">
-                            <span
-                              className={`adm-badge adm-badge--sem-${estado}`}
-                              title={estado.replaceAll("_", " ")}
-                            />
-                          </td>
-                          <td>
-                            <span className="adm-tabla-nombre">
-                              {p.clientes?.nombre ?? "—"}
-                            </span>
-                          </td>
-                          <td>
-                            <span className="adm-tabla-nombre">{p.nombre}</span>
-                            <span className="adm-tabla-categoria">
-                              {LABEL_TIPO.get(p.tipo)}
-                              {p.dominio ? ` · ${p.dominio}` : ""}
-                            </span>
-                          </td>
-                          <td className="adm-tabla-telefono">
-                            {formatearCOP(p.tarifa)}
-                            <span className="adm-tabla-fijo">
-                              {" "}
-                              {LABEL_CICLO.get(p.ciclo)}
-                            </span>
-                          </td>
-                          <td
-                            className={
-                              estado === "vencido" ? "adm-cobro-vencido" : ""
-                            }
-                          >
-                            {descripcionVencimiento(p.proxima_fecha, hoy)}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                          {descripcionVencimiento(p.proxima_fecha, hoy)}
+                        </span>
+                      </ListRow>
+                    );
+                  })}
+                </div>
               </div>
             )
           ) : clientes.length === 0 ? (
-            <p className="adm-tabla-vacia">
-              Sin clientes todavía. Los puedes crear aquí o convertir un negocio
-              del CRM desde su ficha en el mapa.
-            </p>
+            <EmptyState
+              titulo="Sin clientes todavía."
+              detalle="Los puedes crear aquí o convertir un negocio del CRM desde su ficha en el mapa."
+            />
           ) : (
-            <div className="adm-tabla-scroll">
-              <table className="adm-tabla">
-                <thead>
-                  <tr>
-                    <th>Cliente</th>
-                    <th>Teléfono</th>
-                    <th>Productos</th>
-                    <th>Estado</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {clientes.map((c) => {
-                    const suyos = productos.filter((p) => p.cliente_id === c.id);
-                    return (
-                      <tr
-                        key={c.id}
-                        className={c.id === seleccionId ? "adm-tr--activa" : ""}
-                        onClick={() => {
-                          setCreando(false);
-                          setSeleccionId(c.id);
-                        }}
-                      >
-                        <td>
-                          <span className="adm-tabla-nombre">{c.nombre}</span>
-                          {c.email ? (
-                            <span className="adm-tabla-categoria">{c.email}</span>
-                          ) : null}
-                        </td>
-                        <td className="adm-tabla-telefono">
-                          {c.telefono ?? <span className="adm-ficha-sin">—</span>}
-                        </td>
-                        <td>
-                          <strong className="adm-cifra">{suyos.length}</strong>
-                        </td>
-                        <td className="adm-tabla-ciudad">
-                          {c.activo ? "Activo" : "Inactivo"}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+            <div className="barra-fina overflow-x-auto">
+              <div className="flex min-w-[520px] flex-col gap-1">
+                <div className={`${GRID_CLIENTE} px-3 py-1.5 text-xs font-medium text-tinta-40`}>
+                  <span>Cliente</span>
+                  <span>Teléfono</span>
+                  <span>Productos</span>
+                  <span>Estado</span>
+                </div>
+                {clientes.map((c) => {
+                  const suyos = productos.filter((p) => p.cliente_id === c.id);
+                  return (
+                    <ListRow
+                      key={c.id}
+                      activa={c.id === seleccionId}
+                      className={GRID_CLIENTE}
+                      onClick={() => {
+                        setCreando(false);
+                        setSeleccionId(c.id);
+                      }}
+                    >
+                      <span className="min-w-0">
+                        <span className="block truncate text-sm font-medium text-tinta">
+                          {c.nombre}
+                        </span>
+                        {c.email ? (
+                          <span className="block truncate text-xs text-tinta-40">
+                            {c.email}
+                          </span>
+                        ) : null}
+                      </span>
+                      <span className="text-sm text-tinta-60">
+                        {c.telefono ?? <span className="text-tinta-40">—</span>}
+                      </span>
+                      <strong className="text-sm text-tinta">{suyos.length}</strong>
+                      <span className="text-sm text-tinta-60">
+                        {c.activo ? "Activo" : "Inactivo"}
+                      </span>
+                    </ListRow>
+                  );
+                })}
+              </div>
             </div>
           )}
         </div>
 
-        <aside className="adm-ficha" aria-label="Detalle del cliente">
+        <aside
+          className="min-w-0 border-t border-hairline pt-aire min-[1000px]:border-t-0 min-[1000px]:border-l min-[1000px]:border-hairline min-[1000px]:pt-0 min-[1000px]:pl-aire"
+          aria-label="Detalle del cliente"
+        >
           {creando ? (
             <NuevoClienteForm
               onCreado={(id) => {
@@ -230,11 +233,10 @@ export function ClientesView({ productos, clientes, abrirInicial }: Props) {
               onCerrar={() => setSeleccionId(null)}
             />
           ) : (
-            <p className="adm-ficha-vacia">
-              Toca un cobro o un cliente para ver su ficha. Cada producto que le
-              vendas — bot, página web, CRM — lleva su tarifa y su próxima fecha
-              de cobro.
-            </p>
+            <EmptyState
+              titulo="Toca un cobro o un cliente para ver su ficha."
+              detalle="Cada producto que le vendas — bot, página web, CRM — lleva su tarifa y su próxima fecha de cobro."
+            />
           )}
         </aside>
       </div>

@@ -8,6 +8,9 @@ import {
   type Ciclo,
   type TipoProducto,
 } from "@/lib/admin/cartera";
+import { Banner } from "@/components/admin/ui/Banner";
+import { Button } from "@/components/admin/ui/Button";
+import { Field, Input, Select } from "@/components/admin/ui/Field";
 
 type InstanciaCorta = { id: number; slug: string; nombre: string; activo: boolean };
 
@@ -53,7 +56,7 @@ export function ProductoForm({ clienteId, hoy, onCreado, onCancelar, inicial }: 
 
   return (
     <form
-      className="adm-nuevo-form adm-producto-form"
+      className="flex flex-col gap-3 rounded-fila border border-hairline p-3"
       onSubmit={(e) => {
         e.preventDefault();
         setError(null);
@@ -76,37 +79,28 @@ export function ProductoForm({ clienteId, hoy, onCreado, onCancelar, inicial }: 
         });
       }}
     >
-      <label className="adm-field">
-        <span className="adm-field-label">Tipo</span>
-        <select
-          className="adm-select"
-          value={tipo}
-          onChange={(e) => setTipo(e.target.value as TipoProducto)}
-        >
+      <Field label="Tipo">
+        <Select value={tipo} onChange={(e) => setTipo(e.target.value as TipoProducto)}>
           {TIPOS_PRODUCTO.map((t) => (
             <option key={t.valor} value={t.valor}>
               {t.label}
             </option>
           ))}
-        </select>
-      </label>
+        </Select>
+      </Field>
 
-      <label className="adm-field">
-        <span className="adm-field-label">Nombre *</span>
-        <input
-          className="adm-input"
+      <Field label="Nombre *">
+        <Input
           value={nombre}
           onChange={(e) => setNombre(e.target.value)}
           placeholder={tipo === "bot" ? "Bot de la ferretería" : "Web corporativa"}
           required
           maxLength={200}
         />
-      </label>
+      </Field>
 
-      <label className="adm-field">
-        <span className="adm-field-label">Tarifa (COP) *</span>
-        <input
-          className="adm-input"
+      <Field label="Tarifa (COP) *">
+        <Input
           type="number"
           min={0}
           step="any"
@@ -115,67 +109,52 @@ export function ProductoForm({ clienteId, hoy, onCreado, onCancelar, inicial }: 
           placeholder="150000"
           required
         />
-      </label>
+      </Field>
 
-      <label className="adm-field">
-        <span className="adm-field-label">Ciclo</span>
-        <select
-          className="adm-select"
-          value={ciclo}
-          onChange={(e) => setCiclo(e.target.value as Ciclo)}
-        >
+      <Field label="Ciclo">
+        <Select value={ciclo} onChange={(e) => setCiclo(e.target.value as Ciclo)}>
           {CICLOS.map((c) => (
             <option key={c.valor} value={c.valor}>
               {c.label}
             </option>
           ))}
-        </select>
-      </label>
+        </Select>
+      </Field>
 
       {ciclo !== "unico" ? (
-        <label className="adm-field">
-          <span className="adm-field-label">Primer cobro</span>
-          <input
-            className="adm-input"
+        <Field label="Primer cobro">
+          <Input
             type="date"
             value={proximaFecha}
             onChange={(e) => setProximaFecha(e.target.value)}
             required
           />
-        </label>
+        </Field>
       ) : null}
 
       {tipo === "web" ? (
-        <label className="adm-field">
-          <span className="adm-field-label">Dominio</span>
-          <input
-            className="adm-input"
+        <Field label="Dominio">
+          <Input
             value={dominio}
             onChange={(e) => setDominio(e.target.value)}
             placeholder="laferreteria.com.co"
           />
-        </label>
+        </Field>
       ) : null}
 
       {tipo === "bot" ? (
-        <label className="adm-field">
-          <span className="adm-field-label">Instancia del bot</span>
+        <Field label="Instancia del bot">
           {instancias && instancias.length > 0 ? (
-            <select
-              className="adm-select"
-              value={instanciaId}
-              onChange={(e) => setInstanciaId(e.target.value)}
-            >
+            <Select value={instanciaId} onChange={(e) => setInstanciaId(e.target.value)}>
               <option value="">— sin vincular todavía —</option>
               {instancias.map((i) => (
                 <option key={i.id} value={String(i.id)}>
                   {i.nombre} ({i.slug}){i.activo ? "" : " · apagado"}
                 </option>
               ))}
-            </select>
+            </Select>
           ) : (
-            <input
-              className="adm-input"
+            <Input
               value={instanciaId}
               onChange={(e) => setInstanciaId(e.target.value)}
               placeholder={
@@ -183,22 +162,20 @@ export function ProductoForm({ clienteId, hoy, onCreado, onCancelar, inicial }: 
               }
             />
           )}
-        </label>
+        </Field>
       ) : null}
 
-      {error ? (
-        <p className="adm-error" role="alert">
-          {error}
-        </p>
-      ) : null}
+      {error ? <Banner variante="error">{error}</Banner> : null}
 
-      <div className="adm-ficha-acciones">
-        <button className="adm-cta" type="submit" disabled={guardando || !nombre.trim()}>
+      <div className="flex flex-wrap gap-2">
+        <Button
+          variante="primaria"
+          type="submit"
+          disabled={guardando || !nombre.trim()}
+        >
           {guardando ? "Guardando…" : "Guardar producto"}
-        </button>
-        <button className="adm-cta-ghost" type="button" onClick={onCancelar}>
-          Cancelar
-        </button>
+        </Button>
+        <Button onClick={onCancelar}>Cancelar</Button>
       </div>
     </form>
   );

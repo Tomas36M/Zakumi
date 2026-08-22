@@ -1,7 +1,12 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { X } from "lucide-react";
 import { crearCliente } from "@/lib/admin/cartera-actions";
+import { Banner } from "@/components/admin/ui/Banner";
+import { Button } from "@/components/admin/ui/Button";
+import { Field, Input } from "@/components/admin/ui/Field";
+import { IconButton } from "@/components/admin/ui/IconButton";
 
 type Props = {
   onCreado: (id: string) => void;
@@ -17,7 +22,7 @@ export function NuevoClienteForm({ onCreado, onCancelar }: Props) {
 
   return (
     <form
-      className="adm-ficha-contenido adm-nuevo-form"
+      className="flex flex-col gap-4"
       onSubmit={(e) => {
         e.preventDefault();
         setError(null);
@@ -35,65 +40,51 @@ export function NuevoClienteForm({ onCreado, onCancelar }: Props) {
         });
       }}
     >
-      <div className="adm-ficha-cabecera">
+      <div className="flex items-start justify-between gap-2">
         <div>
-          <h2 className="adm-ficha-nombre">Cliente nuevo</h2>
-          <p className="adm-ficha-meta">
+          <h2 className="text-base font-semibold text-tinta">Cliente nuevo</h2>
+          <p className="text-xs text-tinta-40">
             También puedes convertir un negocio del CRM desde su ficha.
           </p>
         </div>
-        <button
-          type="button"
-          className="adm-ficha-cerrar"
-          aria-label="Cancelar"
-          onClick={onCancelar}
-        >
-          ×
-        </button>
+        <IconButton etiqueta="Cancelar" onClick={onCancelar}>
+          <X className="h-4 w-4" />
+        </IconButton>
       </div>
 
-      <label className="adm-field">
-        <span className="adm-field-label">Nombre *</span>
-        <input
-          className="adm-input"
+      <Field label="Nombre *">
+        <Input
           value={nombre}
           onChange={(e) => setNombre(e.target.value)}
           required
           maxLength={300}
           autoFocus
         />
-      </label>
+      </Field>
 
-      <label className="adm-field">
-        <span className="adm-field-label">Teléfono</span>
-        <input
-          className="adm-input"
+      <Field label="Teléfono">
+        <Input
           type="tel"
           value={telefono}
           onChange={(e) => setTelefono(e.target.value)}
           placeholder="310 1234567"
         />
-      </label>
+      </Field>
 
-      <label className="adm-field">
-        <span className="adm-field-label">Correo</span>
-        <input
-          className="adm-input"
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
-      </label>
+      <Field label="Correo">
+        <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+      </Field>
 
-      {error ? (
-        <p className="adm-error" role="alert">
-          {error}
-        </p>
-      ) : null}
+      {error ? <Banner variante="error">{error}</Banner> : null}
 
-      <button className="adm-cta" type="submit" disabled={guardando || !nombre.trim()}>
+      <Button
+        variante="primaria"
+        type="submit"
+        className="self-start"
+        disabled={guardando || !nombre.trim()}
+      >
         {guardando ? "Guardando…" : "Crear cliente"}
-      </button>
+      </Button>
     </form>
   );
 }
