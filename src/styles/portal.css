@@ -1064,10 +1064,32 @@
 /* ——— Auth (login / registro): tarjeta centrada en el lienzo ——— */
 
 .app-auth {
+  position: relative;
   min-height: 100dvh;
   display: grid;
   place-items: center;
   padding: 1.2rem;
+}
+
+/* Salida visible: el login no tiene navbar y no puede ser un callejón. */
+.app-auth-volver {
+  position: absolute;
+  top: 1.3rem;
+  left: 1.5rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: var(--app-tinta-2);
+  text-decoration: none;
+  font-size: 0.82rem;
+  padding: 0.4rem 0.9rem;
+  border-radius: 999px;
+  transition: color 0.15s var(--app-suave), background-color 0.15s var(--app-suave);
+}
+
+.app-auth-volver:hover {
+  color: var(--app-tinta);
+  background: var(--app-naranja-suave);
 }
 
 .app-auth-card {
