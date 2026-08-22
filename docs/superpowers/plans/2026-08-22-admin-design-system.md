@@ -43,7 +43,11 @@ clientes). La rama nueva sale de `main` y se traen SOLO los dos commits de docum
 git checkout main
 git checkout -b feat/admin-design-system
 git cherry-pick f418301   # spec: design system del panel — islas Zakumi
-git cherry-pick ffd6edd   # plan: design system del panel — 14 tareas
+# El plan se copia en su versión final directo de la otra rama (sin cherry-pick,
+# para no depender de hashes del propio plan):
+git checkout feat/portal-clientes -- docs/superpowers/plans/2026-08-22-admin-design-system.md
+git add docs/superpowers/plans/2026-08-22-admin-design-system.md
+git commit -m "plan: design system del panel — 14 tareas, kit completo con código"
 ```
 
 (Los archivos sin trackear del working tree —portal, videos, PDF— se quedan donde están;
