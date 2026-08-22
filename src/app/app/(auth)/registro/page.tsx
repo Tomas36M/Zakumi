@@ -8,6 +8,9 @@ export const metadata: Metadata = { title: "Crear cuenta" };
 export default function RegistroPage() {
   return (
     <div className="app-auth">
+      <Link href="/" className="app-auth-volver">
+        ← Volver al sitio
+      </Link>
       <div className="app-auth-card">
         <Link href="/" className="app-auth-marca">
           ZAKUMI<span className="app-side-marca-mi">Mi estudio</span>
