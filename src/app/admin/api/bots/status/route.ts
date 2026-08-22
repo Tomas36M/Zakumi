@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
-import { getSesion } from "@/lib/admin/dal";
+import { getSesionAdmin } from "@/lib/admin/dal";
 import { statusGlobal } from "@/lib/bots/api";
 
 // Polling de BotsView (cada 30 s). La sesión evita que esto sea un proxy
 // abierto hacia el bot; el token del bot vive solo en el servidor.
 export async function GET() {
-  const sesion = await getSesion();
+  const sesion = await getSesionAdmin();
   if (!sesion) {
     return NextResponse.json({ error: "no_autorizado" }, { status: 401 });
   }

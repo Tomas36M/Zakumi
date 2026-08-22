@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
-import { getSesion } from "@/lib/admin/dal";
+import { getSesionAdmin } from "@/lib/admin/dal";
 import { listarConversaciones } from "@/lib/bots/api";
 
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const sesion = await getSesion();
+  const sesion = await getSesionAdmin();
   if (!sesion) {
     return NextResponse.json({ error: "no_autorizado" }, { status: 401 });
   }

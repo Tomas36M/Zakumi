@@ -4,6 +4,8 @@ import { hoyBogota, type Cliente, type Pago, type ProductoContratado } from "@/l
 import { statusInstancia } from "@/lib/bots/api";
 import type { StatusInstancia } from "@/lib/bots/tipos";
 import { Ficha360 } from "@/components/admin/clientes/Ficha360";
+import { AccesoPortal } from "@/components/admin/clientes/AccesoPortal";
+import type { PerfilBuscado } from "@/lib/admin/perfiles-actions";
 
 export const metadata = { title: "Ficha del cliente" };
 
@@ -67,13 +69,50 @@ export default async function Cliente360Page({
     botStatus[iid] = r?.ok ? r.data : null;
   });
 
+  const cliente = clienteRes.data as Cliente;
+
+  // Acceso al portal: cuentas ya vinculadas + sugerencia por email igual.
+  const aPerfil = (p: Record<string, unknown>): PerfilBuscado => ({
+    userId: p.user_id as string,
+    email: (p.email as string | null) ?? null,
+    nombre: (p.nombre as string | null) ?? null,
+    clienteId: (p.cliente_id as string | null) ?? null,
+  });
+  const [vinculadosRes, sugerenciaRes] = await Promise.all([
+    supabase
+      .from("perfiles")
+      .select("user_id, email, nombre, cliente_id")
+      .eq("cliente_id", id),
+    cliente.email
+      ? supabase
+          .from("perfiles")
+          .select("user_id, email, nombre, cliente_id")
+          .ilike("email", cliente.email)
+          .is("cliente_id", null)
+          .eq("rol", "cliente")
+          .limit(1)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
+  ]);
+  const vinculados = (vinculadosRes.data ?? []).map(aPerfil);
+  const sugerencia = sugerenciaRes.data ? aPerfil(sugerenciaRes.data) : null;
+
   return (
-    <Ficha360
-      cliente={clienteRes.data as Cliente}
-      productos={productos}
-      pagos={(pagosRes.data as Pago[]) ?? []}
-      botStatus={botStatus}
-      hoy={hoyBogota()}
-    />
+    <>
+      <Ficha360
+        cliente={cliente}
+        productos={productos}
+        pagos={(pagosRes.data as Pago[]) ?? []}
+        botStatus={botStatus}
+        hoy={hoyBogota()}
+      />
+      <section className="adm-seccion">
+        <AccesoPortal
+          clienteId={id}
+          vinculados={vinculados}
+          sugerencia={sugerencia}
+        />
+      </section>
+    </>
   );
 }
