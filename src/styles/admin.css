@@ -1,3 +1,19 @@
+/* ——— PUENTE (temporal): tokens que admin.css leía de zakumi-design.css.
+   Se borra junto con este archivo al final de la migración. ——— */
+:root {
+  --black: #0A0C12;
+  --navy: #023661;
+  --charcoal: #3F3A42;
+  --slate: #76828E;
+  --orange: #DB5227;
+  --paper: #f5efe3;
+  --live: #2EC27E;
+  --ink-2: #98A3AE;
+}
+body {
+  background: var(--black); /* mismo valor que pone la landing: sin conflicto */
+}
+
 /* ============================================================================
    Panel de admin Zakumi — /admin
    Extiende la identidad editorial del sitio (tokens de zakumi-design.css:

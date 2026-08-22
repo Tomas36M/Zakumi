@@ -1,3 +1,5 @@
+import "@/styles/zakumi-design.css";
+
 import { JsonLd } from "@/components/site/JsonLd";
 import { SiteShell } from "@/components/site/SiteShell";
 
