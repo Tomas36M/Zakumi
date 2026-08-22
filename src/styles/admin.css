@@ -1759,3 +1759,146 @@ a.adm-bot-card {
     grid-template-columns: 1fr;
   }
 }
+
+/* ——— Voz: consola de agentes ElevenLabs (/admin/voz) ——— */
+
+.adm-voz-selector {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.adm-voz-preview {
+  width: 100%;
+  max-width: 420px;
+  height: 32px;
+}
+
+.adm-voz-ayuda {
+  font-style: normal;
+  color: var(--slate);
+  font-weight: 400;
+}
+
+.adm-voz-ok {
+  color: var(--paper);
+  border-left: 2px solid var(--live);
+  padding-left: 0.75rem;
+  margin: 0 0 1rem;
+  font-size: 0.82rem;
+}
+
+/* Editor de extracción: clave | tipo | descripción | quitar */
+.adm-voz-campo {
+  display: grid;
+  grid-template-columns: minmax(120px, 0.8fr) minmax(110px, 0.6fr) 2fr auto;
+  gap: 0.5rem;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.adm-voz-snippet {
+  border: 1px solid var(--hairline);
+  background: var(--superficie);
+  padding: 1rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.78rem;
+  line-height: 1.6;
+  color: var(--paper);
+  overflow-x: auto;
+  margin: 0 0 0.75rem;
+}
+
+/* Lista de llamadas: filas expandibles con hairline, cero tarjetería */
+.adm-voz-llamadas {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--hairline);
+}
+
+.adm-voz-llamada {
+  border-bottom: 1px solid var(--hairline);
+}
+
+.adm-voz-llamada-fila {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  gap: 1rem;
+  align-items: center;
+  width: 100%;
+  padding: 0.7rem 0.25rem;
+  background: none;
+  border: 0;
+  color: var(--paper);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.adm-voz-llamada-fila:hover {
+  background: var(--superficie);
+}
+
+.adm-voz-llamada-tel {
+  font-variant-numeric: tabular-nums;
+}
+
+.adm-voz-llamada-meta {
+  color: var(--slate);
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+.adm-voz-detalle {
+  padding: 0.75rem 0.25rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.adm-voz-resumen {
+  margin: 0;
+  color: var(--paper);
+  border-left: 2px solid var(--orange);
+  padding-left: 0.75rem;
+}
+
+.adm-voz-datos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.5rem;
+  margin: 0;
+}
+
+.adm-voz-dato dt {
+  color: var(--slate);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.adm-voz-dato dd {
+  margin: 0;
+}
+
+.adm-voz-audio {
+  width: 100%;
+  max-width: 480px;
+  height: 32px;
+}
+
+.adm-voz-transcript {
+  max-height: 320px;
+}
+
+@media (max-width: 720px) {
+  .adm-voz-campo {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .adm-voz-llamada-fila {
+    grid-template-columns: auto 1fr;
+    row-gap: 0.25rem;
+  }
+}

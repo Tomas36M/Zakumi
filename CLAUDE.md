@@ -65,6 +65,28 @@ Tienda de servicios + autogestión del cliente. Spec y **runbook de encendido**:
 - Envs del portal: `AVISOS_BOT_INSTANCIA_ID` + `AVISOS_WHATSAPP_TO` (aviso de
   solicitud por WhatsApp; si faltan solo se pierde el aviso).
 
+## Agentes de voz /admin/voz — ElevenLabs (2026-08-22, rama `feat/agentes-voz`)
+
+Spec + **runbook de encendido en 8 pasos** (leerlo antes de tocar voz):
+`docs/superpowers/specs/2026-08-22-agentes-voz-elevenlabs-design.md`.
+
+- **Supabase es la fuente de verdad** (`agentes_voz`/`llamadas_voz`,
+  `supabase/voz.sql` DESPUÉS de portal.sql); ElevenLabs el ejecutor. Cada
+  guardado manda el payload COMPLETO (`src/lib/voz/eleven.ts`) — un PATCH
+  parcial en ElevenLabs borra tools/overrides.
+- **Workspace COMPARTIDO con Luci** (proyecto de Tether): jamás tocar
+  `agent_7401…`, `phnum_6501…` ni el webhook de Luci; el panel solo opera los
+  `agent_id_eleven` guardados en `agentes_voz`. Gate pendiente: verificar si el
+  webhook post-call se asigna POR AGENTE (riesgo 1 del spec).
+- **`/api/voz/webhook` es el ÚNICO endpoint público del repo**: HMAC `t=,v0=`
+  sobre el raw body + filtro por `agent_id`. Es también el único sitio con
+  `SUPABASE_SERVICE_ROLE_KEY` (solo invoca la RPC `registrar_llamada_voz`).
+- Leads extraídos (`lead_nombre`/`lead_telefono`) → `ventas_cliente` origen
+  'bot' dentro de la RPC + aviso WhatsApp.
+- Envs: `ELEVENLABS_API_KEY`, `ELEVENLABS_WEBHOOK_SECRET`,
+  `ELEVENLABS_PHONE_NUMBER_ID` (interruptor del piloto), `SUPABASE_SERVICE_ROLE_KEY`.
+- `catalogo.ts` sigue `disponible: false` en `agente-voz` hasta el paso 8 del runbook.
+
 ## Varias sesiones de Claude comparten este checkout
 
 - Los commits caen en **la rama que esté checked out** — antes de commitear,
@@ -75,7 +97,9 @@ Tienda de servicios + autogestión del cliente. Spec y **runbook de encendido**:
 - Ramas activas en paralelo (2026-08-22): `feat/portal-clientes` (portal),
   `feat/admin-design-system` (reemplaza AdminNav y a la larga borra admin.css —
   quien mergee segundo integra), `feat/folletos-prospeccion` (headers de imagen
-  en plantillas Meta; bloqueada por re-aprobación de plantillas).
+  en plantillas Meta; bloqueada por re-aprobación de plantillas), y
+  `feat/agentes-voz` (voz ElevenLabs, PR #3 apilada sobre el portal; toca
+  AdminNav +1 línea y agrega bloque `adm-voz-*` a admin.css).
 
 ## Repo y despliegue
 
