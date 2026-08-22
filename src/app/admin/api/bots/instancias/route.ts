@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
-import { getSesion } from "@/lib/admin/dal";
+import { getSesionAdmin } from "@/lib/admin/dal";
 import { listarInstancias } from "@/lib/bots/api";
 
 // Lista corta para selects (vincular producto ↔ instancia del bot).
 export async function GET() {
-  const sesion = await getSesion();
+  const sesion = await getSesionAdmin();
   if (!sesion) {
     return NextResponse.json({ error: "no_autorizado" }, { status: 401 });
   }

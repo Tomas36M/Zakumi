@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSesion } from "@/lib/admin/dal";
+import { getSesionAdmin } from "@/lib/admin/dal";
 import { CIUDADES, type Ciudad } from "@/lib/admin/negocios";
 import {
   marcarImportados,
@@ -29,7 +29,7 @@ type Payload = { query?: unknown; ciudad?: unknown };
 export async function POST(request: Request) {
   // La key de Places vive solo en el servidor; la sesión evita que este
   // endpoint sea un proxy abierto que queme la cuota a nombre de Zakumi.
-  const sesion = await getSesion();
+  const sesion = await getSesionAdmin();
   if (!sesion) {
     return NextResponse.json({ error: "no_autorizado" }, { status: 401 });
   }

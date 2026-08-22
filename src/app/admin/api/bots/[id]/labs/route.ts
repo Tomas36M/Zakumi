@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSesion } from "@/lib/admin/dal";
+import { getSesionAdmin } from "@/lib/admin/dal";
 import { labsChat, labsHistorial, labsReset } from "@/lib/bots/api";
 
 // El turno del Labs corre síncrono en el bot (Claude + tools: 3-10 s), muy por
@@ -11,7 +11,7 @@ const SESSION = /^[a-z0-9-]{4,40}$/;
 type Params = { params: Promise<{ id: string }> };
 
 async function validar(request: Request, { params }: Params) {
-  const sesion = await getSesion();
+  const sesion = await getSesionAdmin();
   if (!sesion) {
     return { error: NextResponse.json({ error: "no_autorizado" }, { status: 401 }) };
   }

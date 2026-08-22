@@ -26,6 +26,57 @@
 - **Menú móvil**: overlay + toggle; breakpoints alineados con el CSS (~720px).
 - SEO: **`src/components/site/JsonLd.tsx`** (Organization + WebSite Colombia), metadata en **`layout.tsx`**.
 
+## Las tres superficies del sitio
+
+El repo sirve TRES apps que no deben contaminarse entre sí:
+
+| Superficie | Rutas | CSS (prefijo) | Estética |
+|---|---|---|---|
+| Landing pública | `src/app/(site)/` | `zakumi-design.css` | Editorial, radius 0, GSAP |
+| Panel interno | `src/app/admin/` | `admin.css` (`adm-`) | Editorial densa, radius 0 |
+| Portal de clientes | `src/app/app/` | `portal.css` (`app-`) | Islas redondeadas tipo Scribe |
+
+Regla dura: cada CSS es global una vez cargado — **todo selector va prefijado**
+y jamás `nav`/`footer` desnudos ni `.cta` (los estila la landing).
+
+## Portal de clientes /app — "Mi Zakumi" (2026-08-22, rama `feat/portal-clientes`)
+
+Tienda de servicios + autogestión del cliente. Spec y **runbook de encendido**:
+`docs/superpowers/specs/2026-08-22-portal-clientes-design.md` (leerlo antes de tocar el portal).
+
+- **Flujo de venta v1**: solicitud (cliente) → cotización (`/admin/solicitudes`) →
+  link de pago manual Wompi/Bold → "Confirmar pago y activar" (crea cliente +
+  producto + primer pago). Máquina de estados en `src/lib/portal/solicitudes.ts`.
+- **Auth**: rol en la tabla `perfiles` (admin|cliente), NUNCA en claims JWT.
+  Sesión compartida en `src/lib/auth/sesion.ts`; el panel exige admin
+  (`verifySession`/`getSesionAdmin`), el portal usa `src/lib/portal/dal.ts`
+  (`verifySesionPortal` + `instanciaDelCliente`). Next 16: los layouts NO se
+  re-renderizan → el check va en CADA page/action/handler.
+- **⚠️ ORDEN DE ENCENDIDO INQUEBRANTABLE**: `supabase/perfiles.sql` (editar seed
+  de admins ANTES) → `rls.sql` → deploy → solo entonces habilitar signup+Google
+  en Supabase → `portal.sql`. Abrir el signup antes = cualquier registrado ve
+  todo el CRM.
+- **Bot del cliente**: nunca ve el `system_prompt`; edita 5 secciones guiadas
+  serializadas dentro de `knowledge` (`src/lib/portal/conocimiento.ts` preserva
+  en `resto` lo escrito a mano). `BOT_ADMIN_TOKEN` jamás baja del servidor:
+  los handlers `/app/api/bot/[id]/*` validan propiedad antes de llamar
+  `src/lib/bots/api.ts`.
+- Catálogo compartido tienda/upsell: `src/lib/catalogo.ts` (upsell.ts lo re-exporta).
+- Envs del portal: `AVISOS_BOT_INSTANCIA_ID` + `AVISOS_WHATSAPP_TO` (aviso de
+  solicitud por WhatsApp; si faltan solo se pierde el aviso).
+
+## Varias sesiones de Claude comparten este checkout
+
+- Los commits caen en **la rama que esté checked out** — antes de commitear,
+  mira `git branch --show-current` y el `git log` reciente por commits ajenos.
+- `git add -A` (incluso scoped a `src/`) puede barrer el working tree de OTRA
+  sesión: agrega archivos explícitos, o trabaja en un **worktree**
+  (`.claude/worktrees/`) como hace la rama del design system.
+- Ramas activas en paralelo (2026-08-22): `feat/portal-clientes` (portal),
+  `feat/admin-design-system` (reemplaza AdminNav y a la larga borra admin.css —
+  quien mergee segundo integra), `feat/folletos-prospeccion` (headers de imagen
+  en plantillas Meta; bloqueada por re-aprobación de plantillas).
+
 ## Repo y despliegue
 
 - **GitHub**: `https://github.com/Tomas36M/Zakumi` (rama `main`).
