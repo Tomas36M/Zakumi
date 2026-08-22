@@ -64,12 +64,7 @@ export const CICLOS: readonly { valor: Ciclo; label: string }[] = [
   { valor: "unico", label: "Pago único" },
 ] as const;
 
-/** Hoy en Bogotá como "YYYY-MM-DD" (en-CA formatea ISO). */
-export function hoyBogota(): string {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Bogota",
-  }).format(new Date());
-}
+export { hoyBogota } from "./formato";
 
 /**
  * Estado de cobro de un producto. El día exacto del cobro cuenta como

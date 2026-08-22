@@ -4,17 +4,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { ID_ZAK, PROVEEDORES, type StatusGlobal } from "@/lib/bots/tipos";
+import { horaBogota } from "@/lib/admin/formato";
 import { NuevoBotForm } from "./NuevoBotForm";
 
 const INTERVALO_MS = 30_000;
-
-function horaBogota(): string {
-  return new Intl.DateTimeFormat("es-CO", {
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone: "America/Bogota",
-  }).format(new Date());
-}
 
 function labelProveedor(valor: string): string {
   return PROVEEDORES.find((p) => p.valor === valor)?.label ?? valor;

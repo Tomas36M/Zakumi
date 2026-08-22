@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { sincronizarEstadosZak } from "@/lib/admin/zak-actions";
+import { fechaCorta } from "@/lib/admin/formato";
 import {
   ID_ZAK,
   type Instancia,
@@ -45,19 +46,6 @@ type Props = {
   /** Deep-link desde el CRM: abrir la bandeja directo en este chat. */
   telefonoInicial?: string | null;
 };
-
-function fechaCorta(iso: string | null): string {
-  if (!iso) return "";
-  const fecha = new Date(iso);
-  if (Number.isNaN(fecha.getTime())) return iso;
-  return new Intl.DateTimeFormat("es-CO", {
-    day: "numeric",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone: "America/Bogota",
-  }).format(fecha);
-}
 
 /**
  * El cockpit de Zak: el agente de Zakumi con su bandeja, sus interesados,
