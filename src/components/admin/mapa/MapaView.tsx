@@ -6,6 +6,7 @@ import { X } from "lucide-react";
 import { importarNegocios } from "@/lib/admin/actions";
 import { CIUDADES, type Ciudad, type Negocio } from "@/lib/admin/negocios";
 import type { ResultadoPlace } from "@/lib/admin/places";
+import { cn } from "@/lib/cn";
 import { Button } from "@/components/admin/ui/Button";
 import { EmptyState } from "@/components/admin/ui/EmptyState";
 import { IconButton } from "@/components/admin/ui/IconButton";
@@ -29,6 +30,10 @@ const ERRORES_BUSQUEDA: Record<string, string> = {
 };
 
 const PESTANAS_CIUDAD = CIUDADES.map((c) => ({ id: c.valor, label: c.label }));
+
+// ≥1000px los paneles flotan como islas sobre el mapa (profundidad por capas).
+const ISLA_FLOTANTE =
+  "min-[1000px]:absolute min-[1000px]:top-8 min-[1000px]:z-10 min-[1000px]:max-h-[calc(100%-5rem)] min-[1000px]:rounded-isla min-[1000px]:border min-[1000px]:border-hairline min-[1000px]:bg-isla/95 min-[1000px]:p-4 min-[1000px]:backdrop-blur-sm";
 
 export function MapaView({ negocios }: { negocios: Negocio[] }) {
   const router = useRouter();
@@ -127,9 +132,12 @@ export function MapaView({ negocios }: { negocios: Negocio[] }) {
         </Button>
       </header>
 
-      <div className="grid min-h-0 flex-1 grid-cols-1 gap-aire p-5 min-[1000px]:grid-cols-[320px_minmax(0,1fr)_340px]">
+      <div className="relative flex min-h-0 flex-1 flex-col gap-aire p-5">
         <aside
-          className="barra-fina min-h-0 overflow-y-auto"
+          className={cn(
+            "barra-fina min-h-0 overflow-y-auto min-[1000px]:left-8 min-[1000px]:w-80",
+            ISLA_FLOTANTE,
+          )}
           aria-label="Búsqueda de negocios"
         >
           <SearchPanel
@@ -148,7 +156,8 @@ export function MapaView({ negocios }: { negocios: Negocio[] }) {
           />
         </aside>
 
-        <div className="relative min-h-[50vh] overflow-hidden rounded-isla min-[1000px]:min-h-0">
+        {/* El mapa es el protagonista: en desktop ocupa el lienzo entero. */}
+        <div className="relative min-h-[50vh] overflow-hidden rounded-isla min-[1000px]:absolute min-[1000px]:inset-5 min-[1000px]:min-h-0">
           <MapCanvas
             negocios={negocios}
             resultados={resultados}
@@ -165,7 +174,14 @@ export function MapaView({ negocios }: { negocios: Negocio[] }) {
           />
         </div>
 
-        <aside className="barra-fina min-h-0 overflow-y-auto" aria-label="Detalle">
+        <aside
+          className={cn(
+            "barra-fina min-h-0 overflow-y-auto min-[1000px]:right-8 min-[1000px]:w-[340px]",
+            ISLA_FLOTANTE,
+            seleccion === null && "min-[1000px]:hidden",
+          )}
+          aria-label="Detalle"
+        >
           {negocioSeleccionado ? (
             <FichaNegocio
               key={negocioSeleccionado.id}
@@ -217,9 +233,17 @@ export function MapaView({ negocios }: { negocios: Negocio[] }) {
               onCancelar={() => setSeleccion(null)}
             />
           ) : (
+            // Solo visible en móvil: en desktop la pista es la píldora flotante.
             <EmptyState titulo="Toca un pin del mapa o un resultado de la búsqueda para ver su ficha." />
           )}
         </aside>
+
+        {seleccion === null ? (
+          // Donde aparecerá la ficha: pista en píldora, no una columna vacía.
+          <p className="pointer-events-none absolute top-8 right-8 z-10 hidden rounded-full border border-hairline bg-isla/90 px-4 py-2 text-xs text-tinta-60 backdrop-blur-sm min-[1000px]:block">
+            Toca un pin o un resultado para ver su ficha.
+          </p>
+        ) : null}
       </div>
     </div>
   );

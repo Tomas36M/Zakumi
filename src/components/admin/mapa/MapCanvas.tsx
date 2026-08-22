@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import {
   AdvancedMarker,
   APIProvider,
+  ControlPosition,
   Map as GoogleMap,
   useMap,
 } from "@vis.gl/react-google-maps";
@@ -78,6 +79,9 @@ export function MapCanvas(props: Props) {
         gestureHandling="greedy"
         disableDefaultUI
         zoomControl
+        // Abajo al centro: las islas flotantes cubren las esquinas superiores
+        // y (cuando su contenido es largo) los laterales completos.
+        zoomControlOptions={{ position: ControlPosition.BLOCK_END_INLINE_CENTER }}
         onClick={(e) => {
           const punto = e.detail.latLng;
           if (punto) props.onClickMapa(punto.lat, punto.lng);
