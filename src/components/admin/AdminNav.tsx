@@ -13,6 +13,7 @@ const SECCIONES = [
   { href: "/admin/solicitudes", label: "Solicitudes" },
   { href: "/admin/clientes", label: "Clientes" },
   { href: "/admin/bots", label: "Bots" },
+  { href: "/admin/equipo", label: "Equipo" },
 ] as const;
 
 type Salud = "ok" | "atencion" | "problema";

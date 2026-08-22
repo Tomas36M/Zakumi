@@ -42,6 +42,42 @@ export async function buscarPerfiles(
 }
 
 /**
+ * Promueve o degrada una cuenta (gestión de equipo en /admin/equipo).
+ * Un admin ve TODO el CRM, así que promover es una decisión seria; el
+ * trigger perfiles_proteger de la base garantiza que solo un admin puede
+ * ejecutar este cambio, y aquí se bloquea la auto-degradación para no
+ * dejar el panel sin admins por accidente.
+ */
+export async function cambiarRolPerfil(
+  userId: string,
+  rol: "admin" | "cliente",
+): Promise<{ error: string | null }> {
+  const sesion = await verifySession();
+
+  if (typeof userId !== "string" || !UUID.test(userId)) {
+    return { error: "Cuenta no válida." };
+  }
+  if (rol !== "admin" && rol !== "cliente") {
+    return { error: "Rol no válido." };
+  }
+  if (rol === "cliente" && userId === sesion.userId) {
+    return { error: "No puedes quitarte el rol a ti mismo — pídeselo a otro admin." };
+  }
+
+  const { error } = await sesion.supabase
+    .from("perfiles")
+    .update({ rol })
+    .eq("user_id", userId);
+  if (error) {
+    console.error("[cambiarRolPerfil]", error.message);
+    return { error: "No se pudo cambiar el rol." };
+  }
+
+  revalidatePath("/admin/equipo");
+  return { error: null };
+}
+
+/**
  * Vincula (o desvincula, con clienteId null) una cuenta del portal a un
  * cliente de la cartera. Con el vínculo, esa cuenta ve SUS productos, pagos
  * y bot en /app — por eso es una decisión del admin, nunca automática.

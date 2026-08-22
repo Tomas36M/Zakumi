@@ -2,9 +2,11 @@
 -- Perfiles y roles — prerrequisito del portal de clientes (/app).
 -- Ejecutar en el SQL Editor de Supabase DESPUÉS de cartera.sql. Idempotente.
 --
--- ⚠️ ANTES DE CORRER: edita el seed de admins (busca "EDITAR AQUÍ") con los
--- correos reales de las cuentas de Tomás/Paula. Si nadie queda como admin,
--- el panel se queda ciego al correr rls.sql (queries vacías, no rotas).
+-- ⚠️ ANTES DE CORRER: verifica que el seed de admins (busca "EDITAR AQUÍ")
+-- tenga los correos correctos — ya trae los reales (2026-08-22). Si nadie
+-- queda como admin, el panel se queda ciego al correr rls.sql (queries
+-- vacías, no rotas). Después del encendido, los admins se gestionan desde
+-- /admin/equipo sin tocar SQL.
 --
 -- Cada usuario de auth.users tiene UN perfil: rol (admin|cliente) y el
 -- vínculo opcional a la fila de `clientes` de la cartera. El perfil se crea
@@ -81,8 +83,8 @@ on conflict (user_id) do nothing;
 
 update public.perfiles set rol = 'admin'
 where email in (
-  'tomas@ejemplo.com',   -- ← correo real de la cuenta admin de Tomás
-  'paula@ejemplo.com'    -- ← correo real de la cuenta admin de Paula
+  'tomasmunevar36@gmail.com',  -- Tomás
+  'zakumiestudio@gmail.com'    -- cuenta Zakumi
 );
 
 -- ---- Helpers para RLS ---------------------------------------------------------
