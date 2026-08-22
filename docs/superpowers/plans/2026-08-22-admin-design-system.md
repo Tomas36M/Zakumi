@@ -36,11 +36,18 @@
 
 - [ ] **Step 1: Crear la rama de trabajo**
 
+OJO: `feat/portal-clientes` tiene trabajo AJENO a este plan (commit `7500296`, portal de
+clientes). La rama nueva sale de `main` y se traen SOLO los dos commits de documentos:
+
 ```bash
-# Desde feat/portal-clientes (contiene main + el spec + este plan; el trabajo
-# del portal son solo archivos sin trackear, no viajan con la rama)
+git checkout main
 git checkout -b feat/admin-design-system
+git cherry-pick f418301   # spec: design system del panel — islas Zakumi
+git cherry-pick ffd6edd   # plan: design system del panel — 14 tareas
 ```
+
+(Los archivos sin trackear del working tree —portal, videos, PDF— se quedan donde están;
+por eso los `git add` de este plan van siempre con rutas explícitas.)
 
 - [ ] **Step 2: Instalar dependencias**
 
