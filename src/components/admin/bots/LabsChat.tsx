@@ -2,6 +2,12 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { MensajeChat, PromptActivo } from "@/lib/bots/tipos";
+import { Banner } from "@/components/admin/ui/Banner";
+import { Button } from "@/components/admin/ui/Button";
+import { ChatBubble } from "@/components/admin/ui/ChatBubble";
+import { EmptyState } from "@/components/admin/ui/EmptyState";
+import { Input } from "@/components/admin/ui/Field";
+import { Island } from "@/components/admin/ui/Island";
 
 type Props = {
   instanciaId: number;
@@ -102,107 +108,91 @@ export function LabsChat({ instanciaId, prompt, onEditarPrompt }: Props) {
   }
 
   return (
-    <div className="adm-labs-layout">
-      <div className="adm-conv-detalle">
-        <div className="adm-conv-cabecera">
-          <p className="adm-ficha-meta">
+    <div className="grid items-start gap-aire min-[900px]:grid-cols-[minmax(0,1fr)_300px]">
+      <div className="flex min-w-0 flex-col gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-xs text-tinta-40">
             Consume tokens reales · los leads de prueba salen marcados
           </p>
-          <button type="button" className="adm-cta-ghost" onClick={() => void reiniciar()}>
-            Reiniciar conversación
-          </button>
+          <Button onClick={() => void reiniciar()}>Reiniciar conversación</Button>
         </div>
 
         {pausado && (
-          <p className="adm-aviso">
+          <Banner>
             El bot escaló a humano y se silenció — comportamiento real. Reinicia la
             conversación para seguir probando.
-          </p>
+          </Banner>
         )}
 
-        <div className="adm-chat">
+        <div className="barra-fina flex max-h-[65vh] min-h-40 flex-col gap-4 overflow-y-auto rounded-fila border border-hairline p-4">
           {mensajes.length === 0 && !escribiendo && (
-            <p className="adm-ficha-sin">
-              Escríbele como si fueras un cliente. El bot responde con su prompt activo.
-            </p>
+            <EmptyState
+              titulo="Escríbele como si fueras un cliente."
+              detalle="El bot responde con su prompt activo."
+            />
           )}
           {mensajes.map((m, i) => (
-            <p
+            <ChatBubble
               key={i}
-              className={
-                m.role === "assistant"
-                  ? "adm-chat-burbuja adm-chat-burbuja--bot"
-                  : "adm-chat-burbuja adm-chat-burbuja--persona"
-              }
+              lado={m.role === "assistant" ? "agente" : "cliente"}
+              autor={m.role === "assistant" ? "Agente" : "Tú (cliente)"}
             >
               {m.content}
-            </p>
+            </ChatBubble>
           ))}
           {escribiendo && (
-            <p className="adm-chat-burbuja adm-chat-burbuja--bot adm-labs-escribiendo">
-              escribiendo…
-            </p>
+            <p className="text-sm text-tinta-40 italic">escribiendo…</p>
           )}
           <div ref={finRef} />
         </div>
 
-        {error && (
-          <p className="adm-error" role="alert">
-            {error}
-          </p>
-        )}
+        {error && <Banner variante="error">{error}</Banner>}
 
         <form
-          className="adm-chat-envio"
+          className="flex gap-2"
           onSubmit={(e) => {
             e.preventDefault();
             void enviar();
           }}
         >
-          <input
-            className="adm-input"
+          <Input
+            className="flex-1"
             value={texto}
             onChange={(e) => setTexto(e.target.value)}
             placeholder={pausado ? "Chat silenciado por escalado" : "Escribe como cliente…"}
             disabled={escribiendo || pausado || !session}
           />
-          <button
-            className="adm-cta"
+          <Button
+            variante="primaria"
             type="submit"
             disabled={escribiendo || pausado || !texto.trim()}
           >
             {escribiendo ? "…" : "Enviar"}
-          </button>
+          </Button>
         </form>
       </div>
 
-      <aside className="adm-labs-prompt">
-        <div className="adm-conv-cabecera">
-          <h2 className="adm-field-label">
-            Prompt activo {prompt ? `(v${prompt.version})` : ""}
-          </h2>
-          <button
-            type="button"
-            className="adm-cta-ghost"
-            onClick={() => setVerPrompt((v) => !v)}
-          >
+      <Island
+        className="bg-isla-alta/50"
+        titulo={`Prompt activo ${prompt ? `(v${prompt.version})` : ""}`}
+        acciones={
+          <Button onClick={() => setVerPrompt((v) => !v)}>
             {verPrompt ? "Ocultar" : "Ver"}
-          </button>
-        </div>
+          </Button>
+        }
+      >
         {verPrompt &&
           (prompt ? (
-            <pre className="adm-editor-pre adm-labs-pre">
+            <pre className="barra-fina mb-3 max-h-96 overflow-auto rounded-fila bg-isla-alta p-3 text-xs leading-relaxed whitespace-pre-wrap text-tinta-60">
               {prompt.system_prompt}
               {"\n\n---\n\n"}
               {prompt.knowledge}
             </pre>
           ) : (
-            <p className="adm-ficha-sin">Este bot aún no tiene prompt.</p>
+            <p className="mb-3 text-sm text-tinta-40">Este bot aún no tiene prompt.</p>
           ))}
-        <button type="button" className="adm-cta-ghost" onClick={onEditarPrompt}>
-          Editar prompt →
-        </button>
-      </aside>
+        <Button onClick={onEditarPrompt}>Editar prompt →</Button>
+      </Island>
     </div>
   );
 }

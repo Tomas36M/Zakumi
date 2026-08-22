@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState, useTransition } from "react";
+import { Trash2, X } from "lucide-react";
 import {
   borrarConversacion,
   enviarManual,
@@ -11,6 +12,15 @@ import { fechaCorta } from "@/lib/admin/formato";
 import { fueraDeVentana } from "@/lib/admin/zak";
 import { abrirChatZak } from "@/lib/admin/zak-actions";
 import { esLabs, type Conversacion, type Historial } from "@/lib/bots/tipos";
+import { Badge } from "@/components/admin/ui/Badge";
+import { Banner } from "@/components/admin/ui/Banner";
+import { Button } from "@/components/admin/ui/Button";
+import { ChatBubble } from "@/components/admin/ui/ChatBubble";
+import { EmptyState } from "@/components/admin/ui/EmptyState";
+import { Input } from "@/components/admin/ui/Field";
+import { IconButton } from "@/components/admin/ui/IconButton";
+import { ListRow } from "@/components/admin/ui/ListRow";
+import { Skeleton } from "@/components/admin/ui/Skeleton";
 
 type Props = {
   instanciaId: number;
@@ -172,203 +182,184 @@ export function Conversaciones({ instanciaId, esZak = false, abrirInicial = null
     fueraDeVentana(historial.ultimo_del_cliente, Date.now());
 
   return (
-    <div className="adm-conv-layout">
-      <div className="adm-conv-lista">
+    <div className="grid items-start gap-aire min-[900px]:grid-cols-[340px_minmax(0,1fr)]">
+      <div className="flex flex-col gap-3">
         {esZak && (
-          <div className="adm-conv-nuevo">
-            {abriendoChat ? (
-              <form
-                className="adm-chat-envio"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  abrirChatNuevo();
-                }}
+          abriendoChat ? (
+            <form
+              className="flex gap-2"
+              onSubmit={(e) => {
+                e.preventDefault();
+                abrirChatNuevo();
+              }}
+            >
+              <Input
+                className="flex-1"
+                type="tel"
+                value={telNuevo}
+                onChange={(e) => setTelNuevo(e.target.value)}
+                placeholder="310 123 4567"
+                autoFocus
+                disabled={operando}
+              />
+              <Button
+                variante="primaria"
+                type="submit"
+                disabled={operando || !telNuevo.trim()}
               >
-                <input
-                  className="adm-input"
-                  type="tel"
-                  value={telNuevo}
-                  onChange={(e) => setTelNuevo(e.target.value)}
-                  placeholder="310 123 4567"
-                  autoFocus
-                  disabled={operando}
-                />
-                <button className="adm-cta" type="submit" disabled={operando || !telNuevo.trim()}>
-                  {operando ? "…" : "Saludar"}
-                </button>
-                <button
-                  type="button"
-                  className="adm-cta-ghost"
-                  onClick={() => setAbriendoChat(false)}
-                >
-                  ×
-                </button>
-              </form>
-            ) : (
-              <button
-                type="button"
-                className="adm-cta-ghost"
-                onClick={() => setAbriendoChat(true)}
-              >
-                + Nuevo chat (Zak saluda con la plantilla)
-              </button>
-            )}
+                {operando ? "…" : "Saludar"}
+              </Button>
+              <IconButton etiqueta="Cancelar" onClick={() => setAbriendoChat(false)}>
+                <X className="h-4 w-4" />
+              </IconButton>
+            </form>
+          ) : (
+            <Button onClick={() => setAbriendoChat(true)}>
+              + Nuevo chat (Zak saluda con la plantilla)
+            </Button>
+          )
+        )}
+        {error && <Banner>{error}</Banner>}
+        {conversaciones === null && !error && (
+          <div className="flex flex-col gap-2 px-3 py-2">
+            <Skeleton className="h-3 w-2/3" />
+            <Skeleton className="h-3 w-1/2" />
+            <Skeleton className="h-3 w-3/5" />
           </div>
         )}
-        {error && <p className="adm-aviso">{error}</p>}
-        {conversaciones === null && !error && (
-          <p className="adm-tabla-vacia">Cargando…</p>
-        )}
         {conversaciones?.length === 0 && (
-          <p className="adm-tabla-vacia">Todavía no hay conversaciones.</p>
+          <EmptyState titulo="Todavía no hay conversaciones." />
         )}
-        <ul className="adm-conv-items">
+        <ul className="flex flex-col gap-1">
           {(conversaciones ?? []).map((c) => (
             <li key={c.phone}>
-              <button
-                type="button"
-                className={
-                  c.phone === telefono
-                    ? "adm-conv-item adm-conv-item--activa"
-                    : "adm-conv-item"
-                }
+              <ListRow
+                role="button"
+                tabIndex={0}
+                activa={c.phone === telefono}
                 onClick={() => void cargarHistorial(c.phone)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    void cargarHistorial(c.phone);
+                  }
+                }}
+                className="flex flex-col gap-0.5"
               >
-                <span className="adm-conv-telefono">
+                <span className="flex items-center gap-1.5 text-sm font-medium text-tinta">
                   {c.phone}
-                  {esLabs(c.phone) && <span className="adm-conv-prueba"> Prueba</span>}
-                  {c.paused && <span className="adm-conv-pausado"> ⏸ pausado</span>}
+                  {esLabs(c.phone) && <Badge tono="neutro">Prueba</Badge>}
+                  {c.paused && <Badge tono="neutro">⏸ pausado</Badge>}
                 </span>
-                <span className="adm-conv-ultimo">{c.last}</span>
-                <span className="adm-conv-fecha">
+                <span className="truncate text-sm text-tinta-60">{c.last}</span>
+                <span className="text-xs text-tinta-40">
                   {c.messages} mensajes · {fechaCorta(c.last_at)}
                 </span>
-              </button>
+              </ListRow>
             </li>
           ))}
         </ul>
         {(offset > 0 || (conversaciones?.length ?? 0) === 50) && (
-          <div className="adm-ficha-acciones">
+          <div className="flex flex-wrap gap-2">
             {offset > 0 && (
-              <button
-                type="button"
-                className="adm-cta-ghost"
-                onClick={() => void cargarLista(Math.max(offset - 50, 0))}
-              >
+              <Button onClick={() => void cargarLista(Math.max(offset - 50, 0))}>
                 ← Más recientes
-              </button>
+              </Button>
             )}
             {(conversaciones?.length ?? 0) === 50 && (
-              <button
-                type="button"
-                className="adm-cta-ghost"
-                onClick={() => void cargarLista(offset + 50)}
-              >
+              <Button onClick={() => void cargarLista(offset + 50)}>
                 Más antiguas →
-              </button>
+              </Button>
             )}
           </div>
         )}
       </div>
 
-      <div className="adm-conv-detalle">
+      <div className="flex min-w-0 flex-col gap-3">
         {!telefono && (
-          <p className="adm-ficha-sin">Elige una conversación para ver el chat.</p>
+          <EmptyState titulo="Elige una conversación para ver el chat." />
         )}
         {telefono && (
           <>
-            <div className="adm-conv-cabecera">
-              <h2 className="adm-ficha-nombre">{telefono}</h2>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h2 className="text-base font-semibold text-tinta">{telefono}</h2>
               {historial && (
-                <div className="adm-ficha-acciones">
-                  <button
-                    type="button"
-                    className="adm-cta-ghost"
-                    disabled={operando}
-                    onClick={alternarPausa}
-                  >
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button disabled={operando} onClick={alternarPausa}>
                     {historial.paused ? "Reanudar bot" : "Pausar bot (lo tomo yo)"}
-                  </button>
-                  <button
-                    type="button"
-                    className="adm-cta-ghost"
-                    disabled={operando}
-                    onClick={borrar}
-                  >
-                    🗑 Borrar
-                  </button>
+                  </Button>
+                  <Button variante="peligro" disabled={operando} onClick={borrar}>
+                    <Trash2 className="h-4 w-4" /> Borrar
+                  </Button>
                 </div>
               )}
             </div>
             {historial?.paused && (
-              <p className="adm-aviso">
+              <Banner>
                 Bot en silencio en este chat: los mensajes los responde un humano.
-              </p>
+              </Banner>
             )}
-            <div className="adm-chat">
+            <div className="barra-fina flex max-h-[65vh] min-h-40 flex-col gap-4 overflow-y-auto rounded-fila border border-hairline p-4">
               {historial === null && !avisoChat && (
-                <p className="adm-tabla-vacia">Cargando…</p>
+                <div className="flex flex-col gap-2">
+                  <Skeleton className="h-3 w-2/3" />
+                  <Skeleton className="h-3 w-1/2" />
+                  <Skeleton className="h-3 w-3/5" />
+                </div>
               )}
               {historial?.messages.map((m, i) => (
-                <p
+                <ChatBubble
                   key={i}
-                  className={
-                    m.role === "assistant"
-                      ? "adm-chat-burbuja adm-chat-burbuja--bot"
-                      : "adm-chat-burbuja adm-chat-burbuja--persona"
-                  }
+                  lado={m.role === "assistant" ? "agente" : "cliente"}
+                  autor={m.role === "assistant" ? (esZak ? "Zak" : "Bot") : "Cliente"}
                 >
                   {m.content}
-                </p>
+                </ChatBubble>
               ))}
             </div>
-            {avisoChat && (
-              <p className="adm-error" role="alert">
-                {avisoChat}
-              </p>
-            )}
+            {avisoChat && <Banner variante="error">{avisoChat}</Banner>}
             {ventanaCerrada ? (
-              <div className="adm-conv-ventana">
-                <p className="adm-aviso">
+              <div className="flex flex-col gap-2">
+                <Banner>
                   WhatsApp cerró el chat libre: pasaron más de 24 horas desde el
                   último mensaje de esta persona (regla de Meta — el texto libre se
                   descarta en silencio). Para reabrirlo, Zak saluda con la plantilla.
-                </p>
-                <button
-                  type="button"
-                  className="adm-cta"
+                </Banner>
+                <Button
+                  variante="primaria"
+                  className="self-start"
                   disabled={operando}
                   onClick={reabrirConPlantilla}
                 >
                   {operando ? "Enviando…" : "Reabrir con plantilla"}
-                </button>
+                </Button>
               </div>
             ) : (
               <form
-                className="adm-chat-envio"
+                className="flex gap-2"
                 onSubmit={(e) => {
                   e.preventDefault();
                   enviar();
                 }}
               >
-                <input
-                  className="adm-input"
+                <Input
+                  className="flex-1"
                   value={mensaje}
                   onChange={(e) => setMensaje(e.target.value)}
                   placeholder="Mensaje manual por WhatsApp (como el negocio)"
                   disabled={operando || esLabs(telefono)}
                 />
-                <button
-                  className="adm-cta"
+                <Button
+                  variante="primaria"
                   type="submit"
                   disabled={operando || !mensaje.trim() || esLabs(telefono)}
                 >
                   Enviar
-                </button>
+                </Button>
               </form>
             )}
             {esLabs(telefono) && (
-              <p className="adm-ficha-sin">
+              <p className="text-sm text-tinta-40">
                 Conversación de prueba del Labs: no hay WhatsApp al otro lado.
               </p>
             )}
