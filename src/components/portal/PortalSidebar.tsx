@@ -156,7 +156,9 @@ export function PortalSidebar({ nombre, email }: Props) {
           </span>
         </button>
 
-        <nav aria-label="Portal" className="app-side-nav app-isla">
+        {/* div con role, NUNCA <nav> desnudo: zakumi-design.css (global vía
+            globals.css) clava los <nav> como barra fija de la landing. */}
+        <div role="navigation" aria-label="Portal" className="app-side-nav app-isla">
           {NAV.map(({ href, label, Icono }) => {
             const activo =
               href === "/app" ? pathname === "/app" : pathname.startsWith(href);
@@ -179,7 +181,7 @@ export function PortalSidebar({ nombre, email }: Props) {
           {/* El espacio muerto también colapsa (decorativo: el botón del
               logo cubre el mismo gesto para teclado). */}
           <div className="app-side-muerto" aria-hidden onClick={alternar} />
-        </nav>
+        </div>
 
         <div className="app-side-user app-isla">
           {menuAbierto && (
