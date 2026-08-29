@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { normalizarTelefonoCO, waMeUrl, sinMas } from "../telefono";
+import { admiteWhatsApp, normalizarTelefonoCO, waMeUrl, sinMas } from "../telefono";
 
 describe("normalizarTelefonoCO", () => {
   it("celular nacional de 10 dígitos → +57 y tipo móvil", () => {
@@ -55,6 +55,15 @@ describe("normalizarTelefonoCO", () => {
     });
   });
 
+  it("un + con 10 dígitos es E.164 de otro país: no se secuestra como nacional", () => {
+    // Sin este guardia, +354 555 1234 (Islandia) se volvía +573545551234 y el
+    // saludo salía a un celular colombiano ajeno.
+    expect(normalizarTelefonoCO("+354 555 1234")).toEqual({
+      telefono: "+3545551234",
+      tipo: "desconocido",
+    });
+  });
+
   it("vacío, null y undefined → sin teléfono", () => {
     const sinTelefono = { telefono: null, tipo: "desconocido" };
     expect(normalizarTelefonoCO("")).toEqual(sinTelefono);
@@ -101,6 +110,29 @@ describe("normalizarTelefonoCO", () => {
         expect(telefono).toMatch(/^\+[1-9][0-9]{6,14}$/);
       }
     }
+  });
+});
+
+describe("admiteWhatsApp", () => {
+  it("celular colombiano → sí", () => {
+    expect(admiteWhatsApp(normalizarTelefonoCO("310 1234567"))).toBe(true);
+  });
+
+  it("fijo colombiano → no (los fijos no tienen WhatsApp)", () => {
+    expect(admiteWhatsApp(normalizarTelefonoCO("601 7430000"))).toBe(false);
+  });
+
+  it("10 dígitos colombianos que no son celular ni fijo → no", () => {
+    expect(admiteWhatsApp(normalizarTelefonoCO("9101234567"))).toBe(false);
+  });
+
+  it("número de otro país con + → sí (Meta decide si tiene WhatsApp)", () => {
+    expect(admiteWhatsApp(normalizarTelefonoCO("+56951737638"))).toBe(true);
+    expect(admiteWhatsApp(normalizarTelefonoCO("+34 91 123 4567"))).toBe(true);
+  });
+
+  it("sin teléfono → no", () => {
+    expect(admiteWhatsApp(normalizarTelefonoCO(""))).toBe(false);
   });
 });
 

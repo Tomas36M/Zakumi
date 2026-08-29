@@ -6,7 +6,7 @@
 
 import { revalidatePath } from "next/cache";
 import { verifySession } from "./dal";
-import { normalizarTelefonoCO, sinMas } from "./telefono";
+import { admiteWhatsApp, normalizarTelefonoCO, sinMas } from "./telefono";
 import {
   agruparPorVertical,
   avancesDeEstado,
@@ -136,12 +136,18 @@ export async function abrirChatZak(
 ): Promise<{ ok: true } | { error: string }> {
   await verifySession();
 
-  const { telefono, tipo } = normalizarTelefonoCO(telefonoBruto);
+  const normalizado = normalizarTelefonoCO(telefonoBruto);
+  const { telefono } = normalizado;
   if (telefono === null) {
-    return { error: "Ese teléfono no se entiende. Usa 10 dígitos o +57…" };
+    return {
+      error: "Ese teléfono no se entiende. Usa 10 dígitos (Colombia) o +código de país.",
+    };
   }
-  if (tipo !== "movil") {
-    return { error: "WhatsApp necesita un número celular (empieza por 3)." };
+  if (!admiteWhatsApp(normalizado)) {
+    return {
+      error:
+        "WhatsApp necesita un celular: en Colombia empiezan por 3. Para otro país, escribe el número completo con + (ej. +56 9…).",
+    };
   }
 
   const vertical = verticalPorSlug(verticalSlug);

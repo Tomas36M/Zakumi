@@ -102,7 +102,7 @@ export function NuevoChatZak({ onAbierto, onCancelar }: Props) {
               setConsulta(e.target.value);
               setElegido(null);
             }}
-            placeholder="Nombre del negocio en el CRM, o un número (310 123 4567)"
+            placeholder="Nombre del negocio en el CRM, o un número (310 123 4567 · +56 9…)"
             autoFocus
             disabled={enviando}
           />

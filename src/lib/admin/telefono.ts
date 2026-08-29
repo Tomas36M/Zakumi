@@ -33,11 +33,12 @@ export function normalizarTelefonoCO(
   if (!digitos) return SIN_TELEFONO;
 
   // Quitar el indicativo de Colombia: "+57…" explícito o "57…" con la
-  // longitud exacta de indicativo + número nacional (12 dígitos).
+  // longitud exacta de indicativo + número nacional (12 dígitos). Un "+" con
+  // 10 dígitos NO es un nacional: es E.164 completo de otro país.
   let nacional: string | null = null;
   if (digitos.startsWith("57") && digitos.length === 12) {
     nacional = digitos.slice(2);
-  } else if (digitos.length === 10) {
+  } else if (!teniaMas && digitos.length === 10) {
     nacional = digitos;
   }
 
@@ -57,6 +58,18 @@ function tipoNacional(nacional: string): TipoTelefono {
   if (nacional.startsWith("3")) return "movil";
   if (nacional.startsWith("60")) return "fijo";
   return "desconocido";
+}
+
+/**
+ * ¿Se le puede escribir por WhatsApp? En Colombia lo sabemos: celular sí,
+ * fijo no. De los planes de numeración de otros países no sabemos nada, así
+ * que un número extranjero en E.164 se acepta y es Meta quien lo rechaza si
+ * no tiene WhatsApp.
+ */
+export function admiteWhatsApp({ telefono, tipo }: TelefonoNormalizado): boolean {
+  if (telefono === null) return false;
+  if (telefono.startsWith("+57")) return tipo === "movil";
+  return true;
 }
 
 /** E.164 sin el `+`: el formato de teléfono que usa el bot (y wa.me). */
