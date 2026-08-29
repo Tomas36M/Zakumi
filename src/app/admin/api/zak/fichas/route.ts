@@ -3,6 +3,7 @@ import { getSesionAdmin } from "@/lib/admin/dal";
 import type { Negocio } from "@/lib/admin/negocios";
 import { normalizarTelefonoCO } from "@/lib/admin/telefono";
 import { COLUMNAS_FICHA, mapaFichas, type NegocioParaFicha } from "@/lib/admin/zak";
+import { catalogoVerticales } from "@/lib/admin/zak-verticales";
 
 /**
  * El cruce bandeja↔CRM: `?tels=573…,573…` (formato del bot, hasta 60) →
@@ -39,5 +40,8 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "crm" }, { status: 502 });
   }
   const filas = data as Pick<Negocio, keyof NegocioParaFicha>[];
-  return NextResponse.json({ fichas: mapaFichas(tels, filas) });
+  const catalogo = await catalogoVerticales(sesion.supabase);
+  return NextResponse.json({
+    fichas: mapaFichas(tels, filas, catalogo.verticales, catalogo.generico),
+  });
 }

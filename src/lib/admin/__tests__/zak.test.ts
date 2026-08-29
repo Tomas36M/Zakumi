@@ -20,6 +20,7 @@ import {
   pareceTelefono,
   patronBusqueda,
   rutaFolleto,
+  srcFolleto,
   urlFolleto,
   verticalDeSaludo,
   verticalPara,
@@ -95,6 +96,22 @@ describe("componentesSaludo", () => {
     );
   });
 
+  it("plantilla aprobada SIN header (conHeader false) → components vacíos", () => {
+    // La trampa simétrica: mandar header contra una plantilla solo-texto es
+    // 4xx permanente. header_aprobado en la DB decide, no la memoria de nadie.
+    const v = { ...verticalPara("bakery"), conHeader: false };
+    expect(componentesSaludo(v)).toEqual([]);
+  });
+
+  it("catálogo inyectado: verticalPara y verticalPorSlug leen LA lista que les den", () => {
+    const propio = [{ ...VERTICAL_GENERICO, slug: "spa", plantilla: "saludo_spa", matchers: ["spa"] }];
+    const generico = { ...VERTICAL_GENERICO, texto: "hola desde la DB" };
+    expect(verticalPara("spa resort", propio, generico).slug).toBe("spa");
+    expect(verticalPara("bakery", propio, generico).texto).toBe("hola desde la DB");
+    expect(verticalPorSlug("spa", propio, generico).plantilla).toBe("saludo_spa");
+    expect(verticalPorSlug("no-existe", propio, generico).texto).toBe("hola desde la DB");
+  });
+
   it("el genérico también lleva su folleto", () => {
     const [header] = componentesSaludo(VERTICAL_GENERICO) as {
       parameters: { image: { link: string } }[];
@@ -112,6 +129,15 @@ describe("componentesSaludo", () => {
   it("rutaFolleto es LA ruta (urlFolleto y la UI componen sobre ella)", () => {
     expect(rutaFolleto("panaderia.png")).toBe("/folletos/panaderia.png");
     expect(urlFolleto(verticalPara("bakery"))).toMatch(/\/folletos\/panaderia\.png$/);
+  });
+
+  it("srcFolleto: relativa en nuestro dominio (next/image sin remotePatterns), absoluta para el bucket", () => {
+    expect(srcFolleto(verticalPara("bakery"))).toBe("/folletos/panaderia.png");
+    const delBucket = {
+      ...verticalPara("bakery"),
+      folletoUrl: "https://rvspmlwedlafedyghjaf.supabase.co/storage/v1/object/public/folletos/panaderia/9.png",
+    };
+    expect(srcFolleto(delBucket)).toBe(delBucket.folletoUrl);
   });
 });
 

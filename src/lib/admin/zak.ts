@@ -33,7 +33,20 @@ export function rutaFolleto(archivo: string): string {
 }
 
 export function urlFolleto(vertical: VerticalProspeccion): string {
-  return `${SITE_URL}${rutaFolleto(vertical.folleto)}`;
+  return vertical.folletoUrl;
+}
+
+/** El src para next/image: relativa cuando el folleto vive en nuestro propio
+ * dominio (sin remotePatterns), absoluta cuando viene del bucket de Storage.
+ * El host canónico también se relativiza: el seed de la tabla lo trae
+ * hardcodeado y un preview de Vercel tiene OTRO SITE_URL. */
+export function srcFolleto(vertical: VerticalProspeccion): string {
+  for (const base of [SITE_URL, "https://zakumistudio.com"]) {
+    if (vertical.folletoUrl.startsWith(`${base}/`)) {
+      return vertical.folletoUrl.slice(base.length);
+    }
+  }
+  return vertical.folletoUrl;
 }
 
 /**
@@ -47,10 +60,14 @@ export function urlFolleto(vertical: VerticalProspeccion): string {
  * (el prospecto queda 'fallido' en el funnel).
  */
 export function componentesSaludo(vertical: VerticalProspeccion): unknown[] {
+  // La trampa simétrica: contra una plantilla aprobada SIN header, mandar el
+  // header es 4xx permanente (y viceversa). Decide `conHeader` (la DB), no la
+  // memoria de nadie.
+  if (!vertical.conHeader) return [];
   return [
     {
       type: "header",
-      parameters: [{ type: "image", image: { link: urlFolleto(vertical) } }],
+      parameters: [{ type: "image", image: { link: vertical.folletoUrl } }],
     },
   ];
 }
@@ -74,17 +91,29 @@ export type VerticalProspeccion = {
   slug: string;
   label: string;
   plantilla: string; // nombre de la plantilla en Meta
-  texto: string; // cuerpo visible (espejo de la plantilla)
+  texto: string; // cuerpo visible (espejo de lo APROBADO — con la tabla, texto_vigente)
   angulo: string; // cómo hablarle a este tipo de negocio
   matchers: string[]; // substrings de negocios.categoria (Google Places)
-  folleto: string; // archivo en public/folletos/ — header de imagen de la plantilla
+  folleto: string; // archivo del seed en public/folletos/ (fallback)
+  folletoUrl: string; // URL absoluta del header vigente (seed o bucket de Storage)
+  conHeader: boolean; // si la versión APROBADA en Meta lleva header de imagen
+  /** Edición en revisión en Meta: el selector la deshabilita. */
+  enRevision?: boolean;
 };
+
+type VerticalSeed = Omit<VerticalProspeccion, "folletoUrl" | "conHeader" | "enRevision">;
+
+const desdeSeed = (v: VerticalSeed): VerticalProspeccion => ({
+  ...v,
+  folletoUrl: `${SITE_URL}${rutaFolleto(v.folleto)}`,
+  conHeader: true,
+});
 
 const _SALUDO = (queHacemos: string, emoji: string) =>
   `¡Hola! 👋 Soy *Zak*, el asistente de IA de Zakumi. Ayudamos ${queHacemos} — ` +
   `con un agente como yo. ¿Te cuento cómo se vería en tu negocio? ${emoji}`;
 
-export const VERTICALES_PROSPECCION: readonly VerticalProspeccion[] = [
+const SEEDS: readonly VerticalSeed[] = [
   {
     slug: "restaurante",
     label: "Restaurante",
@@ -177,7 +206,11 @@ export const VERTICALES_PROSPECCION: readonly VerticalProspeccion[] = [
   },
 ] as const;
 
-export const VERTICAL_GENERICO: VerticalProspeccion = {
+/** El catálogo ESTÁTICO: seed de supabase/plantillas.sql y fallback si la
+ * tabla no responde. La fuente viva es `catalogoVerticales` (zak-verticales). */
+export const VERTICALES_PROSPECCION: readonly VerticalProspeccion[] = SEEDS.map(desdeSeed);
+
+export const VERTICAL_GENERICO: VerticalProspeccion = desdeSeed({
   slug: "generico",
   label: "Genérico",
   plantilla: PLANTILLA_SALUDO,
@@ -185,12 +218,16 @@ export const VERTICAL_GENERICO: VerticalProspeccion = {
   angulo: "Descubre a qué se dedica el negocio y muestra cómo un agente como tú le atendería clientes 24/7.",
   folleto: "generico.png",
   matchers: [],
-};
+});
 
 /** El vertical elegido a mano en la UI, por su slug. Slug desconocido o
  * ausente cae al genérico: un select desincronizado jamás rompe el envío. */
-export function verticalPorSlug(slug: string | null | undefined): VerticalProspeccion {
-  return VERTICALES_PROSPECCION.find((v) => v.slug === slug) ?? VERTICAL_GENERICO;
+export function verticalPorSlug(
+  slug: string | null | undefined,
+  catalogo: readonly VerticalProspeccion[] = VERTICALES_PROSPECCION,
+  generico: VerticalProspeccion = VERTICAL_GENERICO,
+): VerticalProspeccion {
+  return catalogo.find((v) => v.slug === slug) ?? generico;
 }
 
 /** Patrón para `ilike` de Supabase: el término va literal (se escapan sus
@@ -221,8 +258,12 @@ export type NegocioParaFicha = Pick<
   "id" | "nombre" | "ciudad" | "categoria" | "estado" | "telefono"
 >;
 
-export function fichaDeNegocio(n: NegocioParaFicha): FichaNegocio {
-  const v = verticalPara(n.categoria);
+export function fichaDeNegocio(
+  n: NegocioParaFicha,
+  catalogo: readonly VerticalProspeccion[] = VERTICALES_PROSPECCION,
+  generico: VerticalProspeccion = VERTICAL_GENERICO,
+): FichaNegocio {
+  const v = verticalPara(n.categoria, catalogo, generico);
   return {
     negocioId: n.id,
     nombre: n.nombre,
@@ -244,11 +285,13 @@ export function fichaDeNegocio(n: NegocioParaFicha): FichaNegocio {
 export function mapaFichas(
   telefonos: string[],
   negocios: NegocioParaFicha[],
+  catalogo: readonly VerticalProspeccion[] = VERTICALES_PROSPECCION,
+  generico: VerticalProspeccion = VERTICAL_GENERICO,
 ): Record<string, FichaNegocio> {
   const porE164 = new Map<string, FichaNegocio>();
   for (const n of negocios) {
     if (n.telefono && !porE164.has(n.telefono)) {
-      porE164.set(n.telefono, fichaDeNegocio(n));
+      porE164.set(n.telefono, fichaDeNegocio(n, catalogo, generico));
     }
   }
   const fichas: Record<string, FichaNegocio> = {};
@@ -281,10 +324,13 @@ export function linkChatZak(
  * bandeja pinta el folleto que Meta mostró: el saludo se guarda como mensaje
  * del asistente con el texto EXACTO del vertical (startsWith tolera sufijos;
  * los textos son largos y ninguno es prefijo de otro). */
-export function verticalDeSaludo(contenido: string): VerticalProspeccion | null {
+export function verticalDeSaludo(
+  contenido: string,
+  todos: readonly VerticalProspeccion[] = TODOS_LOS_VERTICALES,
+): VerticalProspeccion | null {
   const c = contenido.trim();
   if (!c) return null;
-  for (const v of TODOS_LOS_VERTICALES) {
+  for (const v of todos) {
     if (c.startsWith(v.texto)) return v;
   }
   return null;
@@ -301,22 +347,28 @@ export function pareceTelefono(texto: string): boolean {
 /** El vertical de un negocio según su categoría de Google (fallback genérico).
  * El orden del catálogo importa: gana el primer match — 'comercio' va de
  * último porque sus matchers ("store") son los más genéricos. */
-export function verticalPara(categoria: string | null): VerticalProspeccion {
-  if (!categoria) return VERTICAL_GENERICO;
+export function verticalPara(
+  categoria: string | null,
+  catalogo: readonly VerticalProspeccion[] = VERTICALES_PROSPECCION,
+  generico: VerticalProspeccion = VERTICAL_GENERICO,
+): VerticalProspeccion {
+  if (!categoria) return generico;
   const c = categoria.toLowerCase();
-  for (const v of VERTICALES_PROSPECCION) {
+  for (const v of catalogo) {
     if (v.matchers.some((m) => c.includes(m))) return v;
   }
-  return VERTICAL_GENERICO;
+  return generico;
 }
 
 /** Agrupa negocios por vertical (para crear una tanda por plantilla). */
 export function agruparPorVertical(
   negocios: Negocio[],
+  catalogo: readonly VerticalProspeccion[] = VERTICALES_PROSPECCION,
+  generico: VerticalProspeccion = VERTICAL_GENERICO,
 ): { vertical: VerticalProspeccion; negocios: Negocio[] }[] {
   const grupos = new Map<string, { vertical: VerticalProspeccion; negocios: Negocio[] }>();
   for (const n of negocios) {
-    const v = verticalPara(n.categoria);
+    const v = verticalPara(n.categoria, catalogo, generico);
     const g = grupos.get(v.slug) ?? { vertical: v, negocios: [] };
     g.negocios.push(n);
     grupos.set(v.slug, g);

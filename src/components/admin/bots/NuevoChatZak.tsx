@@ -5,7 +5,7 @@ import { X } from "lucide-react";
 import { labelEstado } from "@/lib/admin/negocios";
 import { sinMas } from "@/lib/admin/telefono";
 import { abrirChatZak } from "@/lib/admin/zak-actions";
-import { pareceTelefono, type FichaNegocio } from "@/lib/admin/zak";
+import { pareceTelefono, type FichaNegocio, type VerticalProspeccion } from "@/lib/admin/zak";
 import { Badge } from "@/components/admin/ui/Badge";
 import { Banner } from "@/components/admin/ui/Banner";
 import { Button } from "@/components/admin/ui/Button";
@@ -17,6 +17,8 @@ type Props = {
   /** El saludo salió: la conversación ya existe en la bandeja. */
   onAbierto: () => void;
   onCancelar: () => void;
+  /** El catálogo vivo de verticales (props desde el server). */
+  verticales?: readonly VerticalProspeccion[];
 };
 
 /**
@@ -24,7 +26,7 @@ type Props = {
  * (elegir uno autollenan teléfono y plantilla) o acepta un número suelto.
  * Debajo, el selector de plantilla con vista previa de lo que va a salir.
  */
-export function NuevoChatZak({ onAbierto, onCancelar }: Props) {
+export function NuevoChatZak({ onAbierto, onCancelar, verticales }: Props) {
   const [consulta, setConsulta] = useState("");
   // La última búsqueda completada, atada a SU término: si el término actual
   // es otro, esa respuesta no se muestra (y «buscando» se deriva de ahí).
@@ -66,7 +68,10 @@ export function NuevoChatZak({ onAbierto, onCancelar }: Props) {
   function elegir(f: FichaNegocio) {
     setElegido(f);
     setConsulta(f.nombre);
-    setSlug(f.verticalSlug);
+    // Si la plantilla de ese vertical está en revisión en Meta, el autollenado
+    // cae al genérico (el server igual la bloquearía).
+    const v = verticales?.find((x) => x.slug === f.verticalSlug);
+    setSlug(v?.enRevision ? "generico" : f.verticalSlug);
   }
 
   const telefono = elegido ? sinMas(elegido.telefono) : q;
@@ -145,7 +150,7 @@ export function NuevoChatZak({ onAbierto, onCancelar }: Props) {
         </IconButton>
       </div>
 
-      <SelectorPlantilla valor={slug} onCambiar={setSlug} disabled={enviando} />
+      <SelectorPlantilla valor={slug} onCambiar={setSlug} disabled={enviando} opciones={verticales} />
 
       {aviso && <Banner variante="error">{aviso}</Banner>}
 

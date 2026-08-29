@@ -7,6 +7,7 @@ import {
   patronBusqueda,
   type NegocioParaFicha,
 } from "@/lib/admin/zak";
+import { catalogoVerticales } from "@/lib/admin/zak-verticales";
 
 /**
  * Buscador del «+ Nuevo chat» de Zak: negocios del CRM por pedazo del nombre,
@@ -38,5 +39,8 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "crm" }, { status: 502 });
   }
   const filas = data as Pick<Negocio, keyof NegocioParaFicha>[];
-  return NextResponse.json({ fichas: filas.map(fichaDeNegocio) });
+  const catalogo = await catalogoVerticales(sesion.supabase);
+  return NextResponse.json({
+    fichas: filas.map((f) => fichaDeNegocio(f, catalogo.verticales, catalogo.generico)),
+  });
 }

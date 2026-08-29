@@ -24,6 +24,17 @@ const nextConfig: NextConfig = {
     // El default de Next 16 es únicamente ['image/webp']. AVIF comprime ~20%
     // mejor a igual calidad percibida, y el navegador elige por Accept.
     formats: ["image/avif", "image/webp"],
+    // Folletos subidos desde el panel: viven en el bucket público de Supabase
+    // Storage (los del seed se sirven relativos desde public/folletos/).
+    remotePatterns: process.env.NEXT_PUBLIC_SUPABASE_URL
+      ? [
+          {
+            protocol: "https" as const,
+            hostname: new URL(process.env.NEXT_PUBLIC_SUPABASE_URL).hostname,
+            pathname: "/storage/v1/object/public/folletos/**",
+          },
+        ]
+      : [],
   },
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];

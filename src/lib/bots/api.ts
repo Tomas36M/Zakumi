@@ -17,6 +17,7 @@ import {
   mapJobs,
   mapLeads,
   mapPausados,
+  mapPlantillasMeta,
   mapPromptActivo,
   mapProspectos,
   mapRespuestaLabs,
@@ -34,6 +35,7 @@ import type {
   JobFallido,
   Lead,
   Pausado,
+  PlantillaMeta,
   PromptActivo,
   Prospecto,
   RespuestaLabs,
@@ -202,6 +204,46 @@ export async function guardarPrompt(
 /** Rollback: vuelve a activar una versión existente sin crear una nueva. */
 export function activarVersion(id: number, version: number): Promise<Resultado<true>> {
   return pedir("POST", `/instancias/${id}/prompt/activar`, () => true, { version });
+}
+
+// ---------- Plantillas de Meta (gestor del cockpit de Zak) ----------
+
+/** Las plantillas del WABA con su estado real en Meta (proxy vía el bot). */
+export function listarPlantillasMeta(id: number): Promise<Resultado<PlantillaMeta[]>> {
+  return pedir("GET", `/instancias/${id}/plantillas`, mapPlantillasMeta, undefined, 30_000);
+}
+
+export type ResultadoEditarPlantilla =
+  | { ok: true }
+  | { ok: false; error: ErrorBot; mensaje?: string };
+
+/**
+ * Edita la plantilla en Meta (la re-encola a revisión). El body del error
+ * viaja al usuario: los 409/502 del bot traen el motivo legible (estado no
+ * editable, límites de edición de Meta, folleto que no descarga…). Timeout
+ * amplio: el bot descarga la imagen y la sube a Meta.
+ */
+export async function editarPlantillaMeta(
+  id: number,
+  nombre: string,
+  datos: { cuerpo: string; con_header: boolean; folleto_url?: string },
+): Promise<ResultadoEditarPlantilla> {
+  const r = await llamar(
+    "POST",
+    `/instancias/${id}/plantillas/${encodeURIComponent(nombre)}`,
+    datos,
+    90_000,
+  );
+  if (!r.ok) return r;
+  const { status, json } = r.data;
+  if (status >= 200 && status < 300) return { ok: true };
+  const cuerpo = (json ?? {}) as { error?: unknown };
+  console.error(`[bots] POST plantillas/${nombre} → ${status}`);
+  return {
+    ok: false,
+    error: errorDeStatus(status),
+    mensaje: typeof cuerpo.error === "string" ? cuerpo.error : undefined,
+  };
 }
 
 // ---------- Conversaciones, pausas y leads ----------

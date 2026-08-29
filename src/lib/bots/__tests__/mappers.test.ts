@@ -8,6 +8,7 @@ import {
   mapJobs,
   mapLeads,
   mapPausados,
+  mapPlantillasMeta,
   mapPromptActivo,
   mapProspectos,
   mapRespuestaLabs,
@@ -221,6 +222,59 @@ describe("historial con hora", () => {
     });
     expect(h.messages[0].creado_en).toBeNull();
     expect(h.messages[1].creado_en).toBeNull();
+  });
+});
+
+describe("mapPlantillasMeta", () => {
+  it("mapea la lista de Graph con los campos convenience del bot", () => {
+    const [p] = mapPlantillasMeta({
+      plantillas: [
+        {
+          id: "111", nombre: "saludo_panaderia", estado: "APPROVED",
+          categoria: "MARKETING", motivo_rechazo: null,
+          cuerpo: "Hola panadería", tiene_header_imagen: true,
+        },
+      ],
+    });
+    expect(p).toEqual({
+      id: "111", nombre: "saludo_panaderia", estado: "APPROVED",
+      categoria: "MARKETING", motivo_rechazo: null,
+      cuerpo: "Hola panadería", tiene_header_imagen: true,
+    });
+  });
+
+  it("sin convenience, extrae BODY y HEADER del components crudo de Graph", () => {
+    const [p] = mapPlantillasMeta({
+      plantillas: [
+        {
+          id: "222", nombre: "saludo_moda", estado: "PENDING",
+          components: [
+            { type: "HEADER", format: "IMAGE" },
+            { type: "BODY", text: "Hola moda" },
+          ],
+        },
+      ],
+    });
+    expect(p.cuerpo).toBe("Hola moda");
+    expect(p.tiene_header_imagen).toBe(true);
+  });
+
+  it("estado raro o basura → DESCONOCIDO, jamás truena", () => {
+    const [p] = mapPlantillasMeta({ plantillas: [{ nombre: "x", estado: "IN_APPEAL" }] });
+    expect(p.estado).toBe("DESCONOCIDO");
+    expect(mapPlantillasMeta(null)).toEqual([]);
+  });
+
+  it("sin components NI convenience, el header es DESCONOCIDO (null), no false", () => {
+    // Un payload sin evidencia no puede apagar header_aprobado en la
+    // promoción: eso mandaría el saludo sin header contra una plantilla
+    // aprobada CON header (4xx permanente).
+    const [p] = mapPlantillasMeta({ plantillas: [{ nombre: "x", estado: "APPROVED" }] });
+    expect(p.tiene_header_imagen).toBeNull();
+    const [q] = mapPlantillasMeta({
+      plantillas: [{ nombre: "y", estado: "APPROVED", components: [{ type: "BODY", text: "hola" }] }],
+    });
+    expect(q.tiene_header_imagen).toBe(false); // components presentes sin HEADER = evidencia real
   });
 });
 

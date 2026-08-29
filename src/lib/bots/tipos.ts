@@ -95,6 +95,27 @@ export type Historial = {
   ultimo_del_cliente: string | null;
 };
 
+/** Estados de una plantilla en Meta (lo que devuelve Graph, más el fallback). */
+export type EstadoMeta =
+  | "APPROVED"
+  | "PENDING"
+  | "REJECTED"
+  | "PAUSED"
+  | "DISABLED"
+  | "DESCONOCIDO";
+
+/** Una plantilla del WABA vista desde Graph, vía el proxy del bot. */
+export type PlantillaMeta = {
+  id: string | null;
+  nombre: string;
+  estado: EstadoMeta;
+  categoria: string | null;
+  motivo_rechazo: string | null;
+  cuerpo: string; // texto del componente BODY
+  /** null = el payload no trae evidencia (ni convenience ni components). */
+  tiene_header_imagen: boolean | null;
+};
+
 export type Pausado = {
   telefono: string;
   motivo: string;

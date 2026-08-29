@@ -14,6 +14,7 @@ import {
   contactables,
   verticalPorSlug,
 } from "./zak";
+import { catalogoVerticales } from "./zak-verticales";
 import type { EstadoNegocio, Negocio } from "./negocios";
 import { crearTanda, enviarPlantillaDirecta, listarProspectos } from "@/lib/bots/api";
 import { ID_ZAK } from "@/lib/bots/tipos";
@@ -53,14 +54,22 @@ export async function enviarTandaZak(negocioIds: string[]): Promise<
   }
 
   // Una tanda POR VERTICAL: cada tipo de negocio recibe SU plantilla y su
-  // ángulo de conversación viaja en el contexto del prospecto.
-  const grupos = agruparPorVertical(elegibles);
+  // ángulo de conversación viaja en el contexto del prospecto. El catálogo se
+  // relee de la DB en cada envío: lo que sale es SIEMPRE lo vigente/aprobado.
+  const catalogo = await catalogoVerticales(supabase);
+  const grupos = agruparPorVertical(elegibles, catalogo.verticales, catalogo.generico);
   const duplicadosTels = new Set<string>();
   const procesados: Negocio[] = []; // negocios de grupos cuya tanda SÍ se creó
   let topeAlcanzado = false;
   let algunaOk = false;
 
   for (const { vertical, negocios } of grupos) {
+    if (vertical.enRevision) {
+      // Meta puede rechazar envíos de una plantilla mientras la revisa: ese
+      // grupo se queda por fuera (cuenta como 'omitidos') hasta la aprobación.
+      console.error("[enviarTandaZak] vertical en revisión, omitido:", vertical.slug);
+      continue;
+    }
     // El folleto del nicho: mismo header de imagen para toda la tanda.
     const componentes = componentesSaludo(vertical);
     const r = await crearTanda(ID_ZAK, {
@@ -138,7 +147,7 @@ export async function abrirChatZak(
   telefonoBruto: string,
   verticalSlug?: string,
 ): Promise<{ ok: true } | { error: string }> {
-  await verifySession();
+  const { supabase } = await verifySession();
 
   const normalizado = normalizarTelefonoCO(telefonoBruto);
   const { telefono } = normalizado;
@@ -154,7 +163,13 @@ export async function abrirChatZak(
     };
   }
 
-  const vertical = verticalPorSlug(verticalSlug);
+  const catalogo = await catalogoVerticales(supabase);
+  const vertical = verticalPorSlug(verticalSlug, catalogo.todos, catalogo.generico);
+  if (vertical.enRevision) {
+    return {
+      error: `La plantilla de ${vertical.label} está en revisión de Meta — usa otra o espera la aprobación.`,
+    };
+  }
   const r = await enviarPlantillaDirecta(ID_ZAK, {
     telefono: sinMas(telefono),
     plantilla: vertical.plantilla,

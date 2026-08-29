@@ -13,9 +13,10 @@ import { fechaCorta, horaDeIso } from "@/lib/admin/formato";
 import { labelEstado } from "@/lib/admin/negocios";
 import {
   fueraDeVentana,
-  rutaFolleto,
+  srcFolleto,
   verticalDeSaludo,
   type FichaNegocio,
+  type VerticalProspeccion,
 } from "@/lib/admin/zak";
 import { abrirChatZak } from "@/lib/admin/zak-actions";
 import { usePollingVivo } from "@/lib/admin/usePollingVivo";
@@ -38,13 +39,20 @@ type Props = {
   esZak?: boolean;
   /** Chat a abrir al montar (deep-link del CRM), exista o no en la lista. */
   abrirInicial?: string | null;
+  /** El catálogo vivo de verticales (props desde el server; solo Zak lo usa). */
+  verticales?: readonly VerticalProspeccion[];
 };
 
 /**
  * Conversaciones reales del bot: lista paginada, historial del chat elegido,
  * pausar/reanudar (tomar el chat un humano) y envío manual por el proveedor.
  */
-export function Conversaciones({ instanciaId, esZak = false, abrirInicial = null }: Props) {
+export function Conversaciones({
+  instanciaId,
+  esZak = false,
+  abrirInicial = null,
+  verticales,
+}: Props) {
   const [conversaciones, setConversaciones] = useState<Conversacion[] | null>(null);
   const [offset, setOffset] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -306,6 +314,7 @@ export function Conversaciones({ instanciaId, esZak = false, abrirInicial = null
         {esZak && (
           abriendoChat ? (
             <NuevoChatZak
+              verticales={verticales}
               onAbierto={() => {
                 setAbriendoChat(false);
                 // El aviso va DESPUÉS de recargar: cargarLista arranca con
@@ -435,7 +444,8 @@ export function Conversaciones({ instanciaId, esZak = false, abrirInicial = null
                 </div>
               )}
               {historial?.messages.map((m, i) => {
-                const saludo = m.role === "assistant" ? verticalDeSaludo(m.content) : null;
+                const saludo =
+                  m.role === "assistant" ? verticalDeSaludo(m.content, verticales) : null;
                 return (
                   <ChatBubble
                     key={i}
@@ -445,7 +455,7 @@ export function Conversaciones({ instanciaId, esZak = false, abrirInicial = null
                   >
                     {saludo && (
                       <Image
-                        src={rutaFolleto(saludo.folleto)}
+                        src={srcFolleto(saludo)}
                         alt={`Folleto ${saludo.label}`}
                         width={176}
                         height={220}
@@ -471,6 +481,7 @@ export function Conversaciones({ instanciaId, esZak = false, abrirInicial = null
                     valor={slugParaReabrir}
                     onCambiar={setSlugReabrir}
                     disabled={operando}
+                    opciones={verticales}
                   />
                 </div>
                 <Button

@@ -20,15 +20,19 @@ import { Island } from "@/components/admin/ui/Island";
 import { ListRow } from "@/components/admin/ui/ListRow";
 import { Tabs } from "@/components/admin/ui/Tabs";
 import { cn } from "@/lib/cn";
+import type { PlantillaZakFila } from "@/lib/admin/plantillas";
+import type { VerticalProspeccion } from "@/lib/admin/zak";
 import { Actividad } from "./Actividad";
 import { Conversaciones } from "./Conversaciones";
 import { LabsChat } from "./LabsChat";
+import { PlantillasZak } from "./PlantillasZak";
 import { PromptEditor } from "./PromptEditor";
 
 export type PestanaZak =
   | "bandeja"
   | "interesados"
   | "tandas"
+  | "plantillas"
   | "metricas"
   | "prompt"
   | "labs";
@@ -37,6 +41,7 @@ const PESTANAS: readonly { valor: PestanaZak; label: string }[] = [
   { valor: "bandeja", label: "Bandeja" },
   { valor: "interesados", label: "Interesados" },
   { valor: "tandas", label: "Tandas" },
+  { valor: "plantillas", label: "Plantillas" },
   { valor: "metricas", label: "Métricas" },
   { valor: "prompt", label: "Prompt" },
   { valor: "labs", label: "Labs" },
@@ -52,6 +57,10 @@ type Props = {
   tabInicial: PestanaZak;
   /** Deep-link desde el CRM: abrir la bandeja directo en este chat. */
   telefonoInicial?: string | null;
+  /** El catálogo vivo (tabla plantillas_zak; estático si aún no existe). */
+  verticales: VerticalProspeccion[];
+  /** Las filas crudas de plantillas_zak para la pestaña Plantillas. */
+  plantillas: PlantillaZakFila[];
 };
 
 /**
@@ -68,6 +77,8 @@ export function ZakView({
   prospectos,
   tabInicial,
   telefonoInicial = null,
+  verticales,
+  plantillas,
 }: Props) {
   const router = useRouter();
   const [tab, setTab] = useState<PestanaZak>(tabInicial);
@@ -170,7 +181,12 @@ export function ZakView({
         <Tabs pestanas={pestanas} activa={tab} onCambiar={setTab} />
 
         {tab === "bandeja" && (
-          <Conversaciones instanciaId={ID_ZAK} esZak abrirInicial={telefonoInicial} />
+          <Conversaciones
+            instanciaId={ID_ZAK}
+            esZak
+            abrirInicial={telefonoInicial}
+            verticales={verticales}
+          />
         )}
 
         {tab === "interesados" && (
@@ -276,6 +292,10 @@ export function ZakView({
               );
             })}
           </div>
+        )}
+
+        {tab === "plantillas" && (
+          <PlantillasZak filas={plantillas} />
         )}
 
         {tab === "metricas" && (

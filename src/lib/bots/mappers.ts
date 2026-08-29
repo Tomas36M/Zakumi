@@ -6,6 +6,7 @@ import {
   canalDeProveedor,
   type Conversacion,
   type EstadoEnvio,
+  type EstadoMeta,
   type Historial,
   type HistorialLabs,
   type Instancia,
@@ -14,6 +15,7 @@ import {
   type Lead,
   type MensajeChat,
   type Pausado,
+  type PlantillaMeta,
   type PromptActivo,
   type Prospecto,
   type Proveedor,
@@ -191,6 +193,40 @@ export function mapHistorial(crudo: unknown): Historial {
     messages: mapMensajes(c.messages),
     ultimo_del_cliente: textoONull(c.ultimo_del_cliente),
   };
+}
+
+const ESTADOS_META: readonly EstadoMeta[] = [
+  "APPROVED", "PENDING", "REJECTED", "PAUSED", "DISABLED",
+];
+
+/** Plantillas del WABA vía el proxy del bot. Defensivo: estado raro →
+ * DESCONOCIDO; si faltan los campos convenience, extrae BODY/HEADER del
+ * `components` crudo de Graph. */
+export function mapPlantillasMeta(crudo: unknown): PlantillaMeta[] {
+  return lista(obj(crudo).plantillas).map((p) => {
+    const components = lista(p.components);
+    const body = components.find((c) => texto(c.type).toUpperCase() === "BODY");
+    const header = components.find((c) => texto(c.type).toUpperCase() === "HEADER");
+    const estado = texto(p.estado).toUpperCase();
+    return {
+      id: textoONull(p.id),
+      nombre: texto(p.nombre),
+      estado: (ESTADOS_META as readonly string[]).includes(estado)
+        ? (estado as EstadoMeta)
+        : "DESCONOCIDO",
+      categoria: textoONull(p.categoria),
+      motivo_rechazo: textoONull(p.motivo_rechazo),
+      cuerpo: texto(p.cuerpo, body ? texto(body.text) : ""),
+      // Solo evidencia real: convenience booleano del bot, o components
+      // presentes. Sin evidencia = null — jamás un false que apague el header.
+      tiene_header_imagen:
+        typeof p.tiene_header_imagen === "boolean"
+          ? p.tiene_header_imagen
+          : components.length > 0
+            ? header !== undefined && texto(header.format).toUpperCase() === "IMAGE"
+            : null,
+    };
+  });
 }
 
 /** El bot devuelve un dict {telefono: {motivo, acuse_enviado}}; el panel quiere filas. */
