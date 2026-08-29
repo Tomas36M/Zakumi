@@ -20,7 +20,7 @@ import {
 } from "@/lib/admin/zak";
 import { abrirChatZak } from "@/lib/admin/zak-actions";
 import { usePollingVivo } from "@/lib/admin/usePollingVivo";
-import { mismoJson } from "@/lib/admin/vivo";
+import { mismoJson, noLeidos, sembrarVistos, type Visto } from "@/lib/admin/vivo";
 import { esLabs, type Conversacion, type Historial } from "@/lib/bots/tipos";
 import { Badge } from "@/components/admin/ui/Badge";
 import { Banner } from "@/components/admin/ui/Banner";
@@ -42,6 +42,26 @@ type Props = {
   /** El catálogo vivo de verticales (props desde el server; solo Zak lo usa). */
   verticales?: readonly VerticalProspeccion[];
 };
+
+// El "visto" de no-leídos vive en localStorage: por browser y por admin, a
+// propósito (cada quien atiende lo suyo). Si el storage falla, no hay badges
+// y ya — la bandeja sigue.
+function leerVistos(iid: number): Record<string, Visto> | null {
+  try {
+    const crudo = window.localStorage.getItem(`zk-vistos-${iid}`);
+    return crudo ? (JSON.parse(crudo) as Record<string, Visto>) : null;
+  } catch {
+    return null;
+  }
+}
+
+function guardarVistos(iid: number, vistos: Record<string, Visto>): void {
+  try {
+    window.localStorage.setItem(`zk-vistos-${iid}`, JSON.stringify(vistos));
+  } catch {
+    // sin storage no hay persistencia de vistos: aceptable
+  }
+}
 
 /**
  * Conversaciones reales del bot: lista paginada, historial del chat elegido,
@@ -73,12 +93,32 @@ export function Conversaciones({
   // UNA vez por visita — ni clics repetidos ni paginar re-preguntan.
   const pedidasRef = useRef(new Set<string>());
 
+  // No-leídos estilo WhatsApp: null = aún sin cargar del storage; la primera
+  // vez se siembra con lo existente para arrancar sin ruido.
+  const [vistos, setVistos] = useState<Record<string, Visto>>({});
+  const vistosRef = useRef<Record<string, Visto> | null>(null);
+
   // Espejos en refs de lo que los ticks del poll necesitan leer sin recrear
   // intervalos: se actualizan en los MISMOS callbacks que hacen setState.
   const historialRef = useRef<Historial | null>(null);
   const conversacionesRef = useRef<Conversacion[] | null>(null);
   const offsetRef = useRef(0);
   const telefonoRef = useRef<string | null>(null);
+
+  const marcarVisto = useCallback(
+    (tel: string) => {
+      const conv = conversacionesRef.current?.find((c) => c.phone === tel);
+      const actuales = vistosRef.current ?? {};
+      const siguientes = {
+        ...actuales,
+        [tel]: { at: new Date().toISOString(), messages: conv?.messages ?? 0 },
+      };
+      vistosRef.current = siguientes;
+      guardarVistos(instanciaId, siguientes);
+      setVistos(siguientes);
+    },
+    [instanciaId],
+  );
 
   // "¿Debo pegar el scroll al fondo?" — carga inicial: siempre; tick del
   // poll: solo si el usuario YA estaba al fondo (no robarle el scroll al que
@@ -129,6 +169,13 @@ export function Conversaciones({
         setConversaciones(data.conversaciones);
         offsetRef.current = off;
         setOffset(off);
+        if (vistosRef.current === null) {
+          const guardados = leerVistos(instanciaId);
+          const iniciales = guardados ?? sembrarVistos(data.conversaciones);
+          if (!guardados) guardarVistos(instanciaId, iniciales);
+          vistosRef.current = iniciales;
+          setVistos(iniciales);
+        }
         void cruzarConCrm(data.conversaciones.map((c) => c.phone));
         return true;
       } catch {
@@ -176,11 +223,12 @@ export function Conversaciones({
         if (telefonoRef.current !== tel) return; // ya abrió otro chat
         historialRef.current = data;
         setHistorial(data);
+        marcarVisto(tel);
       } catch {
         setAvisoChat("No se pudo cargar el historial.");
       }
     },
-    [instanciaId, cruzarConCrm],
+    [instanciaId, cruzarConCrm, marcarVisto],
   );
 
   // Tick del chat abierto (~3.5s): solo hace setState si algo cambió, y mide
@@ -201,10 +249,11 @@ export function Conversaciones({
         c !== null && c.scrollHeight - c.scrollTop - c.clientHeight < 48;
       historialRef.current = data;
       setHistorial(data);
+      marcarVisto(tel); // el chat abierto se lee solo: nunca acumula badge
     } catch {
       // tick silencioso: se reintenta en el próximo
     }
-  }, [instanciaId]);
+  }, [instanciaId, marcarVisto]);
 
   useEffect(() => {
     void cargarLista(0);
@@ -347,15 +396,18 @@ export function Conversaciones({
         {conversaciones?.length === 0 && (
           <EmptyState titulo="Todavía no hay conversaciones." />
         )}
-        <ul className="barra-fina flex max-h-[45vh] flex-col gap-1 overflow-y-auto min-[900px]:max-h-none min-[900px]:min-h-0 min-[900px]:flex-1">
+        <ul className="barra-fina flex max-h-[45vh] flex-col gap-2 overflow-y-auto pr-0.5 min-[900px]:max-h-none min-[900px]:min-h-0 min-[900px]:flex-1">
           {(conversaciones ?? []).map((c) => {
             const ficha = fichas[c.phone];
+            const activa = c.phone === telefono;
+            // El chat abierto nunca acumula badge: se marca visto en cada tick.
+            const sinLeer = activa ? 0 : noLeidos(c, vistos[c.phone]);
             return (
               <li key={c.phone}>
                 <ListRow
                   role="button"
                   tabIndex={0}
-                  activa={c.phone === telefono}
+                  activa={activa}
                   onClick={() => void cargarHistorial(c.phone)}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" || e.key === " ") {
@@ -363,16 +415,32 @@ export function Conversaciones({
                       void cargarHistorial(c.phone);
                     }
                   }}
-                  className="flex flex-col gap-0.5"
+                  className={`flex flex-col gap-0.5 border ${
+                    activa ? "border-acento/40" : "border-hairline bg-isla"
+                  }`}
                 >
-                  <span className="flex flex-wrap items-center gap-1.5 text-sm font-medium text-tinta">
+                  <span className="flex w-full flex-wrap items-center gap-1.5 text-sm font-medium text-tinta">
                     {ficha?.nombre ?? c.phone}
                     {esLabs(c.phone) && <Badge tono="neutro">Prueba</Badge>}
                     {ficha && <Badge tono="neutro">{ficha.verticalLabel}</Badge>}
                     {ficha && <Badge tono={ficha.estado}>{labelEstado(ficha.estado)}</Badge>}
                     {c.paused && <Badge tono="neutro">⏸ pausado</Badge>}
+                    {sinLeer > 0 && (
+                      <span
+                        aria-label={`${sinLeer} mensajes sin leer`}
+                        className="ml-auto grid h-5 min-w-5 shrink-0 place-items-center rounded-full bg-acento px-1.5 text-[0.7rem] font-bold text-white"
+                      >
+                        {sinLeer > 99 ? "99+" : sinLeer}
+                      </span>
+                    )}
                   </span>
-                  <span className="truncate text-sm text-tinta-60">{c.last}</span>
+                  <span
+                    className={`truncate text-sm ${
+                      sinLeer > 0 ? "font-medium text-tinta" : "text-tinta-60"
+                    }`}
+                  >
+                    {c.last}
+                  </span>
                   <span className="text-xs text-tinta-40">
                     {ficha && `${c.phone} · `}
                     {c.messages} mensajes · {fechaCorta(c.last_at)}
