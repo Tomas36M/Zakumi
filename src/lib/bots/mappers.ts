@@ -215,7 +215,8 @@ export function mapPlantillasMeta(crudo: unknown): PlantillaMeta[] {
         ? (estado as EstadoMeta)
         : "DESCONOCIDO",
       categoria: textoONull(p.categoria),
-      motivo_rechazo: textoONull(p.motivo_rechazo),
+      // Graph manda el string "NONE" en las aprobadas: eso no es un motivo.
+      motivo_rechazo: p.motivo_rechazo === "NONE" ? null : textoONull(p.motivo_rechazo),
       cuerpo: texto(p.cuerpo, body ? texto(body.text) : ""),
       // Solo evidencia real: convenience booleano del bot, o components
       // presentes. Sin evidencia = null — jamás un false que apague el header.

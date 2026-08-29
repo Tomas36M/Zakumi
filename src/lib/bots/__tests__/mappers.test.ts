@@ -265,6 +265,15 @@ describe("mapPlantillasMeta", () => {
     expect(mapPlantillasMeta(null)).toEqual([]);
   });
 
+  it("motivo_rechazo 'NONE' (así lo manda Graph en las aprobadas) → null", () => {
+    // Sin esto, el refresco guardaría "NONE" y el panel pintaría un banner
+    // de rechazo falso en todas las plantillas aprobadas.
+    const [p] = mapPlantillasMeta({
+      plantillas: [{ nombre: "x", estado: "APPROVED", motivo_rechazo: "NONE" }],
+    });
+    expect(p.motivo_rechazo).toBeNull();
+  });
+
   it("sin components NI convenience, el header es DESCONOCIDO (null), no false", () => {
     // Un payload sin evidencia no puede apagar header_aprobado en la
     // promoción: eso mandaría el saludo sin header contra una plantilla

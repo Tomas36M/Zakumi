@@ -215,7 +215,7 @@ export function PlantillasZak({ filas: filasIniciales }: Props) {
             }
           >
             <div className="flex flex-col gap-3">
-              {f.motivo_rechazo && (
+              {f.estado_meta === "REJECTED" && f.motivo_rechazo && (
                 <Banner variante="error">
                   Meta la rechazó: {f.motivo_rechazo}. Corrige el borrador y reenvíala.
                 </Banner>
