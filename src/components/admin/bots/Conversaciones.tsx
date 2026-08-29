@@ -309,8 +309,11 @@ export function Conversaciones({
   const slugParaReabrir = slugReabrir ?? fichaActual?.verticalSlug ?? "generico";
 
   return (
-    <div className="grid items-start gap-aire min-[900px]:grid-cols-[340px_minmax(0,1fr)]">
-      <div className="flex flex-col gap-3">
+    // Cockpit: en desktop la bandeja ocupa el alto de la pantalla y CADA
+    // columna scrollea por dentro — el compositor y el «Reabrir» quedan
+    // siempre a la vista, sin scroll de página.
+    <div className="grid items-start gap-aire min-[900px]:h-[calc(100dvh-13.5rem)] min-[900px]:grid-cols-[340px_minmax(0,1fr)] min-[900px]:items-stretch">
+      <div className="flex min-h-0 flex-col gap-3 rounded-isla border border-hairline bg-isla-alta/40 p-3">
         {esZak && (
           abriendoChat ? (
             <NuevoChatZak
@@ -344,7 +347,7 @@ export function Conversaciones({
         {conversaciones?.length === 0 && (
           <EmptyState titulo="Todavía no hay conversaciones." />
         )}
-        <ul className="flex flex-col gap-1">
+        <ul className="barra-fina flex max-h-[45vh] flex-col gap-1 overflow-y-auto min-[900px]:max-h-none min-[900px]:min-h-0 min-[900px]:flex-1">
           {(conversaciones ?? []).map((c) => {
             const ficha = fichas[c.phone];
             return (
@@ -395,13 +398,15 @@ export function Conversaciones({
         )}
       </div>
 
-      <div className="flex min-w-0 flex-col gap-3">
+      <div className="flex min-h-0 min-w-0 flex-col gap-3 rounded-isla border border-hairline bg-isla-alta/40 p-4">
         {!telefono && (
-          <EmptyState titulo="Elige una conversación para ver el chat." />
+          <div className="flex min-h-40 flex-1 items-center justify-center">
+            <EmptyState titulo="Elige una conversación para ver el chat." />
+          </div>
         )}
         {telefono && (
           <>
-            <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-hairline pb-3">
               <span className="flex flex-wrap items-center gap-2">
                 <h2 className="text-base font-semibold text-tinta">
                   {fichaActual?.nombre ?? telefono}
@@ -434,7 +439,7 @@ export function Conversaciones({
             )}
             <div
               ref={contRef}
-              className="barra-fina flex max-h-[65vh] min-h-40 flex-col gap-4 overflow-y-auto rounded-fila border border-hairline p-4"
+              className="barra-fina flex max-h-[60vh] min-h-40 flex-col gap-4 overflow-y-auto rounded-fila border border-hairline bg-isla p-4 min-[900px]:max-h-none min-[900px]:min-h-0 min-[900px]:flex-1"
             >
               {historial === null && !avisoChat && (
                 <div className="flex flex-col gap-2">
@@ -469,59 +474,62 @@ export function Conversaciones({
               })}
             </div>
             {avisoChat && <Banner variante="error">{avisoChat}</Banner>}
-            {ventanaCerrada ? (
-              <div className="flex flex-col gap-2">
-                <Banner>
-                  WhatsApp cerró el chat libre: pasaron más de 24 horas desde el
-                  último mensaje de esta persona (regla de Meta — el texto libre se
-                  descarta en silencio). Para reabrirlo, Zak saluda con la plantilla.
-                </Banner>
-                <div className="max-w-md">
-                  <SelectorPlantilla
-                    valor={slugParaReabrir}
-                    onCambiar={setSlugReabrir}
-                    disabled={operando}
-                    opciones={verticales}
+            <div className="flex flex-col gap-2 border-t border-hairline pt-3">
+              {ventanaCerrada ? (
+                <>
+                  <Banner>
+                    WhatsApp cerró el chat libre: pasaron más de 24 horas desde el
+                    último mensaje de esta persona (regla de Meta — el texto libre se
+                    descarta en silencio). Para reabrirlo, Zak saluda con la plantilla.
+                  </Banner>
+                  <div className="flex flex-wrap items-end gap-3">
+                    <div className="min-w-64 max-w-md flex-1">
+                      <SelectorPlantilla
+                        valor={slugParaReabrir}
+                        onCambiar={setSlugReabrir}
+                        disabled={operando}
+                        opciones={verticales}
+                      />
+                    </div>
+                    <Button
+                      variante="primaria"
+                      disabled={operando}
+                      onClick={() => reabrirConPlantilla(slugParaReabrir)}
+                    >
+                      {operando ? "Enviando…" : "Reabrir con plantilla"}
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <form
+                  className="flex gap-2"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    enviar();
+                  }}
+                >
+                  <Input
+                    className="flex-1"
+                    value={mensaje}
+                    onChange={(e) => setMensaje(e.target.value)}
+                    placeholder="Mensaje manual por WhatsApp (como el negocio)"
+                    disabled={operando || esLabs(telefono)}
                   />
-                </div>
-                <Button
-                  variante="primaria"
-                  className="self-start"
-                  disabled={operando}
-                  onClick={() => reabrirConPlantilla(slugParaReabrir)}
-                >
-                  {operando ? "Enviando…" : "Reabrir con plantilla"}
-                </Button>
-              </div>
-            ) : (
-              <form
-                className="flex gap-2"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  enviar();
-                }}
-              >
-                <Input
-                  className="flex-1"
-                  value={mensaje}
-                  onChange={(e) => setMensaje(e.target.value)}
-                  placeholder="Mensaje manual por WhatsApp (como el negocio)"
-                  disabled={operando || esLabs(telefono)}
-                />
-                <Button
-                  variante="primaria"
-                  type="submit"
-                  disabled={operando || !mensaje.trim() || esLabs(telefono)}
-                >
-                  Enviar
-                </Button>
-              </form>
-            )}
-            {esLabs(telefono) && (
-              <p className="text-sm text-tinta-40">
-                Conversación de prueba del Labs: no hay WhatsApp al otro lado.
-              </p>
-            )}
+                  <Button
+                    variante="primaria"
+                    type="submit"
+                    disabled={operando || !mensaje.trim() || esLabs(telefono)}
+                  >
+                    Enviar
+                  </Button>
+                </form>
+              )}
+              {esLabs(telefono) && (
+                <p className="text-sm text-tinta-40">
+                  Conversación de prueba del Labs: no hay WhatsApp al otro lado.
+                </p>
+              )}
+            </div>
           </>
         )}
       </div>
