@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import { useConfirmar } from "@/components/admin/ui/Confirmar";
 import {
   buscarPerfiles,
   vincularPerfilACliente,
@@ -32,6 +33,7 @@ export function AccesoPortal({ clienteId, vinculados, sugerencia }: Props) {
   const [resultados, setResultados] = useState<PerfilBuscado[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [ocupado, startTransition] = useTransition();
+  const { confirmar, dialogo } = useConfirmar();
 
   function vincular(userId: string, destino: string | null) {
     setError(null);
@@ -65,6 +67,7 @@ export function AccesoPortal({ clienteId, vinculados, sugerencia }: Props) {
       titulo="Acceso al portal"
       aria-label="Acceso al portal"
     >
+      {dialogo}
       <div className="flex flex-col gap-3">
         {vinculados.length === 0 ? (
           <p className="text-sm text-tinta-40">
@@ -85,14 +88,15 @@ export function AccesoPortal({ clienteId, vinculados, sugerencia }: Props) {
                   <Button
                     variante="peligro"
                     disabled={ocupado}
-                    onClick={() => {
-                      if (
-                        window.confirm(
-                          "¿Desvincular esta cuenta? Dejará de ver los productos y el bot de este cliente en el portal.",
-                        )
-                      ) {
-                        vincular(p.userId, null);
-                      }
+                    onClick={async () => {
+                      const ok = await confirmar({
+                        titulo: "¿Desvincular esta cuenta?",
+                        mensaje:
+                          "Dejará de ver los productos y el bot de este cliente en el portal.",
+                        accion: "Desvincular",
+                        peligro: true,
+                      });
+                      if (ok) vincular(p.userId, null);
                     }}
                   >
                     Desvincular

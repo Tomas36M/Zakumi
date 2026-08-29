@@ -23,6 +23,11 @@ import { NextResponse, type NextRequest } from "next/server";
 // OAuth/confirmación de correo — este último trae el code que crea la sesión).
 const APP_PUBLICAS = new Set(["/app/login", "/app/registro", "/app/auth/callback"]);
 
+// ⚠️ Portal de clientes APAGADO (decisión 2026-08-29): aún no es presentable.
+// true = /app vuelve a servirse. El link «Mi Zakumi» de la landing vive en
+// SiteShell.tsx — re-encender es este flag + descomentar ese item del nav.
+const PORTAL_ABIERTO = false;
+
 export default async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
 
@@ -54,6 +59,9 @@ export default async function proxy(request: NextRequest) {
   const path = request.nextUrl.pathname;
 
   if (path.startsWith("/app")) {
+    if (!PORTAL_ABIERTO) {
+      return redirigirConCookies(request, response, "/");
+    }
     const esPublica = APP_PUBLICAS.has(path);
     if (!haySesion && !esPublica) {
       return redirigirConCookies(request, response, "/app/login");

@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import { useConfirmar } from "@/components/admin/ui/Confirmar";
 import { guardarPrompt, restaurarVersion } from "@/lib/admin/bots-actions";
 import { fechaCorta } from "@/lib/admin/formato";
 import type { PromptActivo, VersionPrompt } from "@/lib/bots/tipos";
@@ -27,6 +28,7 @@ type Props = {
 export function PromptEditor({ instanciaId, prompt, versiones, onProbarEnLabs }: Props) {
   const router = useRouter();
   const [guardando, startGuardar] = useTransition();
+  const { confirmar, dialogo } = useConfirmar();
 
   const [system, setSystem] = useState(prompt?.system_prompt ?? "");
   const [knowledge, setKnowledge] = useState(prompt?.knowledge ?? "");
@@ -83,10 +85,13 @@ export function PromptEditor({ instanciaId, prompt, versiones, onProbarEnLabs }:
     });
   }
 
-  function restaurar(version: number) {
-    if (!window.confirm(`¿Volver a activar la v${version}? No se crea versión nueva.`)) {
-      return;
-    }
+  async function restaurar(version: number) {
+    const ok = await confirmar({
+      titulo: `¿Volver a activar la v${version}?`,
+      mensaje: "No se crea versión nueva.",
+      accion: "Activar",
+    });
+    if (!ok) return;
     limpiarAvisos();
     startGuardar(async () => {
       const res = await restaurarVersion(instanciaId, version);
@@ -101,6 +106,7 @@ export function PromptEditor({ instanciaId, prompt, versiones, onProbarEnLabs }:
 
   return (
     <div className="grid items-start gap-aire min-[900px]:grid-cols-[minmax(0,1fr)_280px]">
+      {dialogo}
       <form
         className="flex min-w-0 flex-col gap-4"
         onSubmit={(e) => {
@@ -216,7 +222,7 @@ export function PromptEditor({ instanciaId, prompt, versiones, onProbarEnLabs }:
                   {v.notas && <p className="text-sm text-tinta-60">{v.notas}</p>}
                 </div>
                 {!v.activa && (
-                  <Button disabled={guardando} onClick={() => restaurar(v.version)}>
+                  <Button disabled={guardando} onClick={() => void restaurar(v.version)}>
                     Restaurar
                   </Button>
                 )}

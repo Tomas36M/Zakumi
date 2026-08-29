@@ -170,7 +170,9 @@ export function PlantillasZak({ filas: filasIniciales }: Props) {
   }
 
   return (
-    <div className="flex flex-col gap-4">
+    // Cockpit: la pestaña ocupa el alto de la pantalla y la lista scrollea
+    // por dentro — el intro, el botón de refrescar y los avisos quedan fijos.
+    <div className="flex flex-col gap-4 min-[900px]:h-[calc(100dvh-13.5rem)]">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="max-w-2xl text-sm text-tinta-60">
           Lo que Zak envía es siempre la <strong className="text-tinta">versión aprobada</strong>.
@@ -185,6 +187,7 @@ export function PlantillasZak({ filas: filasIniciales }: Props) {
       {aviso && <Banner>{aviso}</Banner>}
       {errorAviso && <Banner variante="error">{errorAviso}</Banner>}
 
+      <div className="barra-fina flex flex-col gap-4 min-[900px]:min-h-0 min-[900px]:flex-1 min-[900px]:overflow-y-auto min-[900px]:pr-1">
       {filas.map((f) => {
         const vertical = verticalDeFila(f);
         const local = estadoLocal(f);
@@ -318,6 +321,7 @@ export function PlantillasZak({ filas: filasIniciales }: Props) {
           </Island>
         );
       })}
+      </div>
     </div>
   );
 }

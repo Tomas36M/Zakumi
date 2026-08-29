@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState, useTransition } from "react";
+import { useConfirmar } from "@/components/admin/ui/Confirmar";
 import { CICLOS, formatearCOP, type Ciclo } from "@/lib/admin/cartera";
 import {
   activarSolicitud,
@@ -104,6 +105,7 @@ function TarjetaSolicitud({
 }) {
   const [error, setError] = useState<string | null>(null);
   const [ocupado, startTransition] = useTransition();
+  const { confirmar, dialogo } = useConfirmar();
   const servicio = servicioDelSlug(s.servicio_slug);
   const quien = perfil?.nombre || perfil?.email || "sin perfil";
 
@@ -179,17 +181,18 @@ function TarjetaSolicitud({
 
         {(s.estado === "link_enviado" || s.estado === "pagada") && (
           <div className="flex flex-wrap items-center gap-2">
+            {dialogo}
             <Button
               variante="primaria"
               disabled={ocupado}
-              onClick={() => {
-                if (
-                  window.confirm(
-                    "¿Confirmas que el pago llegó? Esto crea el cliente y su producto, registra el primer pago y activa el servicio.",
-                  )
-                ) {
-                  correr(() => activarSolicitud(s.id));
-                }
+              onClick={async () => {
+                const ok = await confirmar({
+                  titulo: "¿Confirmas que el pago llegó?",
+                  mensaje:
+                    "Esto crea el cliente y su producto, registra el primer pago y activa el servicio.",
+                  accion: "Confirmar y activar",
+                });
+                if (ok) correr(() => activarSolicitud(s.id));
               }}
             >
               {ocupado ? "Activando…" : "Confirmar pago y activar"}

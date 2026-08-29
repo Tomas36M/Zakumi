@@ -29,8 +29,8 @@ const NAV_ITEMS = [
   ...SERVICE_SLUGS.map((s) => ({ href: `/${s}`, label: SERVICIOS[s].nav })),
   { href: "/academia", label: "Academia" },
   { href: "/contacto", label: "Contacto" },
-  // Puerta al portal de clientes (/app): sin sesión, el proxy lleva al login.
-  { href: "/app", label: "Mi Zakumi" },
+  // «Mi Zakumi» (portal /app) fuera del nav mientras el portal esté apagado
+  // (flag PORTAL_ABIERTO en proxy.ts): aún no es presentable.
 ];
 
 export function SiteShell({ children }: { children: React.ReactNode }) {

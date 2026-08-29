@@ -32,6 +32,7 @@ import { ListRow } from "@/components/admin/ui/ListRow";
 import { Skeleton } from "@/components/admin/ui/Skeleton";
 import { NuevoChatZak } from "./NuevoChatZak";
 import { SelectorPlantilla } from "./SelectorPlantilla";
+import { useConfirmar } from "@/components/admin/ui/Confirmar";
 
 type Props = {
   instanciaId: number;
@@ -82,6 +83,7 @@ export function Conversaciones({
   const [mensaje, setMensaje] = useState("");
   const [avisoChat, setAvisoChat] = useState<string | null>(null);
   const [operando, startOperar] = useTransition();
+  const { confirmar, dialogo } = useConfirmar();
 
   const [abriendoChat, setAbriendoChat] = useState(false);
 
@@ -312,16 +314,16 @@ export function Conversaciones({
     });
   }
 
-  function borrar() {
+  async function borrar() {
     if (!telefono) return;
-    if (
-      !window.confirm(
-        "¿Borrar esta conversación? Se borra también la MEMORIA del agente con " +
-          "esta persona: el próximo mensaje empieza de cero.",
-      )
-    ) {
-      return;
-    }
+    const ok = await confirmar({
+      titulo: "¿Borrar esta conversación?",
+      mensaje:
+        "Se borra también la MEMORIA del agente con esta persona: el próximo mensaje empieza de cero.",
+      accion: "Borrar",
+      peligro: true,
+    });
+    if (!ok) return;
     setAvisoChat(null);
     startOperar(async () => {
       const res = await borrarConversacion(instanciaId, telefono);
@@ -362,6 +364,7 @@ export function Conversaciones({
     // columna scrollea por dentro — el compositor y el «Reabrir» quedan
     // siempre a la vista, sin scroll de página.
     <div className="grid items-start gap-aire min-[900px]:h-[calc(100dvh-13.5rem)] min-[900px]:grid-cols-[340px_minmax(0,1fr)] min-[900px]:items-stretch">
+      {dialogo}
       <div className="flex min-h-0 flex-col gap-3 rounded-isla border border-hairline bg-isla-alta/40 p-3">
         {esZak && (
           abriendoChat ? (
@@ -494,7 +497,7 @@ export function Conversaciones({
                   <Button disabled={operando} onClick={alternarPausa}>
                     {historial.paused ? "Reanudar bot" : "Pausar bot (lo tomo yo)"}
                   </Button>
-                  <Button variante="peligro" disabled={operando} onClick={borrar}>
+                  <Button variante="peligro" disabled={operando} onClick={() => void borrar()}>
                     <Trash2 className="h-4 w-4" /> Borrar
                   </Button>
                 </div>

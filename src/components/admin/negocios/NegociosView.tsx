@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState, useTransition } from "react";
+import { useConfirmar } from "@/components/admin/ui/Confirmar";
 import { useRouter } from "next/navigation";
 import { Bot, MessageSquare, Trash2 } from "lucide-react";
 import { actualizarNegocio, cambiarEstadoLote, eliminarNegocios } from "@/lib/admin/actions";
@@ -55,6 +56,7 @@ export function NegociosView({ negocios }: { negocios: Negocio[] }) {
   );
   const [estadoLote, setEstadoLote] = useState<EstadoNegocio>("contactado");
   const [aviso, setAviso] = useState<string | null>(null);
+  const { confirmar, dialogo } = useConfirmar();
 
   const categorias = useMemo(() => {
     const set = new Set<string>();
@@ -114,16 +116,16 @@ export function NegociosView({ negocios }: { negocios: Negocio[] }) {
     });
   }
 
-  function eliminarLote() {
+  async function eliminarLote() {
     const n = seleccionActiva.length;
-    if (
-      !window.confirm(
-        `¿Eliminar ${n} negocio(s) del CRM? Se borran también sus notas. ` +
-          "Los clientes convertidos no se tocan y las conversaciones de Zak siguen en su bandeja.",
-      )
-    ) {
-      return;
-    }
+    const ok = await confirmar({
+      titulo: `¿Eliminar ${n} negocio(s) del CRM?`,
+      mensaje:
+        "Se borran también sus notas. Los clientes convertidos no se tocan y las conversaciones de Zak siguen en su bandeja.",
+      accion: "Eliminar",
+      peligro: true,
+    });
+    if (!ok) return;
     setAviso(null);
     startGuardar(async () => {
       const res = await eliminarNegocios(seleccionActiva);
@@ -137,19 +139,22 @@ export function NegociosView({ negocios }: { negocios: Negocio[] }) {
     });
   }
 
-  function contactarConZak() {
+  async function contactarConZak() {
     const n = contactablesZak.length;
     const fuera = seleccionActiva.length - n;
     const desglose = agruparPorVertical(contactablesZak)
       .map((g) => `${g.negocios.length} ${g.vertical.label}`)
       .join(" · ");
-    const ok = window.confirm(
-      `Zak abrirá conversación con ${n} negocio(s), cada tipo con SU plantilla:\n${desglose}` +
+    const ok = await confirmar({
+      titulo: `Zak abrirá conversación con ${n} negocio(s)`,
+      mensaje:
+        `Cada tipo con SU plantilla: ${desglose}.` +
         (fuera > 0 ? `\n(${fuera} quedan fuera: sin celular, cliente o descartado.)` : "") +
         "\n\nCada envío inicia una conversación de marketing con costo de Meta, y el " +
         "número sin verificar admite máx. 250 iniciadas/día. Cuando respondan, Zak " +
-        "conversa con el ángulo de cada vertical y marca a los interesados.\n\n¿Continuar?",
-    );
+        "conversa con el ángulo de cada vertical y marca a los interesados.",
+      accion: "Que Zak los contacte",
+    });
     if (!ok) return;
     setAviso(null);
     startGuardar(async () => {
@@ -171,6 +176,7 @@ export function NegociosView({ negocios }: { negocios: Negocio[] }) {
 
   return (
     <div className="flex flex-col gap-4">
+      {dialogo}
       <Island role="search" className="p-5">
         <div className="flex flex-col gap-4">
           <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
@@ -278,11 +284,11 @@ export function NegociosView({ negocios }: { negocios: Negocio[] }) {
                 ? "Ninguno de los seleccionados tiene celular contactable"
                 : undefined
             }
-            onClick={contactarConZak}
+            onClick={() => void contactarConZak()}
           >
             <Bot className="h-4 w-4" /> Que Zak los contacte ({contactablesZak.length})
           </Button>
-          <Button variante="peligro" disabled={guardando} onClick={eliminarLote}>
+          <Button variante="peligro" disabled={guardando} onClick={() => void eliminarLote()}>
             <Trash2 className="h-4 w-4" /> Eliminar ({seleccionActiva.length})
           </Button>
         </div>

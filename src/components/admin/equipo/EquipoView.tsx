@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import { useConfirmar } from "@/components/admin/ui/Confirmar";
 import {
   buscarPerfiles,
   cambiarRolPerfil,
@@ -25,6 +26,7 @@ export function EquipoView({ admins, miUserId }: Props) {
   const [resultados, setResultados] = useState<PerfilBuscado[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [ocupado, startTransition] = useTransition();
+  const { confirmar, dialogo } = useConfirmar();
 
   function cambiar(userId: string, rol: "admin" | "cliente") {
     setError(null);
@@ -54,6 +56,7 @@ export function EquipoView({ admins, miUserId }: Props) {
 
   return (
     <div className="flex flex-col gap-aire">
+      {dialogo}
       <Island className="bg-isla-alta/50" titulo="Admins actuales">
         {admins.length === 0 ? (
           <p className="text-sm text-tinta-40">
@@ -80,14 +83,14 @@ export function EquipoView({ admins, miUserId }: Props) {
                         ? "No puedes quitarte el rol a ti mismo"
                         : undefined
                     }
-                    onClick={() => {
-                      if (
-                        window.confirm(
-                          `¿Quitar el rol de admin a ${p.email ?? "esta cuenta"}? Pasará a ser cliente del portal y dejará de ver el CRM.`,
-                        )
-                      ) {
-                        cambiar(p.userId, "cliente");
-                      }
+                    onClick={async () => {
+                      const ok = await confirmar({
+                        titulo: `¿Quitar el rol de admin a ${p.email ?? "esta cuenta"}?`,
+                        mensaje: "Pasará a ser cliente del portal y dejará de ver el CRM.",
+                        accion: "Quitar admin",
+                        peligro: true,
+                      });
+                      if (ok) cambiar(p.userId, "cliente");
                     }}
                   >
                     Quitar admin
@@ -145,14 +148,14 @@ export function EquipoView({ admins, miUserId }: Props) {
                       </span>
                       <Button
                         disabled={ocupado}
-                        onClick={() => {
-                          if (
-                            window.confirm(
-                              `¿Hacer admin a ${p.email ?? "esta cuenta"}? Verá todo el CRM, los clientes, los pagos y todos los bots.`,
-                            )
-                          ) {
-                            cambiar(p.userId, "admin");
-                          }
+                        onClick={async () => {
+                          const ok = await confirmar({
+                            titulo: `¿Hacer admin a ${p.email ?? "esta cuenta"}?`,
+                            mensaje:
+                              "Verá todo el CRM, los clientes, los pagos y todos los bots.",
+                            accion: "Hacer admin",
+                          });
+                          if (ok) cambiar(p.userId, "admin");
                         }}
                       >
                         Hacer admin

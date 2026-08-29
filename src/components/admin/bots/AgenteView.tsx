@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import { useConfirmar } from "@/components/admin/ui/Confirmar";
 import { duplicarBot, editarBot } from "@/lib/admin/bots-actions";
 import type {
   Instancia,
@@ -45,19 +46,21 @@ export function AgenteView({ id, instancia, prompt, versiones, status, tabInicia
   const [tab, setTab] = useState<Pestana>(tabInicial);
   const [operando, startOperar] = useTransition();
   const [avisoOperacion, setAvisoOperacion] = useState<string | null>(null);
+  const { confirmar, dialogo } = useConfirmar();
 
   const uso = status?.uso_hoy;
 
-  function alternarEncendido() {
+  async function alternarEncendido() {
     if (!instancia) return;
     const apagar = instancia.activo;
-    if (
-      apagar &&
-      !window.confirm(
-        `¿Apagar "${instancia.nombre}"? Deja de responder TODOS sus chats de inmediato.`,
-      )
-    ) {
-      return;
+    if (apagar) {
+      const ok = await confirmar({
+        titulo: `¿Apagar "${instancia.nombre}"?`,
+        mensaje: "Deja de responder TODOS sus chats de inmediato.",
+        accion: "Apagar",
+        peligro: true,
+      });
+      if (!ok) return;
     }
     setAvisoOperacion(null);
     startOperar(async () => {
@@ -84,6 +87,7 @@ export function AgenteView({ id, instancia, prompt, versiones, status, tabInicia
 
   return (
     <section>
+      {dialogo}
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-hairline px-5 py-4">
         <div>
           <h1 className="text-lg font-semibold text-tinta">
@@ -115,7 +119,7 @@ export function AgenteView({ id, instancia, prompt, versiones, status, tabInicia
             <Button
               variante={instancia.activo ? "peligro" : "fantasma"}
               disabled={operando}
-              onClick={alternarEncendido}
+              onClick={() => void alternarEncendido()}
             >
               {instancia.activo ? "Apagar bot" : "Encender bot"}
             </Button>
