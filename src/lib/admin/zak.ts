@@ -4,7 +4,7 @@
 // contactable y cómo avanzan los estados del CRM — nunca hacia atrás.
 
 import type { EstadoNegocio, Negocio } from "./negocios";
-import { normalizarTelefonoCO } from "./telefono";
+import { admiteWhatsApp, normalizarTelefonoCO, sinMas } from "./telefono";
 import type { Prospecto } from "@/lib/bots/tipos";
 
 /** A quién se le puede mandar la plantilla: celular real y que no sea ya
@@ -26,8 +26,14 @@ const SITE_URL = (
   process.env.NEXT_PUBLIC_SITE_URL ?? "https://zakumistudio.com"
 ).replace(/\/+$/, "");
 
+/** La ruta del folleto bajo public/ — única fuente del path (la UI la usa
+ * relativa; urlFolleto compone el dominio encima para Meta). */
+export function rutaFolleto(archivo: string): string {
+  return `/folletos/${archivo}`;
+}
+
 export function urlFolleto(vertical: VerticalProspeccion): string {
-  return `${SITE_URL}/folletos/${vertical.folleto}`;
+  return `${SITE_URL}${rutaFolleto(vertical.folleto)}`;
 }
 
 /**
@@ -252,6 +258,36 @@ export function mapaFichas(
     if (ficha) fichas[t] = ficha;
   }
   return fichas;
+}
+
+/** Los 10 verticales + el genérico, en el orden del catálogo. Única lista
+ * "todos" — la UI y el match de saludos la comparten. */
+export const TODOS_LOS_VERTICALES: readonly VerticalProspeccion[] = [
+  ...VERTICALES_PROSPECCION,
+  VERTICAL_GENERICO,
+];
+
+/** Deep-link al chat de Zak con un negocio, o null si no se le puede escribir
+ * por WhatsApp (fijo, sin teléfono). Misma regla que el envío: [[admiteWhatsApp]]. */
+export function linkChatZak(
+  n: Pick<Negocio, "telefono" | "tipo_telefono">,
+): string | null {
+  if (!n.telefono) return null;
+  if (!admiteWhatsApp({ telefono: n.telefono, tipo: n.tipo_telefono })) return null;
+  return `/admin/zak?telefono=${sinMas(n.telefono)}`;
+}
+
+/** El vertical cuyo saludo de plantilla es este contenido, o null. Con esto la
+ * bandeja pinta el folleto que Meta mostró: el saludo se guarda como mensaje
+ * del asistente con el texto EXACTO del vertical (startsWith tolera sufijos;
+ * los textos son largos y ninguno es prefijo de otro). */
+export function verticalDeSaludo(contenido: string): VerticalProspeccion | null {
+  const c = contenido.trim();
+  if (!c) return null;
+  for (const v of TODOS_LOS_VERTICALES) {
+    if (c.startsWith(v.texto)) return v;
+  }
+  return null;
 }
 
 /** Heurística del campo único de «+ Nuevo chat»: con suficientes dígitos es

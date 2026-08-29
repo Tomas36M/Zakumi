@@ -179,6 +179,7 @@ function mapMensajes(v: unknown): MensajeChat[] {
   return lista(v).map((m) => ({
     role: m.role === "assistant" ? "assistant" : "user",
     content: texto(m.content),
+    creado_en: textoONull(m.creado_en),
   }));
 }
 

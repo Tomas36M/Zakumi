@@ -1,14 +1,8 @@
 "use client";
 
 import Image from "next/image";
-import {
-  VERTICAL_GENERICO,
-  VERTICALES_PROSPECCION,
-  verticalPorSlug,
-} from "@/lib/admin/zak";
+import { TODOS_LOS_VERTICALES, rutaFolleto, verticalPorSlug } from "@/lib/admin/zak";
 import { Select } from "@/components/admin/ui/Field";
-
-const OPCIONES = [...VERTICALES_PROSPECCION, VERTICAL_GENERICO];
 
 type Props = {
   valor: string;
@@ -30,7 +24,7 @@ export function SelectorPlantilla({ valor, onCambiar, disabled = false }: Props)
         onChange={(e) => onCambiar(e.target.value)}
         disabled={disabled}
       >
-        {OPCIONES.map((v) => (
+        {TODOS_LOS_VERTICALES.map((v) => (
           <option key={v.slug} value={v.slug}>
             {v.label}
           </option>
@@ -39,7 +33,7 @@ export function SelectorPlantilla({ valor, onCambiar, disabled = false }: Props)
       <div className="flex items-start gap-3 rounded-fila bg-isla-alta p-3">
         <Image
           key={vertical.slug}
-          src={`/folletos/${vertical.folleto}`}
+          src={rutaFolleto(vertical.folleto)}
           alt={`Folleto de ${vertical.label}`}
           width={56}
           height={56}

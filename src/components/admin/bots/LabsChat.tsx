@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { horaDeIso } from "@/lib/admin/formato";
 import type { MensajeChat, PromptActivo } from "@/lib/bots/tipos";
 import { Banner } from "@/components/admin/ui/Banner";
 import { Button } from "@/components/admin/ui/Button";
@@ -34,7 +35,7 @@ export function LabsChat({ instanciaId, prompt, onEditarPrompt }: Props) {
   const [escribiendo, setEscribiendo] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [verPrompt, setVerPrompt] = useState(false);
-  const finRef = useRef<HTMLDivElement>(null);
+  const contRef = useRef<HTMLDivElement>(null);
 
   // Sesión estable por instancia + carga del historial previo.
   useEffect(() => {
@@ -60,8 +61,11 @@ export function LabsChat({ instanciaId, prompt, onEditarPrompt }: Props) {
     };
   }, [claveStorage, instanciaId]);
 
+  // scrollTop directo sobre la caja del chat: scrollIntoView movería también
+  // el scroller del documento y saltaría la página entera.
   useEffect(() => {
-    finRef.current?.scrollIntoView({ block: "end" });
+    const c = contRef.current;
+    if (c) c.scrollTop = c.scrollHeight;
   }, [mensajes, escribiendo]);
 
   const enviar = useCallback(async () => {
@@ -69,7 +73,10 @@ export function LabsChat({ instanciaId, prompt, onEditarPrompt }: Props) {
     if (!mensaje || !session || escribiendo || pausado) return;
     setError(null);
     setTexto("");
-    setMensajes((m) => [...m, { role: "user", content: mensaje }]);
+    setMensajes((m) => [
+      ...m,
+      { role: "user", content: mensaje, creado_en: new Date().toISOString() },
+    ]);
     setEscribiendo(true);
     try {
       const res = await fetch(`/admin/api/bots/${instanciaId}/labs`, {
@@ -80,7 +87,14 @@ export function LabsChat({ instanciaId, prompt, onEditarPrompt }: Props) {
       if (!res.ok) throw new Error(String(res.status));
       const data = (await res.json()) as { reply: string | null; paused: boolean };
       if (data.reply !== null) {
-        setMensajes((m) => [...m, { role: "assistant", content: data.reply as string }]);
+        setMensajes((m) => [
+          ...m,
+          {
+            role: "assistant",
+            content: data.reply as string,
+            creado_en: new Date().toISOString(),
+          },
+        ]);
       }
       setPausado(data.paused);
     } catch {
@@ -124,7 +138,10 @@ export function LabsChat({ instanciaId, prompt, onEditarPrompt }: Props) {
           </Banner>
         )}
 
-        <div className="barra-fina flex max-h-[65vh] min-h-40 flex-col gap-4 overflow-y-auto rounded-fila border border-hairline p-4">
+        <div
+          ref={contRef}
+          className="barra-fina flex max-h-[65vh] min-h-40 flex-col gap-4 overflow-y-auto rounded-fila border border-hairline p-4"
+        >
           {mensajes.length === 0 && !escribiendo && (
             <EmptyState
               titulo="Escríbele como si fueras un cliente."
@@ -136,6 +153,7 @@ export function LabsChat({ instanciaId, prompt, onEditarPrompt }: Props) {
               key={i}
               lado={m.role === "assistant" ? "agente" : "cliente"}
               autor={m.role === "assistant" ? "Agente" : "Tú (cliente)"}
+              hora={horaDeIso(m.creado_en)}
             >
               {m.content}
             </ChatBubble>
@@ -143,7 +161,6 @@ export function LabsChat({ instanciaId, prompt, onEditarPrompt }: Props) {
           {escribiendo && (
             <p className="text-sm text-tinta-40 italic">escribiendo…</p>
           )}
-          <div ref={finRef} />
         </div>
 
         {error && <Banner variante="error">{error}</Banner>}

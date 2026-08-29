@@ -13,7 +13,7 @@ import {
   type Nota,
 } from "@/lib/admin/negocios";
 import Link from "next/link";
-import { sinMas } from "@/lib/admin/telefono";
+import { linkChatZak } from "@/lib/admin/zak";
 import { createSupabaseBrowser } from "@/lib/supabase/browser";
 import { Banner } from "@/components/admin/ui/Banner";
 import { Button } from "@/components/admin/ui/Button";
@@ -47,6 +47,7 @@ type Props = {
 export function FichaNegocio({ negocio, onCambio, onCerrar }: Props) {
   const router = useRouter();
   const [guardando, startGuardar] = useTransition();
+  const chatZak = linkChatZak(negocio);
   const [error, setError] = useState<string | null>(null);
   const [telefonoEdit, setTelefonoEdit] = useState<string | null>(null);
   const [notas, setNotas] = useState<Nota[] | null>(null);
@@ -161,9 +162,9 @@ export function FichaNegocio({ negocio, onCambio, onCerrar }: Props) {
       {error ? <Banner variante="error">{error}</Banner> : null}
 
       <div className="flex flex-wrap gap-2">
-        {negocio.telefono && negocio.tipo_telefono === "movil" ? (
+        {chatZak !== null ? (
           <Link
-            href={`/admin/zak?telefono=${sinMas(negocio.telefono)}`}
+            href={chatZak}
             className="inline-flex h-control items-center justify-center gap-2 rounded-full bg-acento px-4 text-sm font-medium text-white transition-colors hover:bg-acento-85"
           >
             Chat con Zak

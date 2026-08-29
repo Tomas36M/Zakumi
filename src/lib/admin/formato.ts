@@ -30,6 +30,14 @@ export function horaBogota(fecha: Date = new Date()): string {
   return FORMATO_HORA.format(fecha);
 }
 
+/** La hora Bogotá de un ISO, o undefined si viene null/roto (bots viejos). */
+export function horaDeIso(iso: string | null | undefined): string | undefined {
+  if (!iso) return undefined;
+  const fecha = new Date(iso);
+  if (Number.isNaN(fecha.getTime())) return undefined;
+  return FORMATO_HORA.format(fecha);
+}
+
 const FORMATO_DIA_ISO = new Intl.DateTimeFormat("en-CA", {
   timeZone: "America/Bogota",
 });

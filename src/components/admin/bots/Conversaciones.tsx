@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { Trash2 } from "lucide-react";
 import {
@@ -8,10 +9,17 @@ import {
   pausarChat,
   reanudarChat,
 } from "@/lib/admin/bots-actions";
-import { fechaCorta } from "@/lib/admin/formato";
+import { fechaCorta, horaDeIso } from "@/lib/admin/formato";
 import { labelEstado } from "@/lib/admin/negocios";
-import { fueraDeVentana, type FichaNegocio } from "@/lib/admin/zak";
+import {
+  fueraDeVentana,
+  rutaFolleto,
+  verticalDeSaludo,
+  type FichaNegocio,
+} from "@/lib/admin/zak";
 import { abrirChatZak } from "@/lib/admin/zak-actions";
+import { usePollingVivo } from "@/lib/admin/usePollingVivo";
+import { mismoJson } from "@/lib/admin/vivo";
 import { esLabs, type Conversacion, type Historial } from "@/lib/bots/tipos";
 import { Badge } from "@/components/admin/ui/Badge";
 import { Banner } from "@/components/admin/ui/Banner";
@@ -57,6 +65,28 @@ export function Conversaciones({ instanciaId, esZak = false, abrirInicial = null
   // UNA vez por visita — ni clics repetidos ni paginar re-preguntan.
   const pedidasRef = useRef(new Set<string>());
 
+  // Espejos en refs de lo que los ticks del poll necesitan leer sin recrear
+  // intervalos: se actualizan en los MISMOS callbacks que hacen setState.
+  const historialRef = useRef<Historial | null>(null);
+  const conversacionesRef = useRef<Conversacion[] | null>(null);
+  const offsetRef = useRef(0);
+  const telefonoRef = useRef<string | null>(null);
+
+  // "¿Debo pegar el scroll al fondo?" — carga inicial: siempre; tick del
+  // poll: solo si el usuario YA estaba al fondo (no robarle el scroll al que
+  // lee arriba). scrollTop directo sobre la caja: scrollIntoView movería
+  // TODOS los ancestros scrolleables y saltaría la página entera. El effect
+  // solo toca DOM.
+  const contRef = useRef<HTMLDivElement | null>(null);
+  const bajarRef = useRef(true);
+  useEffect(() => {
+    const c = contRef.current;
+    if (bajarRef.current && c) {
+      c.scrollTop = c.scrollHeight;
+      bajarRef.current = false;
+    }
+  }, [telefono, historial?.messages.length]);
+
   const cruzarConCrm = useCallback(
     async (tels: string[]) => {
       if (!esZak) return;
@@ -87,7 +117,9 @@ export function Conversaciones({ instanciaId, esZak = false, abrirInicial = null
         );
         if (!res.ok) throw new Error(String(res.status));
         const data = (await res.json()) as { conversaciones: Conversacion[] };
+        conversacionesRef.current = data.conversaciones;
         setConversaciones(data.conversaciones);
+        offsetRef.current = off;
         setOffset(off);
         void cruzarConCrm(data.conversaciones.map((c) => c.phone));
         return true;
@@ -99,25 +131,72 @@ export function Conversaciones({ instanciaId, esZak = false, abrirInicial = null
     [instanciaId, cruzarConCrm],
   );
 
+  // Tick de la lista (~12s): silencioso — jamás toca `error` (ahí viaja el
+  // "Saludo enviado ✓") y en fallo conserva la última lista buena.
+  const refrescarLista = useCallback(async () => {
+    try {
+      const res = await fetch(
+        `/admin/api/bots/${instanciaId}/conversaciones?offset=${offsetRef.current}`,
+      );
+      if (!res.ok) return;
+      const data = (await res.json()) as { conversaciones: Conversacion[] };
+      if (mismoJson(conversacionesRef.current, data.conversaciones)) return;
+      conversacionesRef.current = data.conversaciones;
+      setConversaciones(data.conversaciones);
+      void cruzarConCrm(data.conversaciones.map((c) => c.phone));
+    } catch {
+      // tick silencioso: se reintenta en el próximo
+    }
+  }, [instanciaId, cruzarConCrm]);
+
   const cargarHistorial = useCallback(
     async (tel: string) => {
       setAvisoChat(null);
+      historialRef.current = null;
       setHistorial(null);
+      telefonoRef.current = tel;
       setTelefono(tel);
       setSlugReabrir(null);
+      bajarRef.current = true; // chat recién abierto: scroll al último mensaje
       void cruzarConCrm([tel]);
       try {
         const res = await fetch(
           `/admin/api/bots/${instanciaId}/historial?telefono=${encodeURIComponent(tel)}`,
         );
         if (!res.ok) throw new Error(String(res.status));
-        setHistorial((await res.json()) as Historial);
+        const data = (await res.json()) as Historial;
+        if (telefonoRef.current !== tel) return; // ya abrió otro chat
+        historialRef.current = data;
+        setHistorial(data);
       } catch {
         setAvisoChat("No se pudo cargar el historial.");
       }
     },
     [instanciaId, cruzarConCrm],
   );
+
+  // Tick del chat abierto (~3.5s): solo hace setState si algo cambió, y mide
+  // ANTES si el usuario estaba al fondo para no robarle el scroll.
+  const refrescarHistorial = useCallback(async () => {
+    const tel = telefonoRef.current;
+    if (!tel) return;
+    try {
+      const res = await fetch(
+        `/admin/api/bots/${instanciaId}/historial?telefono=${encodeURIComponent(tel)}`,
+      );
+      if (!res.ok) return;
+      const data = (await res.json()) as Historial;
+      if (telefonoRef.current !== tel) return; // cambió de chat en pleno vuelo
+      if (mismoJson(historialRef.current, data)) return;
+      const c = contRef.current;
+      bajarRef.current =
+        c !== null && c.scrollHeight - c.scrollTop - c.clientHeight < 48;
+      historialRef.current = data;
+      setHistorial(data);
+    } catch {
+      // tick silencioso: se reintenta en el próximo
+    }
+  }, [instanciaId]);
 
   useEffect(() => {
     void cargarLista(0);
@@ -156,7 +235,10 @@ export function Conversaciones({ instanciaId, esZak = false, abrirInicial = null
         return;
       }
       setMensaje("");
-      await cargarHistorial(telefono);
+      // Tick silencioso, no recarga con skeleton: el bot ya guarda el mensaje
+      // manual en el historial, así que aparece al instante y sin parpadeo.
+      bajarRef.current = true;
+      await refrescarHistorial();
     });
   }
 
@@ -190,11 +272,26 @@ export function Conversaciones({ instanciaId, esZak = false, abrirInicial = null
         setAvisoChat(res.error);
         return;
       }
+      telefonoRef.current = null;
       setTelefono(null);
+      historialRef.current = null;
       setHistorial(null);
       await cargarLista(0);
     });
   }
+
+  // La bandeja en vivo: el chat abierto cada ~3.5s, la lista cada ~12s. Los
+  // labs no tienen WhatsApp al otro lado, y `!operando` congela el poll
+  // mientras una mutación (pausar, reabrir, borrar, enviar) está en vuelo.
+  usePollingVivo(refrescarHistorial, {
+    intervaloMs: 3500,
+    habilitado:
+      telefono !== null && historial !== null && !esLabs(telefono) && !operando,
+  });
+  usePollingVivo(refrescarLista, {
+    intervaloMs: 12_000,
+    habilitado: conversaciones !== null && !operando,
+  });
 
   const ventanaCerrada =
     esZak && historial !== null && !esLabs(historial.phone) &&
@@ -326,7 +423,10 @@ export function Conversaciones({ instanciaId, esZak = false, abrirInicial = null
                 Bot en silencio en este chat: los mensajes los responde un humano.
               </Banner>
             )}
-            <div className="barra-fina flex max-h-[65vh] min-h-40 flex-col gap-4 overflow-y-auto rounded-fila border border-hairline p-4">
+            <div
+              ref={contRef}
+              className="barra-fina flex max-h-[65vh] min-h-40 flex-col gap-4 overflow-y-auto rounded-fila border border-hairline p-4"
+            >
               {historial === null && !avisoChat && (
                 <div className="flex flex-col gap-2">
                   <Skeleton className="h-3 w-2/3" />
@@ -334,15 +434,29 @@ export function Conversaciones({ instanciaId, esZak = false, abrirInicial = null
                   <Skeleton className="h-3 w-3/5" />
                 </div>
               )}
-              {historial?.messages.map((m, i) => (
-                <ChatBubble
-                  key={i}
-                  lado={m.role === "assistant" ? "agente" : "cliente"}
-                  autor={m.role === "assistant" ? (esZak ? "Zak" : "Bot") : "Cliente"}
-                >
-                  {m.content}
-                </ChatBubble>
-              ))}
+              {historial?.messages.map((m, i) => {
+                const saludo = m.role === "assistant" ? verticalDeSaludo(m.content) : null;
+                return (
+                  <ChatBubble
+                    key={i}
+                    lado={m.role === "assistant" ? "agente" : "cliente"}
+                    autor={m.role === "assistant" ? (esZak ? "Zak" : "Bot") : "Cliente"}
+                    hora={horaDeIso(m.creado_en)}
+                  >
+                    {saludo && (
+                      <Image
+                        src={rutaFolleto(saludo.folleto)}
+                        alt={`Folleto ${saludo.label}`}
+                        width={176}
+                        height={220}
+                        loading="lazy"
+                        className="mb-2 h-auto w-44 rounded-fila border border-hairline"
+                      />
+                    )}
+                    {m.content}
+                  </ChatBubble>
+                );
+              })}
             </div>
             {avisoChat && <Banner variante="error">{avisoChat}</Banner>}
             {ventanaCerrada ? (

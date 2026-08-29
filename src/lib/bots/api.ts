@@ -288,7 +288,15 @@ export function crearTanda(
     prospectos: {
       telefono: string;
       negocio_id: string | null;
-      contexto: { nombre?: string; categoria?: string; ciudad?: string };
+      contexto: {
+        nombre?: string;
+        categoria?: string;
+        ciudad?: string;
+        /** El ángulo de venta del vertical: viaja al prompt del agente. */
+        angulo?: string;
+        /** El texto del saludo: el bot lo guarda como la burbuja inicial. */
+        saludo?: string;
+      };
       componentes: unknown[] | null;
     }[];
   },

@@ -1,5 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { fechaCorta, horaBogota, hoyBogota } from "../formato";
+import { fechaCorta, horaBogota, horaDeIso, hoyBogota } from "../formato";
+
+describe("horaDeIso", () => {
+  it("la hora de Bogotá de un ISO del bot", () => {
+    expect(horaDeIso("2026-08-22T15:30:00Z")).toContain("10:30");
+  });
+
+  it("null, undefined o basura → undefined (bots viejos sin hora)", () => {
+    expect(horaDeIso(null)).toBeUndefined();
+    expect(horaDeIso(undefined)).toBeUndefined();
+    expect(horaDeIso("no-es-fecha")).toBeUndefined();
+  });
+});
 
 describe("fechaCorta", () => {
   it("devuelve vacío con null", () => {

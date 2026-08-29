@@ -83,6 +83,8 @@ export type Conversacion = {
 export type MensajeChat = {
   role: "user" | "assistant";
   content: string;
+  /** ISO de cuándo se guardó; null con bots viejos que aún no lo mandan. */
+  creado_en?: string | null;
 };
 
 export type Historial = {

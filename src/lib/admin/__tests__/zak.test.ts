@@ -5,6 +5,8 @@ import { describe, expect, it } from "vitest";
 
 import type { Negocio } from "../negocios";
 import {
+  PLANTILLA_SALUDO_TEXTO,
+  TODOS_LOS_VERTICALES,
   VERTICAL_GENERICO,
   VERTICALES_PROSPECCION,
   agruparPorVertical,
@@ -13,9 +15,13 @@ import {
   contactables,
   fichaDeNegocio,
   fueraDeVentana,
+  linkChatZak,
   mapaFichas,
   pareceTelefono,
   patronBusqueda,
+  rutaFolleto,
+  urlFolleto,
+  verticalDeSaludo,
   verticalPara,
   verticalPorSlug,
 } from "../zak";
@@ -97,10 +103,15 @@ describe("componentesSaludo", () => {
   });
 
   it("cada folleto del catálogo existe en public/folletos/", () => {
-    for (const v of [...VERTICALES_PROSPECCION, VERTICAL_GENERICO]) {
+    for (const v of TODOS_LOS_VERTICALES) {
       const ruta = path.join(process.cwd(), "public", "folletos", v.folleto);
       expect(existsSync(ruta), `falta public/folletos/${v.folleto} (${v.slug})`).toBe(true);
     }
+  });
+
+  it("rutaFolleto es LA ruta (urlFolleto y la UI componen sobre ella)", () => {
+    expect(rutaFolleto("panaderia.png")).toBe("/folletos/panaderia.png");
+    expect(urlFolleto(verticalPara("bakery"))).toMatch(/\/folletos\/panaderia\.png$/);
   });
 });
 
@@ -218,6 +229,39 @@ describe("agruparPorVertical", () => {
     expect(porSlug.get("restaurante")).toEqual(["r1", "r2"]);
     expect(porSlug.get("ferreteria")).toEqual(["f1"]);
     expect(porSlug.get("generico")).toEqual(["x1"]);
+  });
+});
+
+describe("linkChatZak", () => {
+  it("celular colombiano → deep-link a la bandeja sin el +", () => {
+    expect(linkChatZak(negocio({}))).toBe("/admin/zak?telefono=573101234567");
+  });
+
+  it("número extranjero en E.164 también chatea (Meta decide si existe)", () => {
+    expect(
+      linkChatZak(negocio({ telefono: "+56912345678", tipo_telefono: "desconocido" })),
+    ).toBe("/admin/zak?telefono=56912345678");
+  });
+
+  it("fijo o sin teléfono no navegan: no hay WhatsApp al otro lado", () => {
+    expect(linkChatZak(negocio({ tipo_telefono: "fijo" }))).toBeNull();
+    expect(linkChatZak(negocio({ telefono: null }))).toBeNull();
+  });
+});
+
+describe("verticalDeSaludo", () => {
+  it("reconoce el saludo exacto de cada vertical (así se pinta su folleto)", () => {
+    for (const v of VERTICALES_PROSPECCION) {
+      expect(verticalDeSaludo(v.texto)?.slug).toBe(v.slug);
+    }
+    expect(verticalDeSaludo(PLANTILLA_SALUDO_TEXTO)?.slug).toBe("generico");
+  });
+
+  it("tolera un sufijo (startsWith) pero no un mensaje cualquiera", () => {
+    const conSufijo = `${VERTICALES_PROSPECCION[0].texto}\n\nPD: ¿te llegó el folleto?`;
+    expect(verticalDeSaludo(conSufijo)?.slug).toBe("restaurante");
+    expect(verticalDeSaludo("¡Qué chimba de tradición, 70 años no es poca cosa!")).toBeNull();
+    expect(verticalDeSaludo("")).toBeNull();
   });
 });
 

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   mapConversaciones,
+  mapHistorial,
   mapHistorialLabs,
   mapInstancia,
   mapJobs,
@@ -190,6 +191,36 @@ describe("conversaciones, pausados, leads y jobs", () => {
       ],
     });
     expect(jobs[0].error).toContain("429");
+  });
+});
+
+describe("historial con hora", () => {
+  it("conserva creado_en cuando el bot lo manda (ISO)", () => {
+    const h = mapHistorial({
+      phone: "573001112222",
+      paused: false,
+      messages: [
+        { role: "user", content: "hola", creado_en: "2026-08-29T14:00:00+00:00" },
+        { role: "assistant", content: "¡hola!", creado_en: "2026-08-29T14:00:05+00:00" },
+      ],
+      ultimo_del_cliente: "2026-08-29T14:00:00+00:00",
+    });
+    expect(h.messages[0].creado_en).toBe("2026-08-29T14:00:00+00:00");
+    expect(h.messages[1].creado_en).toBe("2026-08-29T14:00:05+00:00");
+  });
+
+  it("bot viejo sin creado_en (o con basura) → null, jamás rompe", () => {
+    const h = mapHistorial({
+      phone: "573001112222",
+      paused: false,
+      messages: [
+        { role: "user", content: "hola" },
+        { role: "assistant", content: "ok", creado_en: 42 },
+      ],
+      ultimo_del_cliente: null,
+    });
+    expect(h.messages[0].creado_en).toBeNull();
+    expect(h.messages[1].creado_en).toBeNull();
   });
 });
 
