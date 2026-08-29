@@ -53,6 +53,11 @@ export const ESTADOS: readonly { valor: EstadoNegocio; label: string }[] = [
   { valor: "descartado", label: "Descartado" },
 ] as const;
 
+/** El label humano de un estado del pipeline (única fuente: ESTADOS). */
+export function labelEstado(estado: EstadoNegocio): string {
+  return ESTADOS.find((e) => e.valor === estado)?.label ?? estado;
+}
+
 // Centros y radios de sesgo para la búsqueda de Places y los chips del mapa.
 export const CIUDADES: readonly {
   valor: Exclude<Ciudad, "otra">;

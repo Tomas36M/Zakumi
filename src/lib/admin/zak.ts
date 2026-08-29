@@ -4,6 +4,7 @@
 // contactable y cómo avanzan los estados del CRM — nunca hacia atrás.
 
 import type { EstadoNegocio, Negocio } from "./negocios";
+import { normalizarTelefonoCO } from "./telefono";
 import type { Prospecto } from "@/lib/bots/tipos";
 
 /** A quién se le puede mandar la plantilla: celular real y que no sea ya
@@ -179,6 +180,87 @@ export const VERTICAL_GENERICO: VerticalProspeccion = {
   folleto: "generico.png",
   matchers: [],
 };
+
+/** El vertical elegido a mano en la UI, por su slug. Slug desconocido o
+ * ausente cae al genérico: un select desincronizado jamás rompe el envío. */
+export function verticalPorSlug(slug: string | null | undefined): VerticalProspeccion {
+  return VERTICALES_PROSPECCION.find((v) => v.slug === slug) ?? VERTICAL_GENERICO;
+}
+
+/** Patrón para `ilike` de Supabase: el término va literal (se escapan sus
+ * comodines) envuelto en % para buscar por pedazo del nombre. */
+export function patronBusqueda(q: string): string {
+  return `%${q.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
+}
+
+/** Lo que la bandeja necesita saber de un negocio del CRM: quién es, en qué
+ * anda y con qué plantilla se le habla. Serializable (viaja del server a la UI). */
+export type FichaNegocio = {
+  negocioId: string;
+  nombre: string;
+  ciudad: Negocio["ciudad"];
+  categoria: string | null;
+  estado: EstadoNegocio;
+  telefono: string; // E.164 (+57…)
+  verticalSlug: string;
+  verticalLabel: string;
+};
+
+/** Las columnas de `negocios` que alimentan una ficha — el select de los
+ * handlers pide esto, no `*`. */
+export const COLUMNAS_FICHA = "id, nombre, ciudad, categoria, estado, telefono";
+
+export type NegocioParaFicha = Pick<
+  Negocio,
+  "id" | "nombre" | "ciudad" | "categoria" | "estado" | "telefono"
+>;
+
+export function fichaDeNegocio(n: NegocioParaFicha): FichaNegocio {
+  const v = verticalPara(n.categoria);
+  return {
+    negocioId: n.id,
+    nombre: n.nombre,
+    ciudad: n.ciudad,
+    categoria: n.categoria,
+    estado: n.estado,
+    telefono: n.telefono ?? "",
+    verticalSlug: v.slug,
+    verticalLabel: v.label,
+  };
+}
+
+/**
+ * El cruce bandeja↔CRM: fichas indexadas por EXACTAMENTE los teléfonos que
+ * pidió el caller (en su formato — el del bot sin `+`, o el crudo de un
+ * deep-link), no por cómo los guarda la base. Sin negocio = sin entrada.
+ * Si dos negocios comparten teléfono gana el primero: es informativo.
+ */
+export function mapaFichas(
+  telefonos: string[],
+  negocios: NegocioParaFicha[],
+): Record<string, FichaNegocio> {
+  const porE164 = new Map<string, FichaNegocio>();
+  for (const n of negocios) {
+    if (n.telefono && !porE164.has(n.telefono)) {
+      porE164.set(n.telefono, fichaDeNegocio(n));
+    }
+  }
+  const fichas: Record<string, FichaNegocio> = {};
+  for (const t of telefonos) {
+    const e164 = normalizarTelefonoCO(t).telefono;
+    const ficha = e164 !== null ? porE164.get(e164) : undefined;
+    if (ficha) fichas[t] = ficha;
+  }
+  return fichas;
+}
+
+/** Heurística del campo único de «+ Nuevo chat»: con suficientes dígitos es
+ * un teléfono pegado (con puntos, espacios o "ext" da igual — el server lo
+ * normaliza); con menos, es el nombre de un negocio para buscar en el CRM. */
+export function pareceTelefono(texto: string): boolean {
+  const digitos = texto.replace(/\D/g, "").length;
+  return digitos >= 7 && digitos <= 15;
+}
 
 /** El vertical de un negocio según su categoría de Google (fallback genérico).
  * El orden del catálogo importa: gana el primer match — 'comercio' va de

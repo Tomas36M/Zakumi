@@ -8,6 +8,7 @@ import { actualizarNegocio, cambiarEstadoLote, eliminarNegocios } from "@/lib/ad
 import {
   CIUDADES,
   ESTADOS,
+  labelEstado,
   type Ciudad,
   type EstadoNegocio,
   type Negocio,
@@ -107,8 +108,7 @@ export function NegociosView({ negocios }: { negocios: Negocio[] }) {
         setAviso(res.error);
         return;
       }
-      const label = ESTADOS.find((e) => e.valor === estadoLote)?.label;
-      setAviso(`${res.actualizados} negocios pasaron a «${label}».`);
+      setAviso(`${res.actualizados} negocios pasaron a «${labelEstado(estadoLote)}».`);
       setSeleccionados(new Set());
       router.refresh();
     });

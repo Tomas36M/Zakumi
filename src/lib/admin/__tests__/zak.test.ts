@@ -11,8 +11,13 @@ import {
   avancesDeEstado,
   componentesSaludo,
   contactables,
+  fichaDeNegocio,
   fueraDeVentana,
+  mapaFichas,
+  pareceTelefono,
+  patronBusqueda,
   verticalPara,
+  verticalPorSlug,
 } from "../zak";
 import type { Prospecto } from "@/lib/bots/tipos";
 
@@ -213,5 +218,91 @@ describe("agruparPorVertical", () => {
     expect(porSlug.get("restaurante")).toEqual(["r1", "r2"]);
     expect(porSlug.get("ferreteria")).toEqual(["f1"]);
     expect(porSlug.get("generico")).toEqual(["x1"]);
+  });
+});
+
+describe("verticalPorSlug", () => {
+  it("encuentra el vertical por su slug (el que eligió el humano en la UI)", () => {
+    expect(verticalPorSlug("panaderia").plantilla).toBe("saludo_panaderia");
+    expect(verticalPorSlug("generico").plantilla).toBe("saludo_zakumi");
+  });
+
+  it("slug desconocido o ausente cae al genérico: jamás rompe el envío", () => {
+    expect(verticalPorSlug("no-existe").slug).toBe("generico");
+    expect(verticalPorSlug(null).slug).toBe("generico");
+    expect(verticalPorSlug(undefined).slug).toBe("generico");
+  });
+});
+
+describe("fichaDeNegocio", () => {
+  it("resume el negocio para la bandeja, con su vertical ya resuelto", () => {
+    const f = fichaDeNegocio(
+      negocio({ id: "n-7", categoria: "bakery", estado: "contactado" }),
+    );
+    expect(f).toEqual({
+      negocioId: "n-7",
+      nombre: "Panadería La Espiga",
+      ciudad: "ubate",
+      categoria: "bakery",
+      estado: "contactado",
+      telefono: "+573101234567",
+      verticalSlug: "panaderia",
+      verticalLabel: "Panadería",
+    });
+  });
+});
+
+describe("pareceTelefono", () => {
+  it("acepta los formatos que la gente pega, aunque traigan adorno", () => {
+    expect(pareceTelefono("310 123 4567")).toBe(true);
+    expect(pareceTelefono("310.123.4567")).toBe(true);
+    expect(pareceTelefono("+57 310 123 4567")).toBe(true);
+    expect(pareceTelefono("3101234567 ext 2")).toBe(true);
+  });
+
+  it("un nombre de negocio no es teléfono, ni garabatos sin dígitos", () => {
+    expect(pareceTelefono("Panadería La Espiga")).toBe(false);
+    expect(pareceTelefono("Tienda 24")).toBe(false);
+    expect(pareceTelefono("- -")).toBe(false);
+    expect(pareceTelefono("")).toBe(false);
+  });
+});
+
+describe("mapaFichas", () => {
+  const negocios = [
+    negocio({ id: "n-1", telefono: "+573101234567", categoria: "bakery" }),
+    negocio({ id: "n-2", telefono: "+573207654321", categoria: "restaurant" }),
+  ];
+
+  it("las claves son EXACTAMENTE lo que pidió el caller, en su formato", () => {
+    const m = mapaFichas(["573101234567", "3207654321"], negocios);
+    expect(m["573101234567"]?.negocioId).toBe("n-1");
+    expect(m["3207654321"]?.negocioId).toBe("n-2"); // deep-link de 10 dígitos
+    expect(Object.keys(m)).toHaveLength(2);
+  });
+
+  it("teléfonos sin negocio o innormalizables simplemente no vienen", () => {
+    const m = mapaFichas(["573000000000", "labs:abc", ""], negocios);
+    expect(m).toEqual({});
+  });
+
+  it("dos negocios con el mismo teléfono: gana el primero (informativo)", () => {
+    const m = mapaFichas(
+      ["573101234567"],
+      [negocios[0], negocio({ id: "n-3", telefono: "+573101234567" })],
+    );
+    expect(m["573101234567"]?.negocioId).toBe("n-1");
+  });
+});
+
+describe("patronBusqueda", () => {
+  it("envuelve el término en % para buscar por pedazo del nombre", () => {
+    expect(patronBusqueda("espiga")).toBe("%espiga%");
+  });
+
+  it("escapa los comodines de ilike: lo que se escribe se busca literal", () => {
+    expect(patronBusqueda("100% café")).toBe("%100\\% café%");
+    expect(patronBusqueda("la_espiga")).toBe("%la\\_espiga%");
+    expect(patronBusqueda("uno\\dos")).toBe("%uno\\\\dos%");
   });
 });

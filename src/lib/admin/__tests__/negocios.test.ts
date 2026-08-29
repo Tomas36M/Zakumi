@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CIUDADES, ESTADOS } from "../negocios";
+import { CIUDADES, ESTADOS, labelEstado } from "../negocios";
 import type { EstadoNegocio } from "../negocios";
 
 describe("ESTADOS (pipeline de venta)", () => {
@@ -19,6 +19,14 @@ describe("ESTADOS (pipeline de venta)", () => {
     for (const e of ESTADOS) {
       expect(e.label.trim().length).toBeGreaterThan(0);
     }
+  });
+});
+
+describe("labelEstado", () => {
+  it("traduce el enum al label humano del pipeline", () => {
+    expect(labelEstado("nuevo")).toBe("Nuevo");
+    expect(labelEstado("respondido")).toBe("Respondió");
+    expect(labelEstado("interesado")).toBe("Interesado");
   });
 });
 

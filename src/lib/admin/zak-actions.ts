@@ -8,13 +8,11 @@ import { revalidatePath } from "next/cache";
 import { verifySession } from "./dal";
 import { normalizarTelefonoCO, sinMas } from "./telefono";
 import {
-  PLANTILLA_SALUDO,
-  PLANTILLA_SALUDO_TEXTO,
-  VERTICAL_GENERICO,
   agruparPorVertical,
   avancesDeEstado,
   componentesSaludo,
   contactables,
+  verticalPorSlug,
 } from "./zak";
 import type { EstadoNegocio, Negocio } from "./negocios";
 import { crearTanda, enviarPlantillaDirecta, listarProspectos } from "@/lib/bots/api";
@@ -129,10 +127,12 @@ export async function enviarTandaZak(negocioIds: string[]): Promise<
  * Abre (o reabre) un chat con la plantilla de saludo: lo ÚNICO que Meta
  * permite con números nuevos o con la ventana de 24h cerrada. El saludo queda
  * en el historial como mensaje de Zak, así la conversación aparece en la
- * bandeja y él sabe que ya saludó.
+ * bandeja y él sabe que ya saludó. `verticalSlug` elige QUÉ plantilla
+ * (folleto + texto del nicho); ausente o desconocido = genérica.
  */
 export async function abrirChatZak(
   telefonoBruto: string,
+  verticalSlug?: string,
 ): Promise<{ ok: true } | { error: string }> {
   await verifySession();
 
@@ -144,12 +144,13 @@ export async function abrirChatZak(
     return { error: "WhatsApp necesita un número celular (empieza por 3)." };
   }
 
+  const vertical = verticalPorSlug(verticalSlug);
   const r = await enviarPlantillaDirecta(ID_ZAK, {
     telefono: sinMas(telefono),
-    plantilla: PLANTILLA_SALUDO,
+    plantilla: vertical.plantilla,
     lang: "es",
-    texto: PLANTILLA_SALUDO_TEXTO,
-    componentes: componentesSaludo(VERTICAL_GENERICO),
+    texto: vertical.texto,
+    componentes: componentesSaludo(vertical),
   });
   if (!r.ok) {
     if (r.error === "bot_error") {

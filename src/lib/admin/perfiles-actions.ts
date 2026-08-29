@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { verifySession } from "./dal";
+import { patronBusqueda } from "./zak";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -24,7 +25,7 @@ export async function buscarPerfiles(
   const { data, error } = await supabase
     .from("perfiles")
     .select("user_id, email, nombre, cliente_id")
-    .ilike("email", `%${limpio}%`)
+    .ilike("email", patronBusqueda(limpio))
     .eq("rol", "cliente")
     .limit(10);
   if (error) {
