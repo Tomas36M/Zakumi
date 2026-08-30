@@ -75,7 +75,9 @@ create trigger agentes_voz_updated_at
 -- usuario y la app normal (anon + RLS) no puede escribir llamadas. Idempotente
 -- por conversation_id. Devuelve jsonb {status: ok|duplicado|sin_agente, ...}.
 -- 'sin_agente' = evento de un agente ajeno del mismo workspace (p. ej. Luci):
--- se responde 200 y no se guarda nada.
+-- se responde 200 y no se guarda nada. Una llamada con direccion 'prueba'
+-- (lab del panel) nunca promueve el lead a ventas_cliente: los datos extraídos
+-- quedan en llamadas_voz.datos para inspección, sin efectos comerciales.
 
 create or replace function public.registrar_llamada_voz(
   p_agent_id_eleven   text,
@@ -141,7 +143,8 @@ begin
   end if;
 
   if (v_contacto is not null or v_telefono is not null)
-     and v_agente.cliente_id is not null then
+     and v_agente.cliente_id is not null
+     and p_direccion <> 'prueba' then -- una prueba del lab jamás crea una venta real
     select user_id into v_user_id
       from perfiles
      where cliente_id = v_agente.cliente_id

@@ -87,6 +87,11 @@ export async function obtenerAgenteVoz(
   return data ? mapAgente(data as Record<string, unknown>) : null;
 }
 
+// El cap diario gobierna lo que NOSOTROS marcamos (saliente + prueba): las
+// sesiones de widget y las entrantes no gastan telefonía nuestra y no deben
+// poder bloquear el despacho del día.
+const DIRECCIONES_CAP = ["saliente", "prueba"] as const;
+
 /** Llamadas de HOY (día calendario de Bogotá) por agente, para el cap y la lista. */
 export async function llamadasHoyPorAgente(
   supabase: SupabaseClient,
@@ -94,6 +99,7 @@ export async function llamadasHoyPorAgente(
   const { data, error } = await supabase
     .from("llamadas_voz")
     .select("agente_id")
+    .in("direccion", [...DIRECCIONES_CAP])
     .gte("created_at", inicioDiaBogota(new Date()).toISOString());
   if (error) {
     console.error("[voz] llamadasHoyPorAgente:", error.message);
@@ -115,6 +121,7 @@ export async function contarLlamadasHoy(
     .from("llamadas_voz")
     .select("id", { count: "exact", head: true })
     .eq("agente_id", agenteId)
+    .in("direccion", [...DIRECCIONES_CAP])
     .gte("created_at", inicioDiaBogota(new Date()).toISOString());
   if (error) {
     console.error("[voz] contarLlamadasHoy:", error.message);
