@@ -12,12 +12,20 @@
 import { revalidatePath } from "next/cache";
 import { verifySession } from "./dal";
 import {
+  agenteZakVoz,
   contarLlamadasHoy,
   extraccionDe,
   obtenerAgenteVoz,
   obtenerLlamadaVoz,
   type AgenteVozFila,
 } from "./voz";
+import {
+  CAP_DIARIO_ZAK,
+  EXTRACCION_ZAK,
+  NOMBRE_AGENTE_ZAK,
+  PRIMER_MENSAJE_ZAK,
+  SECCIONES_ZAK,
+} from "@/lib/voz/zak";
 import {
   normalizarTelefono,
   payloadAgente,
@@ -375,6 +383,46 @@ export async function llamadaPruebaVoz(
   // El conversation_id permite al lab narrar la llamada en vivo; si ElevenLabs
   // solo devolvió el callSid de Twilio, el resultado aterriza igual por webhook.
   return { conversationId: r.data.conversation_id };
+}
+
+/** Crea el agente de voz de Zak (es_zak) con su prompt semilla completo. */
+export async function crearAgenteZakVoz(
+  voiceId: string,
+): Promise<{ id: string; aviso: string | null } | { error: string }> {
+  const { supabase } = await verifySession();
+  if (typeof voiceId !== "string" || !VOICE_ID.test(voiceId)) {
+    return { error: "Elige una voz (en español) para Zak." };
+  }
+
+  const existente = await agenteZakVoz(supabase);
+  if (existente) return { error: "Zak ya tiene voz — edítala en su ficha." };
+
+  const creado = await crearAgenteVoz({
+    nombre: NOMBRE_AGENTE_ZAK,
+    clienteId: null,
+    voiceId,
+    primerMensaje: PRIMER_MENSAJE_ZAK,
+    secciones: SECCIONES_ZAK,
+    extraccion: [...EXTRACCION_ZAK],
+    capDiario: CAP_DIARIO_ZAK,
+  });
+  if ("error" in creado) return creado;
+
+  // El índice único parcial (es_zak) corta la carrera de dos admins creándolo.
+  const upd = await supabase
+    .from("agentes_voz")
+    .update({ es_zak: true })
+    .eq("id", creado.id);
+  if (upd.error) {
+    console.error("[crearAgenteZakVoz] es_zak:", upd.error.message);
+    return {
+      id: creado.id,
+      aviso: "El agente quedó creado pero no marcado como Zak — ¿ya existía otro?",
+    };
+  }
+
+  revalidarVoz(creado.id);
+  return creado;
 }
 
 export async function buscarVocesEspanol(
