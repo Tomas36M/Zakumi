@@ -139,10 +139,11 @@ export function LabVoz({
                 telefónica está exenta.
               </Banner>
             )}
-            <Script
-              src="https://unpkg.com/@elevenlabs/convai-widget-embed"
-              strategy="lazyOnload"
-            />
+            {/* Vendorizado (v0.17.1, bundle autocontenido) en vez de unpkg:
+                es el único script de terceros del panel y correría en el
+                origen del admin — un unpkg/npm comprometido sería takeover.
+                El runtime del widget habla con la API de ElevenLabs igual. */}
+            <Script src="/voz/convai-widget-embed.js" strategy="lazyOnload" />
             <elevenlabs-convai agent-id={agente.agent_id_eleven!} />
             <div>
               <Button
