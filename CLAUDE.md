@@ -65,10 +65,12 @@ Tienda de servicios + autogestión del cliente. Spec y **runbook de encendido**:
 - Envs del portal: `AVISOS_BOT_INSTANCIA_ID` + `AVISOS_WHATSAPP_TO` (aviso de
   solicitud por WhatsApp; si faltan solo se pierde el aviso).
 
-## Agentes de voz /admin/voz — ElevenLabs (2026-08-22, rama `feat/agentes-voz`)
+## Agentes de voz /admin/voz — ElevenLabs (2026-08-30, PR #3 sobre `main`)
 
 Spec + **runbook de encendido en 8 pasos** (leerlo antes de tocar voz):
 `docs/superpowers/specs/2026-08-22-agentes-voz-elevenlabs-design.md`.
+La consola vive sobre el design system de islas (`src/components/admin/ui/`,
+entrada "Voz" en `Sidebar.tsx`) — no queda ninguna clase `adm-*`.
 
 - **Supabase es la fuente de verdad** (`agentes_voz`/`llamadas_voz`,
   `supabase/voz.sql` DESPUÉS de portal.sql); ElevenLabs el ejecutor. Cada
@@ -82,7 +84,17 @@ Spec + **runbook de encendido en 8 pasos** (leerlo antes de tocar voz):
   sobre el raw body + filtro por `agent_id`. Es también el único sitio con
   `SUPABASE_SERVICE_ROLE_KEY` (solo invoca la RPC `registrar_llamada_voz`).
 - Leads extraídos (`lead_nombre`/`lead_telefono`) → `ventas_cliente` origen
-  'bot' dentro de la RPC + aviso WhatsApp.
+  'bot' dentro de la RPC + aviso WhatsApp. **Excepción: `direccion='prueba'`
+  jamás promueve el lead** (el lab no vende; los datos quedan en
+  `llamadas_voz.datos`).
+- **Lab de llamadas** (pestaña "Lab" de la ficha, `LabVoz.tsx`): el widget real
+  montado en el panel + llamada de prueba narrada en vivo (`estadoLlamadaVoz`
+  hace polling: fila del webhook primero, `GET conversations/{id}` mientras).
+  Para el mic del widget, `next.config.ts` abre `microphone=(self)` SOLO bajo
+  `/admin/:path*` — el resto del sitio sigue bloqueado.
+- El **cap diario cuenta solo `saliente`+`prueba`** (lo que nosotros marcamos):
+  widget y entrantes ni gastan ni bloquean (`DIRECCIONES_CAP` en
+  `src/lib/admin/voz.ts`).
 - Envs: `ELEVENLABS_API_KEY`, `ELEVENLABS_WEBHOOK_SECRET`,
   `ELEVENLABS_PHONE_NUMBER_ID` (interruptor del piloto), `SUPABASE_SERVICE_ROLE_KEY`.
 - `catalogo.ts` sigue `disponible: false` en `agente-voz` hasta el paso 8 del runbook.
@@ -94,12 +106,11 @@ Spec + **runbook de encendido en 8 pasos** (leerlo antes de tocar voz):
 - `git add -A` (incluso scoped a `src/`) puede barrer el working tree de OTRA
   sesión: agrega archivos explícitos, o trabaja en un **worktree**
   (`.claude/worktrees/`) como hace la rama del design system.
-- Ramas activas en paralelo (2026-08-22): `feat/portal-clientes` (portal),
-  `feat/admin-design-system` (reemplaza AdminNav y a la larga borra admin.css —
-  quien mergee segundo integra), `feat/folletos-prospeccion` (headers de imagen
-  en plantillas Meta; bloqueada por re-aprobación de plantillas), y
-  `feat/agentes-voz` (voz ElevenLabs, PR #3 apilada sobre el portal; toca
-  AdminNav +1 línea y agrega bloque `adm-voz-*` a admin.css).
+- Ramas activas en paralelo (2026-08-30): `feat/folletos-prospeccion` (headers
+  de imagen en plantillas Meta; bloqueada por re-aprobación de plantillas) y
+  `feat/agentes-voz` (voz ElevenLabs, PR #3 **rebasada sobre main** el
+  2026-08-30; consola sobre el kit `ui/` + entrada Voz en `Sidebar.tsx`).
+  El portal y el design system del admin ya están mergeados en main.
 
 ## Repo y despliegue
 
