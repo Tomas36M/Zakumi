@@ -8,7 +8,7 @@ export const metadata = { title: "Agente de voz" };
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-const PESTANAS: readonly Pestana[] = ["config", "llamadas", "llamar", "widget"];
+const PESTANAS: readonly Pestana[] = ["config", "lab", "llamadas", "tanda", "widget"];
 
 export default async function AgenteVozPage({
   params,

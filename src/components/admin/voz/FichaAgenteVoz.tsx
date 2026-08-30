@@ -6,7 +6,6 @@ import {
   activarAgenteVoz,
   guardarConfigVoz,
   lanzarTandaVoz,
-  llamadaPruebaVoz,
   sincronizarAgenteVoz,
 } from "@/lib/admin/voz-actions";
 import type { AgenteVozFila } from "@/lib/admin/voz";
@@ -25,10 +24,11 @@ import { Field, Input, Select, TextArea } from "@/components/admin/ui/Field";
 import { Island } from "@/components/admin/ui/Island";
 import { Tabs } from "@/components/admin/ui/Tabs";
 import { SelectorVoz } from "./VozView";
+import { LabVoz } from "./LabVoz";
 import { LlamadasVoz } from "./LlamadasVoz";
 
 type Cliente = { id: string; nombre: string };
-export type Pestana = "config" | "llamadas" | "llamar" | "widget";
+export type Pestana = "config" | "lab" | "llamadas" | "tanda" | "widget";
 
 function snippetWidget(agentId: string): string {
   return (
@@ -69,14 +69,14 @@ export function FichaAgenteVoz({
   const [extraccion, setExtraccion] = useState<CampoExtraccion[]>(agente.extraccion);
   const [capDiario, setCapDiario] = useState(String(agente.cap_diario));
 
-  // --- Llamar ---
-  const [telPrueba, setTelPrueba] = useState("");
+  // --- Tanda ---
   const [telefonosTanda, setTelefonosTanda] = useState("");
 
   const pestanas: readonly { id: Pestana; label: string }[] = [
     { id: "config", label: "Configuración" },
+    { id: "lab", label: "Lab" },
     { id: "llamadas", label: `Llamadas (${llamadas.length})` },
-    { id: "llamar", label: "Llamar" },
+    { id: "tanda", label: "Tanda" },
     { id: "widget", label: "Widget" },
   ];
 
@@ -306,9 +306,13 @@ export function FichaAgenteVoz({
           </div>
         )}
 
+        {tab === "lab" && (
+          <LabVoz agente={agente} llamadasHoy={llamadasHoy} telefoniaLista={telefoniaLista} />
+        )}
+
         {tab === "llamadas" && <LlamadasVoz agenteId={agente.id} llamadas={llamadas} />}
 
-        {tab === "llamar" && (
+        {tab === "tanda" && (
           <div className="flex flex-col gap-4">
             {!telefoniaLista && (
               <Banner>
@@ -316,35 +320,6 @@ export function FichaAgenteVoz({
                 del piloto — paso 7 del runbook). El widget funciona igual.
               </Banner>
             )}
-
-            <Island titulo="Llamada de prueba" className="flex flex-col gap-3 bg-isla-alta/50">
-              <p className="text-xs text-tinta-60">
-                El agente te llama a ti. Cuenta para el cap diario ({llamadasHoy}/
-                {agente.cap_diario} hoy) y queda marcada como “Prueba”.
-              </p>
-              <Field label="Tu teléfono">
-                <Input
-                  value={telPrueba}
-                  onChange={(e) => setTelPrueba(e.target.value)}
-                  placeholder="+57 300 123 4567"
-                  className="max-w-72"
-                />
-              </Field>
-              <Button
-                variante="primaria"
-                className="self-start"
-                disabled={pendiente || !telefoniaLista}
-                onClick={() =>
-                  correr(async () => {
-                    const r = await llamadaPruebaVoz(agente.id, telPrueba);
-                    if (!r.error) setMensaje("Llamando… contesta el teléfono 📞");
-                    return r;
-                  })
-                }
-              >
-                Llamarme
-              </Button>
-            </Island>
 
             <Island titulo="Tanda saliente" className="flex flex-col gap-3 bg-isla-alta/50">
               <p className="text-xs text-tinta-60">

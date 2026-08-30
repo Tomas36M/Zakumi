@@ -11,7 +11,13 @@
 
 import { revalidatePath } from "next/cache";
 import { verifySession } from "./dal";
-import { contarLlamadasHoy, extraccionDe, obtenerAgenteVoz, type AgenteVozFila } from "./voz";
+import {
+  contarLlamadasHoy,
+  extraccionDe,
+  obtenerAgenteVoz,
+  obtenerLlamadaVoz,
+  type AgenteVozFila,
+} from "./voz";
 import {
   normalizarTelefono,
   payloadAgente,
@@ -20,12 +26,19 @@ import {
   type VariablesLlamada,
 } from "@/lib/voz/eleven";
 import { seccionesDe, validarSeccionesVoz, MAX_PRIMER_MENSAJE } from "@/lib/voz/guias";
-import { EXTRACCION_LEAD, type CampoExtraccion, type TipoExtraccion } from "@/lib/voz/tipos";
+import {
+  CONVERSACION_ID,
+  EXTRACCION_LEAD,
+  type CampoExtraccion,
+  type LlamadaVoz,
+  type TipoExtraccion,
+} from "@/lib/voz/tipos";
 import {
   actualizarAgenteEleven,
   crearAgenteEleven,
   enviarBatch,
   llamadaSaliente,
+  obtenerConversacion,
   type ErrorVoz,
 } from "@/lib/voz/api";
 
@@ -319,7 +332,7 @@ function numeroSaliente(agente: AgenteVozFila): string | null {
 export async function llamadaPruebaVoz(
   id: string,
   telefonoCrudo: string,
-): Promise<{ error: string | null }> {
+): Promise<{ conversationId: string | null } | { error: string }> {
   const { supabase } = await verifySession();
   if (!UUID.test(id)) return { error: "Agente no válido." };
 
@@ -353,7 +366,52 @@ export async function llamadaPruebaVoz(
     }),
   );
   if (!r.ok) return { error: mensajeDe(r.error) };
-  return { error: null };
+  // El conversation_id permite al lab narrar la llamada en vivo; si ElevenLabs
+  // solo devolvió el callSid de Twilio, el resultado aterriza igual por webhook.
+  return { conversationId: r.data.conversation_id };
+}
+
+/** Fase de una llamada de prueba, para el polling del lab. */
+export type FaseLlamadaLab =
+  | { fase: "buscando" } // ElevenLabs aún no registra la conversación
+  | { fase: "sonando" } // initiated
+  | { fase: "hablando" } // in-progress
+  | { fase: "procesando" } // colgada; el webhook post-call viene en camino
+  | { fase: "fallida" } // failed en ElevenLabs (el fallo_inicio aterriza por webhook)
+  | { fase: "aterrizada"; llamada: LlamadaVoz } // terminal: fila en llamadas_voz
+  | { fase: "error"; error: string };
+
+export async function estadoLlamadaVoz(
+  agenteId: string,
+  conversationId: string,
+): Promise<FaseLlamadaLab> {
+  const { supabase } = await verifySession();
+  if (!UUID.test(agenteId) || !CONVERSACION_ID.test(conversationId)) {
+    return { fase: "error", error: "Llamada no válida." };
+  }
+
+  // Terminal primero: la fila del webhook es la verdad completa (transcript,
+  // datos, audio) — en cuanto existe, se deja de preguntar a ElevenLabs.
+  const llamada = await obtenerLlamadaVoz(supabase, agenteId, conversationId);
+  if (llamada) return { fase: "aterrizada", llamada };
+
+  const r = await obtenerConversacion(conversationId);
+  if (!r.ok) {
+    // Justo tras marcar, ElevenLabs puede responder 404 unos segundos.
+    if (r.error === "no_existe") return { fase: "buscando" };
+    return { fase: "error", error: mensajeDe(r.error) };
+  }
+  switch (r.data.status) {
+    case "initiated":
+      return { fase: "sonando" };
+    case "in-progress":
+      return { fase: "hablando" };
+    case "failed":
+      return { fase: "fallida" };
+    default:
+      // processing | done | desconocido: colgada, esperando el post-call.
+      return { fase: "procesando" };
+  }
 }
 
 export async function lanzarTandaVoz(

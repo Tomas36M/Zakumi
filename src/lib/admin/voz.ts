@@ -158,6 +158,25 @@ function mapLlamada(fila: Record<string, unknown>): LlamadaVoz {
   };
 }
 
+/** Una llamada aterrizada por su conversation_id (polling del lab). */
+export async function obtenerLlamadaVoz(
+  supabase: SupabaseClient,
+  agenteId: string,
+  conversationId: string,
+): Promise<LlamadaVoz | null> {
+  const { data, error } = await supabase
+    .from("llamadas_voz")
+    .select("*")
+    .eq("agente_id", agenteId)
+    .eq("conversation_id", conversationId)
+    .maybeSingle();
+  if (error) {
+    console.error("[voz] obtenerLlamadaVoz:", error.message);
+    return null;
+  }
+  return data ? mapLlamada(data as Record<string, unknown>) : null;
+}
+
 export async function llamadasDeAgente(
   supabase: SupabaseClient,
   agenteId: string,
