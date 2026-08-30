@@ -18,11 +18,17 @@ import {
   type LlamadaVoz,
   type TipoExtraccion,
 } from "@/lib/voz/tipos";
+import { Banner } from "@/components/admin/ui/Banner";
+import { Button } from "@/components/admin/ui/Button";
+import { useConfirmar } from "@/components/admin/ui/Confirmar";
+import { Field, Input, Select, TextArea } from "@/components/admin/ui/Field";
+import { Island } from "@/components/admin/ui/Island";
+import { Tabs } from "@/components/admin/ui/Tabs";
 import { SelectorVoz } from "./VozView";
 import { LlamadasVoz } from "./LlamadasVoz";
 
 type Cliente = { id: string; nombre: string };
-type Tab = "config" | "llamadas" | "llamar" | "widget";
+export type Pestana = "config" | "llamadas" | "llamar" | "widget";
 
 function snippetWidget(agentId: string): string {
   return (
@@ -38,6 +44,7 @@ export function FichaAgenteVoz({
   voces,
   clientes,
   telefoniaLista,
+  tabInicial = "config",
 }: {
   agente: AgenteVozFila;
   llamadas: LlamadaVoz[];
@@ -45,11 +52,13 @@ export function FichaAgenteVoz({
   voces: VozEleven[] | null;
   clientes: Cliente[];
   telefoniaLista: boolean;
+  tabInicial?: Pestana;
 }) {
-  const [tab, setTab] = useState<Tab>("config");
+  const [tab, setTab] = useState<Pestana>(tabInicial);
   const [pendiente, startTransition] = useTransition();
   const [mensaje, setMensaje] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const { confirmar, dialogo } = useConfirmar();
 
   // --- Configuración (fuente: la fila; se guarda completa) ---
   const [nombre, setNombre] = useState(agente.nombre);
@@ -63,6 +72,13 @@ export function FichaAgenteVoz({
   // --- Llamar ---
   const [telPrueba, setTelPrueba] = useState("");
   const [telefonosTanda, setTelefonosTanda] = useState("");
+
+  const pestanas: readonly { id: Pestana; label: string }[] = [
+    { id: "config", label: "Configuración" },
+    { id: "llamadas", label: `Llamadas (${llamadas.length})` },
+    { id: "llamar", label: "Llamar" },
+    { id: "widget", label: "Widget" },
+  ];
 
   function correr(accion: () => Promise<{ error: string | null } | void>) {
     setMensaje(null);
@@ -91,332 +107,316 @@ export function FichaAgenteVoz({
     });
   }
 
+  async function alternarEncendido() {
+    if (agente.activo) {
+      const ok = await confirmar({
+        titulo: `¿Apagar "${agente.nombre}"?`,
+        mensaje: "Dejará de aceptar llamadas nuevas desde el panel.",
+        accion: "Apagar",
+        peligro: true,
+      });
+      if (!ok) return;
+    }
+    correr(() => activarAgenteVoz(agente.id, !agente.activo));
+  }
+
   function editarCampo(i: number, cambios: Partial<CampoExtraccion>) {
     setExtraccion((prev) => prev.map((c, j) => (j === i ? { ...c, ...cambios } : c)));
   }
 
   return (
-    <section className="adm-seccion">
-      <Link href="/admin/voz" className="adm-bot-volver">
-        ← Voz
-      </Link>
-
-      <div className="adm-ficha-cabecera">
+    <section>
+      {dialogo}
+      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-hairline px-5 py-4">
         <div>
-          <h1 className="adm-ficha-nombre">{agente.nombre}</h1>
-          <p className="adm-ficha-meta">
+          <h1 className="text-lg font-semibold text-tinta">
+            <Link href="/admin/voz" className="text-tinta-60 hover:text-tinta">
+              Voz
+            </Link>{" "}
+            / {agente.nombre}
+          </h1>
+          <p className="text-xs text-tinta-60">
             Agente de voz · {agente.cliente_nombre ?? "Demo de Zakumi"} ·{" "}
             {agente.agent_id_eleven ? "Sincronizado con ElevenLabs" : "⚠️ Sin sincronizar"} ·
-            hoy {llamadasHoy}/{agente.cap_diario} llamadas
+            hoy {llamadasHoy}/{agente.cap_diario} salientes
           </p>
         </div>
-        <div className="adm-sol-acciones">
+        <div className="flex flex-wrap items-center gap-2">
           {!agente.agent_id_eleven && (
-            <button
-              type="button"
-              className="adm-cta"
+            <Button
+              variante="primaria"
               disabled={pendiente}
               onClick={() => correr(() => sincronizarAgenteVoz(agente.id))}
             >
               Sincronizar
-            </button>
+            </Button>
           )}
-          <button
-            type="button"
-            className={agente.activo ? "adm-cta adm-cta--peligro" : "adm-cta"}
+          <Button
+            variante={agente.activo ? "peligro" : "fantasma"}
             disabled={pendiente}
-            onClick={() => {
-              if (
-                agente.activo &&
-                !window.confirm("¿Apagar el agente? Dejará de aceptar llamadas nuevas desde el panel.")
-              ) {
-                return;
-              }
-              correr(() => activarAgenteVoz(agente.id, !agente.activo));
-            }}
+            onClick={() => void alternarEncendido()}
           >
             {agente.activo ? "Apagar" : "Encender"}
-          </button>
+          </Button>
         </div>
-      </div>
+      </header>
 
-      <div className="adm-tabs">
-        {(
-          [
-            ["config", "Configuración"],
-            ["llamadas", `Llamadas`],
-            ["llamar", "Llamar"],
-            ["widget", "Widget"],
-          ] as [Tab, string][]
-        ).map(([t, label]) => (
-          <button
-            key={t}
-            type="button"
-            className={tab === t ? "adm-tab adm-tab--activa" : "adm-tab"}
-            onClick={() => setTab(t)}
-          >
-            {label}
-            {t === "llamadas" && <span className="adm-tab-conteo">{llamadas.length}</span>}
-          </button>
-        ))}
-      </div>
+      <div className="flex flex-col gap-4 px-5 py-4">
+        <Tabs pestanas={pestanas} activa={tab} onCambiar={setTab} />
 
-      {error && <p className="adm-aviso">{error}</p>}
-      {mensaje && <p className="adm-voz-ok">{mensaje}</p>}
+        {error && <Banner variante="error">{error}</Banner>}
+        {mensaje && <Banner>{mensaje}</Banner>}
 
-      {tab === "config" && (
-        <div className="adm-bot-form">
-          <fieldset className="adm-bot-form-grupo">
-            <legend className="adm-field-label">Identidad</legend>
-            <label className="adm-field">
-              <span className="adm-field-label">Nombre *</span>
-              <input
-                className="adm-input"
-                value={nombre}
-                onChange={(e) => setNombre(e.target.value)}
-                maxLength={200}
-              />
-            </label>
-            <label className="adm-field">
-              <span className="adm-field-label">Cliente (vacío = demo de Zakumi)</span>
-              <select
-                className="adm-select"
-                value={clienteId}
-                onChange={(e) => setClienteId(e.target.value)}
-              >
-                <option value="">— Sin cliente (demo) —</option>
-                {clientes.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.nombre}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="adm-field">
-              <span className="adm-field-label">Cap de llamadas por día (0-500)</span>
-              <input
-                className="adm-input"
-                inputMode="numeric"
-                value={capDiario}
-                onChange={(e) => setCapDiario(e.target.value)}
-              />
-            </label>
-          </fieldset>
-
-          <fieldset className="adm-bot-form-grupo">
-            <legend className="adm-field-label">Voz y saludo</legend>
-            {voces === null ? (
-              <p className="adm-aviso">
-                Sin conexión con ElevenLabs: no se puede cambiar la voz ahora.
-              </p>
-            ) : (
-              <SelectorVoz voces={voces} valor={voiceId} onCambio={setVoiceId} />
-            )}
-            <label className="adm-field">
-              <span className="adm-field-label">
-                Primer mensaje * (debe presentarse como asistente virtual — obligación legal)
-              </span>
-              <textarea
-                className="adm-textarea"
-                rows={2}
-                maxLength={500}
-                value={primerMensaje}
-                onChange={(e) => setPrimerMensaje(e.target.value)}
-              />
-            </label>
-          </fieldset>
-
-          <fieldset className="adm-bot-form-grupo">
-            <legend className="adm-field-label">
-              Comportamiento (las reglas duras — presentarse como IA, no inventar
-              precios, colgar bien — van siempre, esto las personaliza)
-            </legend>
-            {CAMPOS_VOZ.map(({ campo, titulo, ayuda, placeholder }) => (
-              <label key={campo} className="adm-field">
-                <span className="adm-field-label">
-                  {titulo} <em className="adm-voz-ayuda">{ayuda}</em>
-                </span>
-                <textarea
-                  className="adm-textarea"
-                  rows={3}
-                  maxLength={4000}
-                  placeholder={placeholder}
-                  value={secciones[campo]}
-                  onChange={(e) =>
-                    setSecciones((prev) => ({ ...prev, [campo]: e.target.value }))
-                  }
+        {tab === "config" && (
+          <div className="flex flex-col gap-4">
+            <Island titulo="Identidad" className="flex flex-col gap-3 bg-isla-alta/50">
+              <Field label="Nombre *">
+                <Input
+                  value={nombre}
+                  onChange={(e) => setNombre(e.target.value)}
+                  maxLength={200}
                 />
-              </label>
-            ))}
-          </fieldset>
-
-          <fieldset className="adm-bot-form-grupo">
-            <legend className="adm-field-label">
-              Extracción de datos por llamada (las claves lead_nombre / lead_telefono /
-              lead_detalle crean la venta en el portal del cliente)
-            </legend>
-            {extraccion.map((c, i) => (
-              <div key={i} className="adm-voz-campo">
-                <input
-                  className="adm-input adm-voz-campo-clave"
-                  value={c.clave}
-                  placeholder="clave"
-                  onChange={(e) => editarCampo(i, { clave: e.target.value })}
-                />
-                <select
-                  className="adm-select adm-voz-campo-tipo"
-                  value={c.tipo}
-                  onChange={(e) => editarCampo(i, { tipo: e.target.value as TipoExtraccion })}
-                >
-                  {TIPOS_EXTRACCION.map((t) => (
-                    <option key={t.valor} value={t.valor}>
-                      {t.label}
+              </Field>
+              <Field label="Cliente (vacío = demo de Zakumi)">
+                <Select value={clienteId} onChange={(e) => setClienteId(e.target.value)}>
+                  <option value="">— Sin cliente (demo) —</option>
+                  {clientes.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.nombre}
                     </option>
                   ))}
-                </select>
-                <input
-                  className="adm-input adm-voz-campo-desc"
-                  value={c.descripcion}
-                  placeholder="Qué debe capturar (dile cuándo devolver null)"
-                  maxLength={500}
-                  onChange={(e) => editarCampo(i, { descripcion: e.target.value })}
+                </Select>
+              </Field>
+              <Field label="Cap de llamadas salientes por día (0-500)">
+                <Input
+                  inputMode="numeric"
+                  value={capDiario}
+                  onChange={(e) => setCapDiario(e.target.value)}
+                  className="max-w-40"
                 />
-                <button
-                  type="button"
-                  className="adm-cta-ghost"
-                  onClick={() => setExtraccion((prev) => prev.filter((_, j) => j !== i))}
-                >
-                  Quitar
-                </button>
-              </div>
-            ))}
-            <button
-              type="button"
-              className="adm-cta-ghost"
-              onClick={() =>
-                setExtraccion((prev) => [
-                  ...prev,
-                  { clave: "", tipo: "string", descripcion: "" },
-                ])
+              </Field>
+            </Island>
+
+            <Island titulo="Voz y saludo" className="flex flex-col gap-3 bg-isla-alta/50">
+              {voces === null ? (
+                <Banner>Sin conexión con ElevenLabs: no se puede cambiar la voz ahora.</Banner>
+              ) : (
+                <Field label="Voz *">
+                  <SelectorVoz voces={voces} valor={voiceId} onCambio={setVoiceId} />
+                </Field>
+              )}
+              <Field label="Primer mensaje * (debe presentarse como asistente virtual — obligación legal)">
+                <TextArea
+                  rows={2}
+                  maxLength={500}
+                  value={primerMensaje}
+                  onChange={(e) => setPrimerMensaje(e.target.value)}
+                />
+              </Field>
+            </Island>
+
+            <Island
+              titulo="Comportamiento"
+              acciones={
+                <span className="text-xs text-tinta-40">
+                  las reglas duras — presentarse como IA, no inventar precios, colgar bien — van siempre
+                </span>
               }
+              className="flex flex-col gap-3 bg-isla-alta/50"
             >
-              + Campo
-            </button>
-          </fieldset>
+              {CAMPOS_VOZ.map(({ campo, titulo, ayuda, placeholder }) => (
+                <Field key={campo} label={`${titulo} — ${ayuda}`}>
+                  <TextArea
+                    rows={3}
+                    maxLength={4000}
+                    placeholder={placeholder}
+                    value={secciones[campo]}
+                    onChange={(e) =>
+                      setSecciones((prev) => ({ ...prev, [campo]: e.target.value }))
+                    }
+                  />
+                </Field>
+              ))}
+            </Island>
 
-          <button type="button" className="adm-cta" onClick={guardar} disabled={pendiente}>
-            {pendiente ? "Guardando…" : "Guardar y sincronizar"}
-          </button>
-        </div>
-      )}
-
-      {tab === "llamadas" && <LlamadasVoz agenteId={agente.id} llamadas={llamadas} />}
-
-      {tab === "llamar" && (
-        <div className="adm-bot-form">
-          {!telefoniaLista && (
-            <p className="adm-aviso">
-              Sin número saliente: falta ELEVENLABS_PHONE_NUMBER_ID (es el
-              interruptor del piloto — paso 7 del runbook). El widget funciona igual.
-            </p>
-          )}
-
-          <fieldset className="adm-bot-form-grupo">
-            <legend className="adm-field-label">Llamada de prueba</legend>
-            <p className="adm-ficha-meta">
-              El agente te llama a ti. Cuenta para el cap diario ({llamadasHoy}/
-              {agente.cap_diario} hoy) y queda marcada como “Prueba”.
-            </p>
-            <label className="adm-field">
-              <span className="adm-field-label">Tu teléfono</span>
-              <input
-                className="adm-input"
-                value={telPrueba}
-                onChange={(e) => setTelPrueba(e.target.value)}
-                placeholder="+57 300 123 4567"
-              />
-            </label>
-            <button
-              type="button"
-              className="adm-cta"
-              disabled={pendiente || !telefoniaLista}
-              onClick={() =>
-                correr(async () => {
-                  const r = await llamadaPruebaVoz(agente.id, telPrueba);
-                  if (!r.error) setMensaje("Llamando… contesta el teléfono 📞");
-                  return r;
-                })
+            <Island
+              titulo="Extracción de datos por llamada"
+              acciones={
+                <span className="text-xs text-tinta-40">
+                  lead_nombre / lead_telefono / lead_detalle crean la venta en el portal
+                </span>
               }
+              className="flex flex-col gap-3 bg-isla-alta/50"
             >
-              Llamarme
-            </button>
-          </fieldset>
+              {extraccion.map((c, i) => (
+                <div key={i} className="flex flex-wrap items-center gap-2">
+                  <Input
+                    value={c.clave}
+                    placeholder="clave"
+                    onChange={(e) => editarCampo(i, { clave: e.target.value })}
+                    className="w-44"
+                  />
+                  <div className="w-44 shrink-0">
+                    <Select
+                      value={c.tipo}
+                      onChange={(e) => editarCampo(i, { tipo: e.target.value as TipoExtraccion })}
+                    >
+                      {TIPOS_EXTRACCION.map((t) => (
+                        <option key={t.valor} value={t.valor}>
+                          {t.label}
+                        </option>
+                      ))}
+                    </Select>
+                  </div>
+                  <Input
+                    value={c.descripcion}
+                    placeholder="Qué debe capturar (dile cuándo devolver null)"
+                    maxLength={500}
+                    onChange={(e) => editarCampo(i, { descripcion: e.target.value })}
+                    className="min-w-60 flex-1"
+                  />
+                  <Button
+                    onClick={() => setExtraccion((prev) => prev.filter((_, j) => j !== i))}
+                  >
+                    Quitar
+                  </Button>
+                </div>
+              ))}
+              <Button
+                className="self-start"
+                onClick={() =>
+                  setExtraccion((prev) => [
+                    ...prev,
+                    { clave: "", tipo: "string", descripcion: "" },
+                  ])
+                }
+              >
+                + Campo
+              </Button>
+            </Island>
 
-          <fieldset className="adm-bot-form-grupo">
-            <legend className="adm-field-label">Tanda saliente</legend>
-            <p className="adm-ficha-meta">
-              Un teléfono por línea (o separados por coma). Se llama de a uno; el
-              cap diario corta lo que no quepa hoy.
-            </p>
-            <textarea
-              className="adm-textarea"
-              rows={5}
-              value={telefonosTanda}
-              onChange={(e) => setTelefonosTanda(e.target.value)}
-              placeholder={"+573001234567\n+573007654321"}
-            />
-            <button
-              type="button"
-              className="adm-cta"
-              disabled={pendiente || !telefoniaLista}
-              onClick={() => {
-                if (!window.confirm("¿Lanzar la tanda de llamadas ahora?")) return;
-                correr(async () => {
-                  const r = await lanzarTandaVoz(agente.id, telefonosTanda);
-                  if ("error" in r) return r;
-                  setTelefonosTanda("");
-                  setMensaje(
-                    `Tanda enviada: ${r.enviadas} llamadas.` +
-                      (r.invalidos.length > 0
-                        ? ` Ignorados por formato: ${r.invalidos.join(", ")}.`
-                        : ""),
-                  );
-                  return { error: null };
-                });
-              }}
+            <Button
+              variante="primaria"
+              className="self-start"
+              onClick={guardar}
+              disabled={pendiente}
             >
-              Lanzar tanda
-            </button>
-          </fieldset>
-        </div>
-      )}
+              {pendiente ? "Guardando…" : "Guardar y sincronizar"}
+            </Button>
+          </div>
+        )}
 
-      {tab === "widget" && (
-        <div className="adm-bot-form">
-          {!agente.agent_id_eleven ? (
-            <p className="adm-aviso">Sincroniza el agente para obtener el snippet.</p>
-          ) : (
-            <>
-              <p className="adm-ficha-meta">
-                Pega esto en la web del cliente (antes de cerrar el body). El
-                visitante habla con el agente desde el navegador — sin número, sin
-                costo de telefonía.
+        {tab === "llamadas" && <LlamadasVoz agenteId={agente.id} llamadas={llamadas} />}
+
+        {tab === "llamar" && (
+          <div className="flex flex-col gap-4">
+            {!telefoniaLista && (
+              <Banner>
+                Sin número saliente: falta ELEVENLABS_PHONE_NUMBER_ID (es el interruptor
+                del piloto — paso 7 del runbook). El widget funciona igual.
+              </Banner>
+            )}
+
+            <Island titulo="Llamada de prueba" className="flex flex-col gap-3 bg-isla-alta/50">
+              <p className="text-xs text-tinta-60">
+                El agente te llama a ti. Cuenta para el cap diario ({llamadasHoy}/
+                {agente.cap_diario} hoy) y queda marcada como “Prueba”.
               </p>
-              <pre className="adm-voz-snippet">{snippetWidget(agente.agent_id_eleven)}</pre>
-              <button
-                type="button"
-                className="adm-cta-ghost"
-                onClick={() => {
-                  void navigator.clipboard.writeText(snippetWidget(agente.agent_id_eleven!));
-                  setMensaje("Snippet copiado.");
+              <Field label="Tu teléfono">
+                <Input
+                  value={telPrueba}
+                  onChange={(e) => setTelPrueba(e.target.value)}
+                  placeholder="+57 300 123 4567"
+                  className="max-w-72"
+                />
+              </Field>
+              <Button
+                variante="primaria"
+                className="self-start"
+                disabled={pendiente || !telefoniaLista}
+                onClick={() =>
+                  correr(async () => {
+                    const r = await llamadaPruebaVoz(agente.id, telPrueba);
+                    if (!r.error) setMensaje("Llamando… contesta el teléfono 📞");
+                    return r;
+                  })
+                }
+              >
+                Llamarme
+              </Button>
+            </Island>
+
+            <Island titulo="Tanda saliente" className="flex flex-col gap-3 bg-isla-alta/50">
+              <p className="text-xs text-tinta-60">
+                Un teléfono por línea (o separados por coma). Se llama de a uno; el cap
+                diario corta lo que no quepa hoy.
+              </p>
+              <TextArea
+                rows={5}
+                value={telefonosTanda}
+                onChange={(e) => setTelefonosTanda(e.target.value)}
+                placeholder={"+573001234567\n+573007654321"}
+              />
+              <Button
+                variante="primaria"
+                className="self-start"
+                disabled={pendiente || !telefoniaLista}
+                onClick={async () => {
+                  const n = telefonosTanda.split(/[\n,]/).filter((t) => t.trim()).length;
+                  const ok = await confirmar({
+                    titulo: "¿Lanzar la tanda ahora?",
+                    mensaje: `${n} ${n === 1 ? "teléfono" : "teléfonos"}; se llama de a uno y el cap corta lo que no quepa hoy.`,
+                    accion: "Lanzar",
+                  });
+                  if (!ok) return;
+                  correr(async () => {
+                    const r = await lanzarTandaVoz(agente.id, telefonosTanda);
+                    if ("error" in r) return r;
+                    setTelefonosTanda("");
+                    setMensaje(
+                      `Tanda enviada: ${r.enviadas} llamadas.` +
+                        (r.invalidos.length > 0
+                          ? ` Ignorados por formato: ${r.invalidos.join(", ")}.`
+                          : ""),
+                    );
+                    return { error: null };
+                  });
                 }}
               >
-                Copiar snippet
-              </button>
-            </>
-          )}
-        </div>
-      )}
+                Lanzar tanda
+              </Button>
+            </Island>
+          </div>
+        )}
+
+        {tab === "widget" && (
+          <div className="flex flex-col gap-3">
+            {!agente.agent_id_eleven ? (
+              <Banner>Sincroniza el agente para obtener el snippet.</Banner>
+            ) : (
+              <>
+                <p className="text-xs text-tinta-60">
+                  Pega esto en la web del cliente (antes de cerrar el body). El visitante
+                  habla con el agente desde el navegador — sin número, sin costo de
+                  telefonía.
+                </p>
+                <pre className="overflow-x-auto rounded-fila bg-isla-alta p-4 text-xs leading-relaxed text-tinta-85">
+                  {snippetWidget(agente.agent_id_eleven)}
+                </pre>
+                <Button
+                  className="self-start"
+                  onClick={() => {
+                    void navigator.clipboard.writeText(snippetWidget(agente.agent_id_eleven!));
+                    setMensaje("Snippet copiado.");
+                  }}
+                >
+                  Copiar snippet
+                </Button>
+              </>
+            )}
+          </div>
+        )}
+      </div>
     </section>
   );
 }

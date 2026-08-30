@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
+  AudioLines,
   Bot,
   Boxes,
   Inbox,
@@ -30,6 +31,7 @@ const SECCIONES = [
   { href: "/admin/solicitudes", label: "Solicitudes", Icono: Inbox },
   { href: "/admin/clientes", label: "Clientes", Icono: Users },
   { href: "/admin/bots", label: "Bots", Icono: Boxes },
+  { href: "/admin/voz", label: "Voz", Icono: AudioLines },
   { href: "/admin/equipo", label: "Equipo", Icono: UserCog },
 ] as const;
 

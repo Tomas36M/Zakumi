@@ -1,22 +1,24 @@
 "use client";
 
 import { useState } from "react";
+import { fechaCorta } from "@/lib/admin/formato";
 import {
   LABEL_DIRECCION,
   LABEL_RESULTADO,
+  type Direccion,
   type LlamadaVoz,
 } from "@/lib/voz/tipos";
+import { Badge, type TonoBadge } from "@/components/admin/ui/Badge";
+import { ChatBubble } from "@/components/admin/ui/ChatBubble";
+import { EmptyState } from "@/components/admin/ui/EmptyState";
+import { ListRow } from "@/components/admin/ui/ListRow";
 
-function fechaCorta(iso: string | null): string {
-  if (!iso) return "—";
-  return new Intl.DateTimeFormat("es-CO", {
-    day: "2-digit",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone: "America/Bogota",
-  }).format(new Date(iso));
-}
+const TONO_DIRECCION: Record<Direccion, TonoBadge> = {
+  prueba: "contactado",
+  saliente: "respondido",
+  entrante: "interesado",
+  widget: "neutro",
+};
 
 function duracion(seg: number | null): string {
   if (seg === null) return "—";
@@ -25,18 +27,27 @@ function duracion(seg: number | null): string {
   return m > 0 ? `${m}m ${s}s` : `${s}s`;
 }
 
-function Detalle({ agenteId, llamada }: { agenteId: string; llamada: LlamadaVoz }) {
+/** Detalle de una llamada aterrizada. Lo reusa el Lab para mostrar el resultado. */
+export function DetalleLlamada({
+  agenteId,
+  llamada,
+}: {
+  agenteId: string;
+  llamada: LlamadaVoz;
+}) {
   const datos = Object.entries(llamada.datos ?? {}).filter(([, v]) => v !== null);
   return (
-    <div className="adm-voz-detalle">
-      {llamada.resumen && <p className="adm-voz-resumen">{llamada.resumen}</p>}
+    <div className="flex flex-col gap-3 rounded-fila bg-isla-alta/40 p-4">
+      {llamada.resumen && (
+        <p className="text-sm leading-relaxed text-tinta-85">{llamada.resumen}</p>
+      )}
 
       {datos.length > 0 && (
-        <dl className="adm-voz-datos">
+        <dl className="grid gap-2 sm:grid-cols-2">
           {datos.map(([clave, valor]) => (
-            <div key={clave} className="adm-voz-dato">
-              <dt>{clave}</dt>
-              <dd>{String(valor)}</dd>
+            <div key={clave} className="rounded-fila bg-isla px-3 py-2">
+              <dt className="text-xs text-tinta-40">{clave}</dt>
+              <dd className="text-sm text-tinta">{String(valor)}</dd>
             </div>
           ))}
         </dl>
@@ -45,7 +56,7 @@ function Detalle({ agenteId, llamada }: { agenteId: string; llamada: LlamadaVoz 
       {llamada.tiene_audio && (
         // El audio pasa por el proxy admin: la key de ElevenLabs no baja nunca.
         <audio
-          className="adm-voz-audio"
+          className="w-full"
           controls
           preload="none"
           src={`/admin/api/voz/${agenteId}/audio/${llamada.conversation_id}`}
@@ -53,19 +64,16 @@ function Detalle({ agenteId, llamada }: { agenteId: string; llamada: LlamadaVoz 
       )}
 
       {llamada.transcript && llamada.transcript.length > 0 && (
-        <div className="adm-chat adm-voz-transcript">
+        <div className="flex flex-col gap-2 rounded-fila bg-isla p-3">
           {llamada.transcript.map((turno, i) =>
             turno.message ? (
-              <p
+              <ChatBubble
                 key={i}
-                className={
-                  turno.role === "agent"
-                    ? "adm-chat-burbuja adm-chat-burbuja--bot"
-                    : "adm-chat-burbuja adm-chat-burbuja--persona"
-                }
+                lado={turno.role === "agent" ? "agente" : "cliente"}
+                autor={turno.role === "agent" ? "Agente" : "Persona"}
               >
                 {turno.message}
-              </p>
+              </ChatBubble>
             ) : null,
           )}
         </div>
@@ -85,36 +93,40 @@ export function LlamadasVoz({
 
   if (llamadas.length === 0) {
     return (
-      <p className="adm-busqueda-vacia">
-        Todavía no hay llamadas. Cada conversación (teléfono o widget) aterriza
-        aquí sola vía el webhook post-call, con transcript, datos y audio.
-      </p>
+      <EmptyState
+        titulo="Todavía no hay llamadas."
+        detalle="Cada conversación (teléfono o widget) aterriza aquí sola vía el webhook post-call, con transcript, datos y audio."
+      />
     );
   }
 
   return (
-    <div className="adm-voz-llamadas">
+    <div className="flex flex-col gap-1">
       {llamadas.map((ll) => (
-        <div key={ll.id} className="adm-voz-llamada">
-          <button
-            type="button"
-            className="adm-voz-llamada-fila"
+        <div key={ll.id} className="flex flex-col gap-1">
+          <ListRow
+            activa={abierta === ll.id}
             onClick={() => setAbierta((v) => (v === ll.id ? null : ll.id))}
+            className="flex flex-wrap items-center gap-3"
           >
-            <span className="adm-badge">{LABEL_DIRECCION[ll.direccion]}</span>
-            <span className="adm-voz-llamada-tel">{ll.telefono ?? "Web"}</span>
-            <span className="adm-voz-llamada-meta">
-              {fechaCorta(ll.iniciada_en ?? ll.created_at)} · {duracion(ll.duracion_seg)}
+            <Badge tono={TONO_DIRECCION[ll.direccion]}>
+              {LABEL_DIRECCION[ll.direccion]}
+            </Badge>
+            <span className="min-w-0 flex-1 truncate text-sm text-tinta">
+              {ll.telefono ?? "Web"}
             </span>
-            <span className="adm-voz-llamada-meta">
-              {ll.estado === "fallo_inicio"
-                ? "No contestó"
-                : ll.resultado
-                  ? LABEL_RESULTADO[ll.resultado]
-                  : "—"}
+            <span className="text-xs text-tinta-40">
+              {fechaCorta(ll.iniciada_en ?? ll.created_at) || "—"} · {duracion(ll.duracion_seg)}
             </span>
-          </button>
-          {abierta === ll.id && <Detalle agenteId={agenteId} llamada={ll} />}
+            {ll.estado === "fallo_inicio" ? (
+              <Badge tono="peligro">No contestó</Badge>
+            ) : (
+              <span className="text-xs text-tinta-60">
+                {ll.resultado ? LABEL_RESULTADO[ll.resultado] : "—"}
+              </span>
+            )}
+          </ListRow>
+          {abierta === ll.id && <DetalleLlamada agenteId={agenteId} llamada={ll} />}
         </div>
       ))}
     </div>
