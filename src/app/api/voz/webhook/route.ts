@@ -55,11 +55,27 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "db" }, { status: 500 });
   }
 
-  const r = (data ?? {}) as { status?: string; lead?: boolean; agente_nombre?: string };
+  const r = (data ?? {}) as {
+    status?: string;
+    lead?: boolean;
+    agente_nombre?: string;
+    sin_cliente?: boolean;
+  };
 
   // Aviso de lead por WhatsApp — fire-and-forget: nunca tumba el 200.
-  if (r.status === "ok" && r.lead === true) {
-    const d = evento.params.p_datos ?? {};
+  // Dos casos: se creó la venta en el portal (lead=true), o el agente es
+  // interno (Zak/demo, sin cliente): la RPC no crea venta pero el prospecto
+  // es de Zakumi y Tomás debe enterarse igual. Las pruebas nunca avisan.
+  const d = evento.params.p_datos ?? {};
+  const hayDatosLead =
+    (typeof d.lead_nombre === "string" && d.lead_nombre !== "") ||
+    (typeof d.lead_telefono === "string" && d.lead_telefono !== "") ||
+    d.lead_interesado === true;
+  const debeAvisar =
+    r.status === "ok" &&
+    evento.params.p_direccion !== "prueba" &&
+    (r.lead === true || (r.sin_cliente === true && hayDatosLead));
+  if (debeAvisar) {
     const quien = [d.lead_nombre, d.lead_telefono ?? evento.params.p_telefono]
       .filter((x): x is string => typeof x === "string" && x !== "")
       .join(" · ");

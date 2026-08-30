@@ -34,9 +34,15 @@ create table if not exists public.agentes_voz (
   extraccion             jsonb not null default '[]'::jsonb,
   cap_diario             integer not null default 5 check (cap_diario between 0 and 500),
   activo                 boolean not null default true,
+  -- true = la voz de Zak (el cerebro comercial de Zakumi): el cockpit y el
+  -- endpoint /api/zak/llamar despachan con este agente. A lo sumo uno.
+  es_zak                 boolean not null default false,
   created_at             timestamptz not null default now(),
   updated_at             timestamptz not null default now()
 );
+
+create unique index if not exists agentes_voz_zak_unico
+  on public.agentes_voz (es_zak) where es_zak;
 
 -- direccion/estado/resultado como text+check (no enum): espejan valores de
 -- ElevenLabs y ampliar un check no exige ALTER TYPE. Los normaliza TS antes
@@ -168,7 +174,10 @@ begin
     'status', 'ok',
     'llamada_id', v_llamada_id,
     'lead', v_lead,
-    'agente_nombre', v_agente.nombre
+    'agente_nombre', v_agente.nombre,
+    -- agente interno (Zak/demo): sin cliente no hay venta que crear, pero el
+    -- webhook sí avisa a Tomás por WhatsApp si la llamada trajo datos de lead.
+    'sin_cliente', v_agente.cliente_id is null
   );
 end;
 $$;

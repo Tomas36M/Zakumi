@@ -32,6 +32,9 @@ export type VariablesLlamada = {
   origen: "zakumi_salida" | "zakumi_prueba";
   telefono: string;
   nombre_contacto?: string;
+  /** uuid del negocio del CRM cuando la llamada sale de la prospección:
+   * viaja intacto y queda en llamadas_voz.dynamic_variables (auditable). */
+  negocio_id?: string;
 };
 
 export function payloadAgente(c: ConfigAgente): Record<string, unknown> {
@@ -74,6 +77,7 @@ export function payloadAgente(c: ConfigAgente): Record<string, unknown> {
             origen: "",
             telefono: "",
             nombre_contacto: "",
+            negocio_id: "",
           },
         },
       },

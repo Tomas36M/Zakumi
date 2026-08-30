@@ -53,6 +53,7 @@ function mapAgente(fila: Record<string, unknown>): AgenteVozFila {
     extraccion: extraccionDe(fila.extraccion),
     cap_diario: Number(fila.cap_diario ?? 0),
     activo: Boolean(fila.activo),
+    es_zak: Boolean(fila.es_zak),
     created_at: String(fila.created_at ?? ""),
     updated_at: String(fila.updated_at ?? ""),
     cliente_nombre: typeof cliente?.nombre === "string" ? cliente.nombre : null,
@@ -156,6 +157,20 @@ function mapLlamada(fila: Record<string, unknown>): LlamadaVoz {
     iniciada_en: fila.iniciada_en === null ? null : String(fila.iniciada_en),
     created_at: String(fila.created_at ?? ""),
   };
+}
+
+/** El agente de voz de Zak (es_zak), o null si aún no se ha creado. */
+export async function agenteZakVoz(supabase: SupabaseClient): Promise<AgenteVozFila | null> {
+  const { data, error } = await supabase
+    .from("agentes_voz")
+    .select("*, clientes(nombre)")
+    .eq("es_zak", true)
+    .maybeSingle();
+  if (error) {
+    console.error("[voz] agenteZakVoz:", error.message);
+    return null;
+  }
+  return data ? mapAgente(data as Record<string, unknown>) : null;
 }
 
 /** Una llamada aterrizada por su conversation_id (polling del lab). */
