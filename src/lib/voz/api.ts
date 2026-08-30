@@ -145,6 +145,55 @@ export function enviarBatch(
   }), payload, 30_000);
 }
 
+// ---------- Estado de una conversación (polling del lab) ----------
+
+export type EstadoConversacionEleven =
+  | "initiated"
+  | "in-progress"
+  | "processing"
+  | "done"
+  | "failed"
+  | "desconocido";
+
+export type ConversacionEleven = {
+  conversation_id: string;
+  status: EstadoConversacionEleven;
+};
+
+const ESTADOS_CONVERSACION: readonly string[] = [
+  "initiated",
+  "in-progress",
+  "processing",
+  "done",
+  "failed",
+];
+
+/**
+ * Parser PURO del GET /v1/convai/conversations/{id} (testeable sin red).
+ * Un status que no conocemos no revienta el polling: cae a "desconocido",
+ * mismo criterio defensivo que el parseo del webhook.
+ */
+export function parseConversacionEleven(json: unknown): ConversacionEleven {
+  const c = (json ?? {}) as Record<string, unknown>;
+  return {
+    conversation_id: typeof c.conversation_id === "string" ? c.conversation_id : "",
+    status:
+      typeof c.status === "string" && ESTADOS_CONVERSACION.includes(c.status)
+        ? (c.status as EstadoConversacionEleven)
+        : "desconocido",
+  };
+}
+
+export function obtenerConversacion(
+  conversationId: string,
+): Promise<Resultado<ConversacionEleven>> {
+  return pedir(
+    "GET",
+    `/v1/convai/conversations/${encodeURIComponent(conversationId)}`,
+    parseConversacionEleven,
+  );
+}
+
 // ---------- Audio de una conversación (streaming, para el proxy admin) ----------
 
 export async function audioConversacion(

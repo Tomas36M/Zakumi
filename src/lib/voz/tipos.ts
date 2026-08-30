@@ -13,6 +13,9 @@ export const TTS_SPEED_VOZ = 1.1;
 export const IDIOMA_VOZ = "es";
 
 export type Direccion = "saliente" | "entrante" | "widget" | "prueba";
+
+/** Forma de un conversation_id de ElevenLabs (validación de rutas y actions). */
+export const CONVERSACION_ID = /^[A-Za-z0-9_-]{6,80}$/;
 export type EstadoLlamada = "done" | "failed" | "fallo_inicio";
 export type ResultadoLlamada = "success" | "failure" | "unknown";
 
