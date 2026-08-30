@@ -15,6 +15,7 @@ import { EmptyState } from "@/components/admin/ui/EmptyState";
 import { Field, Input, Select, TextArea } from "@/components/admin/ui/Field";
 import { IconButton } from "@/components/admin/ui/IconButton";
 import { Island } from "@/components/admin/ui/Island";
+import { BibliotecaVoces } from "./BibliotecaVoces";
 
 type Cliente = { id: string; nombre: string };
 
@@ -209,6 +210,7 @@ export function VozView({
   clientes: Cliente[];
 }) {
   const [creando, setCreando] = useState(false);
+  const [biblioteca, setBiblioteca] = useState(false);
 
   return (
     <section>
@@ -217,13 +219,18 @@ export function VozView({
         <span className="text-xs text-tinta-40">
           {agentes.length === 1 ? "1 agente" : `${agentes.length} agentes`}
         </span>
-        <Button
-          variante="primaria"
-          onClick={() => setCreando((v) => !v)}
-          disabled={voces === null}
-        >
-          {creando ? "Cancelar" : "Nuevo agente de voz"}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button onClick={() => setBiblioteca((v) => !v)} disabled={voces === null}>
+            Voces en español
+          </Button>
+          <Button
+            variante="primaria"
+            onClick={() => setCreando((v) => !v)}
+            disabled={voces === null}
+          >
+            {creando ? "Cancelar" : "Nuevo agente de voz"}
+          </Button>
+        </div>
       </header>
 
       <div className="flex flex-col gap-4 px-5 py-4">
@@ -232,6 +239,10 @@ export function VozView({
             Sin conexión con ElevenLabs — falta ELEVENLABS_API_KEY o el proveedor no
             responde. Los agentes ya creados se listan igual.
           </Banner>
+        )}
+
+        {biblioteca && voces !== null && (
+          <BibliotecaVoces onCerrar={() => setBiblioteca(false)} />
         )}
 
         {creando && voces !== null && (

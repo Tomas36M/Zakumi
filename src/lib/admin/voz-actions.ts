@@ -35,16 +35,22 @@ import {
 } from "@/lib/voz/tipos";
 import {
   actualizarAgenteEleven,
+  agregarVozCompartida,
+  buscarVocesCompartidas,
   crearAgenteEleven,
   enviarBatch,
   llamadaSaliente,
   obtenerConversacion,
   type ErrorVoz,
+  type VozCompartida,
 } from "@/lib/voz/api";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const CLAVE_EXTRACCION = /^[a-z][a-z0-9_]{1,40}$/;
 const VOICE_ID = /^[A-Za-z0-9]{8,40}$/;
+const OWNER_ID = /^[a-f0-9]{16,128}$/i;
+// Locales que ofrece el filtro de la biblioteca (el mercado es Colombia).
+const LOCALES_ES = new Set(["", "es-CO", "es-MX", "es-ES", "es-AR"]);
 const TIPOS_VALIDOS = new Set<TipoExtraccion>(["string", "boolean", "integer", "number"]);
 const MAX_CAMPOS_EXTRACCION = 15;
 const MAX_TANDA = 200;
@@ -369,6 +375,40 @@ export async function llamadaPruebaVoz(
   // El conversation_id permite al lab narrar la llamada en vivo; si ElevenLabs
   // solo devolvió el callSid de Twilio, el resultado aterriza igual por webhook.
   return { conversationId: r.data.conversation_id };
+}
+
+export async function buscarVocesEspanol(
+  locale: string,
+  busqueda: string,
+): Promise<{ voces: VozCompartida[] } | { error: string }> {
+  await verifySession();
+  if (typeof locale !== "string" || !LOCALES_ES.has(locale)) {
+    return { error: "Filtro de acento no válido." };
+  }
+  const b = typeof busqueda === "string" ? busqueda.trim().slice(0, 80) : "";
+  const r = await buscarVocesCompartidas({
+    locale: locale || undefined,
+    busqueda: b || undefined,
+  });
+  if (!r.ok) return { error: mensajeDe(r.error) };
+  return { voces: r.data };
+}
+
+export async function agregarVozEspanol(
+  publicOwnerId: string,
+  voiceId: string,
+  nombre: string,
+): Promise<{ error: string | null }> {
+  await verifySession();
+  if (!OWNER_ID.test(publicOwnerId) || !VOICE_ID.test(voiceId)) {
+    return { error: "Voz no válida." };
+  }
+  const n = typeof nombre === "string" ? nombre.trim().slice(0, 80) : "";
+  if (!n) return { error: "La voz necesita un nombre." };
+  const r = await agregarVozCompartida(publicOwnerId, voiceId, n);
+  if (!r.ok) return { error: mensajeDe(r.error) };
+  revalidarVoz();
+  return { error: null };
 }
 
 /** Fase de una llamada de prueba, para el polling del lab. */
