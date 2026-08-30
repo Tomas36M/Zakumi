@@ -16,6 +16,7 @@ export type ErrorVoz =
   | "no_autorizado" // 401 (key mala o sin scope)
   | "no_existe" // 404 (agente/conversación borrados)
   | "peticion_invalida" // 400/422 (payload rechazado)
+  | "plan_insuficiente" // la voz de la biblioteca exige un plan pago mayor
   | "eleven_error"; // 5xx o cualquier otra cosa
 
 export type Resultado<T> = { ok: true; data: T } | { ok: false; error: ErrorVoz };
@@ -185,17 +186,28 @@ export function buscarVocesCompartidas(opts: {
 }
 
 /** Agrega una voz de la biblioteca al workspace (aparece en el selector). */
-export function agregarVozCompartida(
+export async function agregarVozCompartida(
   publicOwnerId: string,
   voiceId: string,
   nuevoNombre: string,
 ): Promise<Resultado<{ voice_id: string }>> {
-  return pedir(
-    "POST",
-    `/v1/voices/add/${encodeURIComponent(publicOwnerId)}/${encodeURIComponent(voiceId)}`,
-    (j) => ({ voice_id: String((j as { voice_id?: unknown })?.voice_id ?? voiceId) }),
-    { new_name: nuevoNombre },
-  );
+  const path = `/v1/voices/add/${encodeURIComponent(publicOwnerId)}/${encodeURIComponent(voiceId)}`;
+  const r = await llamar("POST", path, { new_name: nuevoNombre });
+  if (!r.ok) return r;
+  const { status, json } = r.data;
+  if (status >= 200 && status < 300) {
+    return {
+      ok: true,
+      data: { voice_id: String((json as { voice_id?: unknown })?.voice_id ?? voiceId) },
+    };
+  }
+  // Verificado contra la API (2026-08-30): algunas voces de la biblioteca
+  // responden 400 {detail:{code:'paid_plan_required'}} — merece su propio
+  // mensaje, no el genérico de payload rechazado.
+  const code = ((json as { detail?: { code?: unknown } })?.detail?.code ?? "") as string;
+  if (code === "paid_plan_required") return { ok: false, error: "plan_insuficiente" };
+  console.error(`[voz] POST ${path} → ${status}:`, JSON.stringify(json)?.slice(0, 300));
+  return { ok: false, error: errorDeStatus(status) };
 }
 
 // ---------- Llamadas salientes ----------

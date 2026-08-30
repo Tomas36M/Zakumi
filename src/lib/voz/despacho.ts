@@ -22,6 +22,8 @@ export function mensajeDe(error: ErrorVoz): string {
       return "Ese recurso ya no existe en ElevenLabs.";
     case "peticion_invalida":
       return "ElevenLabs rechazó la configuración enviada.";
+    case "plan_insuficiente":
+      return "Esta voz exige un plan pago mayor de ElevenLabs — prueba otra (muchas son libres).";
     default:
       return "ElevenLabs devolvió un error inesperado.";
   }

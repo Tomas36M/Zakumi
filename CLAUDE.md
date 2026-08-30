@@ -95,8 +95,21 @@ entrada "Voz" en `Sidebar.tsx`) — no queda ninguna clase `adm-*`.
 - El **cap diario cuenta solo `saliente`+`prueba`** (lo que nosotros marcamos):
   widget y entrantes ni gastan ni bloquean (`DIRECCIONES_CAP` en
   `src/lib/admin/voz.ts`).
+- **Voces en español primero** (2026-08-30): el workspace nace con voces en
+  inglés; el selector agrupa "En español" y la consola trae la biblioteca
+  pública (`buscarVocesCompartidas`, language=es, chips de acento). Algunas
+  voces responden `paid_plan_required` → error `plan_insuficiente`.
+- **Zak tiene voz propia** (`agentes_voz.es_zak`, único): semilla completa en
+  `src/lib/voz/zak.ts` (alta de un clic en la consola). La dispara el cockpit
+  ("Llamar con IA" en bandeja/Interesados → `llamarConZak`) y el bot de
+  WhatsApp vía **`/api/zak/llamar`** (segundo endpoint público; token
+  `ZAK_VOZ_TOKEN` compartido con Railway — tool `llamar_por_voz` en
+  `whatsapp-bot/agent.py`, solo instancia Zak). Pieza común:
+  `src/lib/voz/despacho.ts` (cap, E.164, `negocio_id` en dynamic_variables,
+  negocio `nuevo→contactado` forward-only).
 - Envs: `ELEVENLABS_API_KEY`, `ELEVENLABS_WEBHOOK_SECRET`,
-  `ELEVENLABS_PHONE_NUMBER_ID` (interruptor del piloto), `SUPABASE_SERVICE_ROLE_KEY`.
+  `ELEVENLABS_PHONE_NUMBER_ID` (interruptor del piloto),
+  `SUPABASE_SERVICE_ROLE_KEY` (webhook + /api/zak/llamar), `ZAK_VOZ_TOKEN`.
 - `catalogo.ts` sigue `disponible: false` en `agente-voz` hasta el paso 8 del runbook.
 
 ## Varias sesiones de Claude comparten este checkout
