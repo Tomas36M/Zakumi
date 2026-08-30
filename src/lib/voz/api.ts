@@ -25,6 +25,19 @@ export type VozEleven = {
   nombre: string;
   preview_url: string | null;
   etiquetas: string;
+  /** labels.language de ElevenLabs ("es", "en", …) — null si no viene. */
+  idioma: string | null;
+};
+
+/** Una voz de la biblioteca compartida de ElevenLabs (aún no en el workspace). */
+export type VozCompartida = {
+  public_owner_id: string;
+  voice_id: string;
+  nombre: string;
+  idioma: string | null;
+  locale: string | null;
+  etiquetas: string;
+  preview_url: string | null;
 };
 
 const BASE = "https://api.elevenlabs.io";
@@ -104,25 +117,85 @@ export function actualizarAgenteEleven(
 
 // ---------- Voces del workspace (incluye las de Luci: se muestran, no pasa nada) ----------
 
-export function listarVoces(): Promise<Resultado<VozEleven[]>> {
-  return pedir("GET", "/v2/voices?page_size=100", (j) => {
-    const voces = (j as { voices?: unknown })?.voices;
-    if (!Array.isArray(voces)) return [];
-    return voces.map((v) => {
+function etiquetasDe(labels: Record<string, unknown>, claves: readonly string[]): string {
+  return claves
+    .map((k) => labels[k])
+    .filter((x): x is string => typeof x === "string" && x !== "")
+    .join(" · ");
+}
+
+/** Parser PURO del GET /v2/voices (testeable sin red). */
+export function parseVocesWorkspace(json: unknown): VozEleven[] {
+  const voces = (json as { voices?: unknown })?.voices;
+  if (!Array.isArray(voces)) return [];
+  return voces
+    .map((v) => {
       const voz = (v ?? {}) as Record<string, unknown>;
       const labels = (voz.labels ?? {}) as Record<string, unknown>;
-      const etiquetas = ["accent", "gender", "age", "description"]
-        .map((k) => labels[k])
-        .filter((x): x is string => typeof x === "string" && x !== "")
-        .join(" · ");
       return {
         voice_id: String(voz.voice_id ?? ""),
         nombre: String(voz.name ?? "(sin nombre)"),
         preview_url: typeof voz.preview_url === "string" ? voz.preview_url : null,
-        etiquetas,
+        etiquetas: etiquetasDe(labels, ["accent", "gender", "age", "description"]),
+        idioma: typeof labels.language === "string" ? labels.language : null,
       };
-    }).filter((v) => v.voice_id !== "");
-  });
+    })
+    .filter((v) => v.voice_id !== "");
+}
+
+export function listarVoces(): Promise<Resultado<VozEleven[]>> {
+  return pedir("GET", "/v2/voices?page_size=100", parseVocesWorkspace);
+}
+
+// ---------- Biblioteca compartida: voces en español para el workspace ----------
+
+/** Parser PURO del GET /v1/shared-voices (testeable sin red). */
+export function parseVocesCompartidas(json: unknown): VozCompartida[] {
+  const voces = (json as { voices?: unknown })?.voices;
+  if (!Array.isArray(voces)) return [];
+  return voces
+    .map((v) => {
+      const voz = (v ?? {}) as Record<string, unknown>;
+      return {
+        public_owner_id: String(voz.public_owner_id ?? ""),
+        voice_id: String(voz.voice_id ?? ""),
+        nombre: String(voz.name ?? "(sin nombre)"),
+        idioma: typeof voz.language === "string" ? voz.language : null,
+        locale: typeof voz.locale === "string" ? voz.locale : null,
+        etiquetas: etiquetasDe(voz, ["accent", "gender", "age", "use_case"]),
+        preview_url: typeof voz.preview_url === "string" ? voz.preview_url : null,
+      };
+    })
+    .filter((v) => v.voice_id !== "" && v.public_owner_id !== "");
+}
+
+/**
+ * Busca voces en la biblioteca pública de ElevenLabs. El workspace nace con
+ * puras voces en inglés; el español (el idioma principal del negocio) se trae
+ * de aquí — hay cientos con locale es-CO / es-MX / es-ES.
+ */
+export function buscarVocesCompartidas(opts: {
+  locale?: string;
+  busqueda?: string;
+}): Promise<Resultado<VozCompartida[]>> {
+  const params = new URLSearchParams({ page_size: "24", language: "es" });
+  if (opts.locale) params.set("locale", opts.locale);
+  if (opts.busqueda) params.set("search", opts.busqueda);
+  return pedir("GET", `/v1/shared-voices?${params.toString()}`, parseVocesCompartidas);
+}
+
+/** Agrega una voz de la biblioteca al workspace (aparece en el selector). */
+export function agregarVozCompartida(
+  publicOwnerId: string,
+  voiceId: string,
+  nuevoNombre: string,
+): Promise<Resultado<{ voice_id: string }>> {
+  return pedir(
+    "POST",
+    `/v1/voices/add/${encodeURIComponent(publicOwnerId)}/${encodeURIComponent(voiceId)}`,
+    (j) => ({ voice_id: String((j as { voice_id?: unknown })?.voice_id ?? voiceId) }),
+    { new_name: nuevoNombre },
+  );
 }
 
 // ---------- Llamadas salientes ----------

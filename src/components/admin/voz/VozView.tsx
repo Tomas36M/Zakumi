@@ -18,7 +18,20 @@ import { Island } from "@/components/admin/ui/Island";
 
 type Cliente = { id: string; nombre: string };
 
-/** Selector de voz con oído: el nombre no dice nada, el preview sí. */
+function OpcionesVoz({ voces }: { voces: VozEleven[] }) {
+  return (
+    <>
+      {voces.map((v) => (
+        <option key={v.voice_id} value={v.voice_id}>
+          {v.nombre}
+          {v.etiquetas ? ` — ${v.etiquetas}` : ""}
+        </option>
+      ))}
+    </>
+  );
+}
+
+/** Selector de voz con oído: el nombre no dice nada, el preview sí. Español primero. */
 export function SelectorVoz({
   voces,
   valor,
@@ -29,17 +42,32 @@ export function SelectorVoz({
   onCambio: (voiceId: string) => void;
 }) {
   const elegida = useMemo(() => voces.find((v) => v.voice_id === valor) ?? null, [voces, valor]);
+  const enEspanol = useMemo(() => voces.filter((v) => v.idioma === "es"), [voces]);
+  const otras = useMemo(() => voces.filter((v) => v.idioma !== "es"), [voces]);
   return (
     <div className="flex flex-col gap-2">
       <Select value={valor} onChange={(e) => onCambio(e.target.value)}>
         <option value="">Elige una voz…</option>
-        {voces.map((v) => (
-          <option key={v.voice_id} value={v.voice_id}>
-            {v.nombre}
-            {v.etiquetas ? ` — ${v.etiquetas}` : ""}
-          </option>
-        ))}
+        {enEspanol.length > 0 ? (
+          <>
+            <optgroup label="En español">
+              <OpcionesVoz voces={enEspanol} />
+            </optgroup>
+            <optgroup label="Otros idiomas (suenan con acento extranjero)">
+              <OpcionesVoz voces={otras} />
+            </optgroup>
+          </>
+        ) : (
+          <OpcionesVoz voces={otras} />
+        )}
       </Select>
+      {enEspanol.length === 0 && (
+        <p className="text-xs text-tinta-40">
+          El workspace aún no tiene voces en español — agrégalas desde “Voces en
+          español” arriba en la consola; las llamadas son en español y estas
+          voces sonarían con acento extranjero.
+        </p>
+      )}
       {elegida?.preview_url && (
         // key: al cambiar de voz el <audio> recarga el preview nuevo.
         <audio
