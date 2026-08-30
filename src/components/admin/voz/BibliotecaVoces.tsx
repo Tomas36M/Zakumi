@@ -50,11 +50,18 @@ export function BibliotecaVoces({ onCerrar }: { onCerrar: () => void }) {
     });
   }
 
-  // Primera carga: voces colombianas sin búsqueda.
+  // Primera carga: voces colombianas sin búsqueda. Todo el setState ocurre
+  // dentro de la transición async, nunca síncrono en el effect.
   useEffect(() => {
-    buscar("es-CO", "");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    startBuscar(async () => {
+      const r = await buscarVocesEspanol("es-CO", "");
+      if ("error" in r) {
+        setError(r.error);
+        return;
+      }
+      setVoces(r.voces);
+    });
+  }, [startBuscar]);
 
   function agregar(v: VozCompartida) {
     setError(null);

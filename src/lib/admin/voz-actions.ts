@@ -26,6 +26,7 @@ import {
   PRIMER_MENSAJE_ZAK,
   SECCIONES_ZAK,
 } from "@/lib/voz/zak";
+import { despacharLlamadaZak, mensajeDe } from "@/lib/voz/despacho";
 import {
   normalizarTelefono,
   payloadAgente,
@@ -49,7 +50,6 @@ import {
   enviarBatch,
   llamadaSaliente,
   obtenerConversacion,
-  type ErrorVoz,
   type VozCompartida,
 } from "@/lib/voz/api";
 
@@ -62,23 +62,6 @@ const LOCALES_ES = new Set(["", "es-CO", "es-MX", "es-ES", "es-AR"]);
 const TIPOS_VALIDOS = new Set<TipoExtraccion>(["string", "boolean", "integer", "number"]);
 const MAX_CAMPOS_EXTRACCION = 15;
 const MAX_TANDA = 200;
-
-function mensajeDe(error: ErrorVoz): string {
-  switch (error) {
-    case "sin_configurar":
-      return "Falta ELEVENLABS_API_KEY en el servidor (ver .env.example).";
-    case "sin_conexion":
-      return "ElevenLabs no respondió. Inténtalo de nuevo en un momento.";
-    case "no_autorizado":
-      return "ElevenLabs rechazó la API key (¿scope ElevenAgents?).";
-    case "no_existe":
-      return "Ese recurso ya no existe en ElevenLabs.";
-    case "peticion_invalida":
-      return "ElevenLabs rechazó la configuración enviada.";
-    default:
-      return "ElevenLabs devolvió un error inesperado.";
-  }
-}
 
 function revalidarVoz(id?: string) {
   revalidatePath("/admin/voz");
@@ -397,58 +380,9 @@ export async function llamarConZak(datos: {
   negocioId?: string;
 }): Promise<{ conversationId: string | null } | { error: string }> {
   const { supabase } = await verifySession();
-
-  const agente = await agenteZakVoz(supabase);
-  if (!agente) return { error: "Zak no tiene voz todavía — créala en /admin/voz." };
-  if (!agente.agent_id_eleven) return { error: "Sincroniza a Zak en /admin/voz antes de llamar." };
-  if (!agente.activo) return { error: "La voz de Zak está apagada." };
-
-  const phoneNumberId = numeroSaliente(agente);
-  if (!phoneNumberId) {
-    return { error: "Sin número saliente: falta ELEVENLABS_PHONE_NUMBER_ID (interruptor del piloto)." };
-  }
-
-  const telefono = normalizarTelefono(typeof datos.telefono === "string" ? datos.telefono : "");
-  if (!telefono) return { error: "Teléfono no válido (formato +57…)." };
-
-  const negocioId =
-    typeof datos.negocioId === "string" && UUID.test(datos.negocioId)
-      ? datos.negocioId
-      : undefined;
-  const nombre =
-    typeof datos.nombreContacto === "string" ? datos.nombreContacto.trim().slice(0, 120) : "";
-
-  const errorCap = await validarCap(supabase, agente, 1);
-  if (errorCap) return { error: errorCap };
-
-  const variables: VariablesLlamada = {
-    agente_id: agente.id,
-    origen: "zakumi_salida",
-    telefono,
-    ...(nombre ? { nombre_contacto: nombre } : {}),
-    ...(negocioId ? { negocio_id: negocioId } : {}),
-  };
-  const r = await llamadaSaliente(
-    payloadLlamadaUnica({
-      agentIdEleven: agente.agent_id_eleven,
-      phoneNumberId,
-      telefono,
-      variables,
-    }),
-  );
-  if (!r.ok) return { error: mensajeDe(r.error) };
-
-  if (negocioId) {
-    const { error } = await supabase
-      .from("negocios")
-      .update({ estado: "contactado" })
-      .eq("id", negocioId)
-      .eq("estado", "nuevo");
-    if (error) console.error("[llamarConZak] estado del negocio:", error.message);
-  }
-
-  revalidarVoz(agente.id);
-  return { conversationId: r.data.conversation_id };
+  const r = await despacharLlamadaZak(supabase, datos);
+  if (!("error" in r)) revalidarVoz();
+  return r;
 }
 
 /** Crea el agente de voz de Zak (es_zak) con su prompt semilla completo. */

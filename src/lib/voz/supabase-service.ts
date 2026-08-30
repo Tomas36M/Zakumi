@@ -1,10 +1,12 @@
-// Cliente service-role de Supabase — LA EXCEPCIÓN ÚNICA a "la app solo usa
-// anon + RLS". Existe porque el webhook post-call de ElevenLabs no tiene
-// sesión de usuario, y lo ÚNICO que se hace con él es invocar la RPC
-// registrar_llamada_voz (SECURITY DEFINER, grant solo a service_role).
+// Cliente service-role de Supabase — la excepción a "la app solo usa
+// anon + RLS", reservada a los DOS endpoints server-to-server que no tienen
+// sesión de usuario:
+//   1. /api/voz/webhook — solo invoca la RPC registrar_llamada_voz.
+//   2. /api/zak/llamar — despacha con el agente es_zak (despacharLlamadaZak:
+//      lee agentes_voz/llamadas_voz y avanza negocios nuevo→contactado).
 //
-// SOLO SERVIDOR y solo desde src/app/api/voz/webhook. No importar desde
-// ningún otro sitio: cualquier otra escritura va por la sesión del usuario.
+// SOLO SERVIDOR y solo desde esas dos rutas. No importar desde ningún otro
+// sitio: cualquier otra escritura va por la sesión del usuario.
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
