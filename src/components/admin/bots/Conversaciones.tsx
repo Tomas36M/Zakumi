@@ -33,6 +33,7 @@ import { Skeleton } from "@/components/admin/ui/Skeleton";
 import { NuevoChatZak } from "./NuevoChatZak";
 import { SelectorPlantilla } from "./SelectorPlantilla";
 import { useConfirmar } from "@/components/admin/ui/Confirmar";
+import { BotonLlamarZak, type EstadoVozZak } from "@/components/admin/voz/BotonLlamarZak";
 
 type Props = {
   instanciaId: number;
@@ -42,6 +43,8 @@ type Props = {
   abrirInicial?: string | null;
   /** El catálogo vivo de verticales (props desde el server; solo Zak lo usa). */
   verticales?: readonly VerticalProspeccion[];
+  /** Estado de la voz de Zak — presente solo en el cockpit de Zak. */
+  vozZak?: EstadoVozZak;
 };
 
 // El "visto" de no-leídos vive en localStorage: por browser y por admin, a
@@ -73,6 +76,7 @@ export function Conversaciones({
   esZak = false,
   abrirInicial = null,
   verticales,
+  vozZak,
 }: Props) {
   const [conversaciones, setConversaciones] = useState<Conversacion[] | null>(null);
   const [offset, setOffset] = useState(0);
@@ -494,6 +498,14 @@ export function Conversaciones({
               </span>
               {historial && (
                 <div className="flex flex-wrap items-center gap-2">
+                  {esZak && vozZak && telefono && !esLabs(telefono) && (
+                    <BotonLlamarZak
+                      vozZak={vozZak}
+                      telefono={fichaActual?.telefono ?? `+${telefono}`}
+                      nombre={fichaActual?.nombre ?? null}
+                      negocioId={fichaActual?.negocioId ?? null}
+                    />
+                  )}
                   <Button disabled={operando} onClick={alternarPausa}>
                     {historial.paused ? "Reanudar bot" : "Pausar bot (lo tomo yo)"}
                   </Button>

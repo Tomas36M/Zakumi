@@ -385,6 +385,72 @@ export async function llamadaPruebaVoz(
   return { conversationId: r.data.conversation_id };
 }
 
+/**
+ * Zak llama a un prospecto: despacha una saliente con el agente es_zak.
+ * Si viene negocioId, la llamada queda correlacionada (dynamic_variables) y
+ * el negocio pasa de 'nuevo' a 'contactado' — forward-only, como la tanda
+ * de WhatsApp; jamás degrada un respondido/interesado.
+ */
+export async function llamarConZak(datos: {
+  telefono: string;
+  nombreContacto?: string;
+  negocioId?: string;
+}): Promise<{ conversationId: string | null } | { error: string }> {
+  const { supabase } = await verifySession();
+
+  const agente = await agenteZakVoz(supabase);
+  if (!agente) return { error: "Zak no tiene voz todavía — créala en /admin/voz." };
+  if (!agente.agent_id_eleven) return { error: "Sincroniza a Zak en /admin/voz antes de llamar." };
+  if (!agente.activo) return { error: "La voz de Zak está apagada." };
+
+  const phoneNumberId = numeroSaliente(agente);
+  if (!phoneNumberId) {
+    return { error: "Sin número saliente: falta ELEVENLABS_PHONE_NUMBER_ID (interruptor del piloto)." };
+  }
+
+  const telefono = normalizarTelefono(typeof datos.telefono === "string" ? datos.telefono : "");
+  if (!telefono) return { error: "Teléfono no válido (formato +57…)." };
+
+  const negocioId =
+    typeof datos.negocioId === "string" && UUID.test(datos.negocioId)
+      ? datos.negocioId
+      : undefined;
+  const nombre =
+    typeof datos.nombreContacto === "string" ? datos.nombreContacto.trim().slice(0, 120) : "";
+
+  const errorCap = await validarCap(supabase, agente, 1);
+  if (errorCap) return { error: errorCap };
+
+  const variables: VariablesLlamada = {
+    agente_id: agente.id,
+    origen: "zakumi_salida",
+    telefono,
+    ...(nombre ? { nombre_contacto: nombre } : {}),
+    ...(negocioId ? { negocio_id: negocioId } : {}),
+  };
+  const r = await llamadaSaliente(
+    payloadLlamadaUnica({
+      agentIdEleven: agente.agent_id_eleven,
+      phoneNumberId,
+      telefono,
+      variables,
+    }),
+  );
+  if (!r.ok) return { error: mensajeDe(r.error) };
+
+  if (negocioId) {
+    const { error } = await supabase
+      .from("negocios")
+      .update({ estado: "contactado" })
+      .eq("id", negocioId)
+      .eq("estado", "nuevo");
+    if (error) console.error("[llamarConZak] estado del negocio:", error.message);
+  }
+
+  revalidarVoz(agente.id);
+  return { conversationId: r.data.conversation_id };
+}
+
 /** Crea el agente de voz de Zak (es_zak) con su prompt semilla completo. */
 export async function crearAgenteZakVoz(
   voiceId: string,
