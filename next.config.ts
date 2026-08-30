@@ -37,7 +37,29 @@ const nextConfig: NextConfig = {
       : [],
   },
   async headers() {
-    return [{ source: "/:path*", headers: securityHeaders }];
+    return [
+      { source: "/:path*", headers: securityHeaders },
+      // El lab de voz (/admin/voz) habla con el agente desde el navegador y
+      // necesita micrófono; el resto del sitio sigue con microphone=().
+      // En Next, la última entrada que matchea pisa la key duplicada.
+      {
+        source: "/admin/:path*",
+        headers: [
+          {
+            key: "Permissions-Policy",
+            value: "camera=(), microphone=(self), geolocation=()",
+          },
+        ],
+      },
+      // Bundles vendorizados con la versión en el filename: inmutables de
+      // verdad (Next sirve public/ con max-age=0 y son 1.5MB por recarga).
+      {
+        source: "/voz/:path*",
+        headers: [
+          { key: "Cache-Control", value: "public, max-age=31536000, immutable" },
+        ],
+      },
+    ];
   },
 };
 

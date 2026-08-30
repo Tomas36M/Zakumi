@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Assets estáticos: incluye bundles de terceros vendorizados (public/voz) —
+    // un `eslint --fix` aquí reescribiría código auditado byte a byte.
+    "public/**",
   ]),
 ]);
 

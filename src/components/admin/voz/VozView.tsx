@@ -1,0 +1,251 @@
+"use client";
+
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useMemo, useState, useTransition } from "react";
+import { X } from "lucide-react";
+import { crearAgenteVoz } from "@/lib/admin/voz-actions";
+import type { AgenteVozFila } from "@/lib/admin/voz";
+import type { VozEleven } from "@/lib/voz/api";
+import { seccionesVacias } from "@/lib/voz/guias";
+import { Badge } from "@/components/admin/ui/Badge";
+import { Banner } from "@/components/admin/ui/Banner";
+import { Button } from "@/components/admin/ui/Button";
+import { EmptyState } from "@/components/admin/ui/EmptyState";
+import { Field, Input, Select, TextArea } from "@/components/admin/ui/Field";
+import { IconButton } from "@/components/admin/ui/IconButton";
+import { Island } from "@/components/admin/ui/Island";
+
+type Cliente = { id: string; nombre: string };
+
+/** Selector de voz con oído: el nombre no dice nada, el preview sí. */
+export function SelectorVoz({
+  voces,
+  valor,
+  onCambio,
+}: {
+  voces: VozEleven[];
+  valor: string;
+  onCambio: (voiceId: string) => void;
+}) {
+  const elegida = useMemo(() => voces.find((v) => v.voice_id === valor) ?? null, [voces, valor]);
+  return (
+    <div className="flex flex-col gap-2">
+      <Select value={valor} onChange={(e) => onCambio(e.target.value)}>
+        <option value="">Elige una voz…</option>
+        {voces.map((v) => (
+          <option key={v.voice_id} value={v.voice_id}>
+            {v.nombre}
+            {v.etiquetas ? ` — ${v.etiquetas}` : ""}
+          </option>
+        ))}
+      </Select>
+      {elegida?.preview_url && (
+        // key: al cambiar de voz el <audio> recarga el preview nuevo.
+        <audio
+          key={elegida.voice_id}
+          className="h-10 w-full"
+          controls
+          preload="none"
+          src={elegida.preview_url}
+        />
+      )}
+    </div>
+  );
+}
+
+function NuevoAgenteForm({
+  voces,
+  clientes,
+  onCerrar,
+}: {
+  voces: VozEleven[];
+  clientes: Cliente[];
+  onCerrar: () => void;
+}) {
+  const router = useRouter();
+  const [pendiente, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+  const [nombre, setNombre] = useState("");
+  const [clienteId, setClienteId] = useState("");
+  const [voiceId, setVoiceId] = useState("");
+  const [primerMensaje, setPrimerMensaje] = useState(
+    "¡Hola, muy buenas! Soy el asistente virtual de …. ¿Con quién tengo el gusto?",
+  );
+
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        setError(null);
+        startTransition(async () => {
+          const r = await crearAgenteVoz({
+            nombre,
+            clienteId: clienteId || null,
+            voiceId,
+            primerMensaje,
+            secciones: seccionesVacias(),
+            extraccion: [], // la action pone la extracción de lead por defecto
+            capDiario: 5,
+          });
+          if ("error" in r) {
+            setError(r.error);
+            return;
+          }
+          router.push(`/admin/voz/${r.id}`);
+        });
+      }}
+    >
+      <Island className="flex max-w-2xl flex-col gap-4 bg-isla-alta/50">
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <h2 className="text-base font-semibold text-tinta">Agente de voz nuevo</h2>
+            <p className="text-xs text-tinta-40">
+              Nace con la extracción de lead y las reglas duras puestas; el guion y
+              los detalles se afinan en la ficha.
+            </p>
+          </div>
+          <IconButton etiqueta="Cancelar" onClick={onCerrar}>
+            <X className="h-4 w-4" />
+          </IconButton>
+        </div>
+
+        <fieldset className="flex flex-col gap-3">
+          <legend className="mb-2 text-xs font-semibold tracking-wide text-tinta-60 uppercase">
+            Identidad
+          </legend>
+          <Field label="Nombre *">
+            <Input
+              value={nombre}
+              onChange={(e) => setNombre(e.target.value)}
+              placeholder="Ej.: Recepción Clínica Sonría"
+              maxLength={200}
+              required
+              autoFocus
+            />
+          </Field>
+          <Field label="Cliente (vacío = demo de Zakumi)">
+            <Select value={clienteId} onChange={(e) => setClienteId(e.target.value)}>
+              <option value="">— Sin cliente (demo) —</option>
+              {clientes.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.nombre}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        </fieldset>
+
+        <fieldset className="flex flex-col gap-3">
+          <legend className="mb-2 text-xs font-semibold tracking-wide text-tinta-60 uppercase">
+            Voz y saludo
+          </legend>
+          <Field label="Voz *">
+            <SelectorVoz voces={voces} valor={voiceId} onCambio={setVoiceId} />
+          </Field>
+          <Field label="Primer mensaje * (debe presentarse como asistente virtual)">
+            <TextArea
+              rows={2}
+              maxLength={500}
+              value={primerMensaje}
+              onChange={(e) => setPrimerMensaje(e.target.value)}
+              required
+            />
+          </Field>
+        </fieldset>
+
+        {error && <Banner variante="error">{error}</Banner>}
+
+        <Button
+          variante="primaria"
+          type="submit"
+          className="self-start"
+          disabled={pendiente || !nombre.trim() || !voiceId}
+        >
+          {pendiente ? "Creando…" : "Crear agente"}
+        </Button>
+      </Island>
+    </form>
+  );
+}
+
+export function VozView({
+  agentes,
+  llamadasHoy,
+  voces,
+  clientes,
+}: {
+  agentes: AgenteVozFila[];
+  llamadasHoy: Record<string, number>;
+  voces: VozEleven[] | null;
+  clientes: Cliente[];
+}) {
+  const [creando, setCreando] = useState(false);
+
+  return (
+    <section>
+      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-hairline px-5 py-4">
+        <h1 className="text-lg font-semibold text-tinta">Voz</h1>
+        <span className="text-xs text-tinta-40">
+          {agentes.length === 1 ? "1 agente" : `${agentes.length} agentes`}
+        </span>
+        <Button
+          variante="primaria"
+          onClick={() => setCreando((v) => !v)}
+          disabled={voces === null}
+        >
+          {creando ? "Cancelar" : "Nuevo agente de voz"}
+        </Button>
+      </header>
+
+      <div className="flex flex-col gap-4 px-5 py-4">
+        {voces === null && (
+          <Banner>
+            Sin conexión con ElevenLabs — falta ELEVENLABS_API_KEY o el proveedor no
+            responde. Los agentes ya creados se listan igual.
+          </Banner>
+        )}
+
+        {creando && voces !== null && (
+          <NuevoAgenteForm voces={voces} clientes={clientes} onCerrar={() => setCreando(false)} />
+        )}
+
+        {agentes.length === 0 && !creando ? (
+          <EmptyState
+            titulo="Todavía no hay agentes de voz."
+            detalle="El primero debería ser la demo de Zakumi: créalo sin cliente y pruébalo en su Lab antes de venderlo."
+          />
+        ) : (
+          <div className="grid gap-aire md:grid-cols-2 xl:grid-cols-3">
+            {agentes.map((a) => {
+              const hoy = llamadasHoy[a.id] ?? 0;
+              return (
+                <Link
+                  key={a.id}
+                  href={`/admin/voz/${a.id}`}
+                  className="flex flex-col gap-1 rounded-isla bg-isla-alta/50 p-4 transition-colors hover:bg-isla-alta"
+                >
+                  <header className="flex items-center justify-between gap-2">
+                    <h2 className="truncate text-sm font-semibold text-tinta">{a.nombre}</h2>
+                    <Badge tono={a.activo ? "vivo" : "peligro"}>
+                      {a.activo ? "Activo" : "Apagado"}
+                    </Badge>
+                  </header>
+                  <p className="text-xs text-tinta-60">
+                    Voz · {a.cliente_nombre ?? "Demo de Zakumi"}
+                  </p>
+                  <p className="flex items-center gap-2 text-xs text-tinta-40">
+                    {!a.agent_id_eleven && <Badge tono="contactado">Sin sincronizar</Badge>}
+                    <span>
+                      hoy {hoy}/{a.cap_diario} salientes
+                    </span>
+                  </p>
+                </Link>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
