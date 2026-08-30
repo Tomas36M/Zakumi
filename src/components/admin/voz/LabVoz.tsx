@@ -15,8 +15,10 @@ import { Field, Input } from "@/components/admin/ui/Field";
 import { Island } from "@/components/admin/ui/Island";
 import { DetalleLlamada } from "./LlamadasVoz";
 
-// El widget es un custom element; React 19 tipa JSX dentro del módulo react.
+// El widget es un custom element; React 19 tipa JSX dentro del módulo react
+// y eso solo se puede declarar con namespace (no hay equivalente ES2015).
 declare module "react" {
+  // eslint-disable-next-line @typescript-eslint/no-namespace
   namespace JSX {
     interface IntrinsicElements {
       "elevenlabs-convai": React.DetailedHTMLProps<
