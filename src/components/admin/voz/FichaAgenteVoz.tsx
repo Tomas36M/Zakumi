@@ -55,6 +55,10 @@ export function FichaAgenteVoz({
   tabInicial?: Pestana;
 }) {
   const [tab, setTab] = useState<Pestana>(tabInicial);
+  // El lab se monta en la primera visita (no cargar su bundle si nunca se
+  // abre) y NO se desmonta después: destruiría el polling de una prueba en
+  // vuelo y cortaría la sesión del widget al cambiar de pestaña.
+  const [labVisitado, setLabVisitado] = useState(tabInicial === "lab");
   const [pendiente, startTransition] = useTransition();
   const [mensaje, setMensaje] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -162,7 +166,14 @@ export function FichaAgenteVoz({
       </header>
 
       <div className="flex flex-col gap-4 px-5 py-4">
-        <Tabs pestanas={pestanas} activa={tab} onCambiar={setTab} />
+        <Tabs
+          pestanas={pestanas}
+          activa={tab}
+          onCambiar={(t) => {
+            setTab(t);
+            if (t === "lab") setLabVisitado(true);
+          }}
+        />
 
         {error && <Banner variante="error">{error}</Banner>}
         {mensaje && <Banner>{mensaje}</Banner>}
@@ -306,9 +317,11 @@ export function FichaAgenteVoz({
           </div>
         )}
 
-        {tab === "lab" && (
-          <LabVoz agente={agente} llamadasHoy={llamadasHoy} telefoniaLista={telefoniaLista} />
-        )}
+        <div hidden={tab !== "lab"}>
+          {labVisitado && (
+            <LabVoz agente={agente} llamadasHoy={llamadasHoy} telefoniaLista={telefoniaLista} />
+          )}
+        </div>
 
         {tab === "llamadas" && <LlamadasVoz agenteId={agente.id} llamadas={llamadas} />}
 
@@ -380,9 +393,19 @@ export function FichaAgenteVoz({
                 </pre>
                 <Button
                   className="self-start"
-                  onClick={() => {
-                    void navigator.clipboard.writeText(snippetWidget(agente.agent_id_eleven!));
-                    setMensaje("Snippet copiado.");
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(
+                        snippetWidget(agente.agent_id_eleven!),
+                      );
+                      setError(null);
+                      setMensaje("Snippet copiado.");
+                    } catch {
+                      setMensaje(null);
+                      setError(
+                        "El navegador no dejó copiar. Selecciona el snippet y cópialo a mano.",
+                      );
+                    }
                   }}
                 >
                   Copiar snippet

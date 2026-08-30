@@ -51,6 +51,14 @@ const nextConfig: NextConfig = {
           },
         ],
       },
+      // Bundles vendorizados con la versión en el filename: inmutables de
+      // verdad (Next sirve public/ con max-age=0 y son 1.5MB por recarga).
+      {
+        source: "/voz/:path*",
+        headers: [
+          { key: "Cache-Control", value: "public, max-age=31536000, immutable" },
+        ],
+      },
     ];
   },
 };

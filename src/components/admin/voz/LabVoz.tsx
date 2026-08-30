@@ -64,7 +64,9 @@ export function LabVoz({
   const [fase, setFase] = useState<FaseLlamadaLab | null>(null);
   const [agotado, setAgotado] = useState(false);
   const [sinId, setSinId] = useState(false);
+  const [widgetCaido, setWidgetCaido] = useState(false);
   const intentos = useRef(0);
+  const tickEnVuelo = useRef(false);
 
   const widgetListo = Boolean(agente.agent_id_eleven) && agente.activo;
 
@@ -73,15 +75,25 @@ export function LabVoz({
     let activo = true;
     const timer = setInterval(() => {
       void (async () => {
+        if (tickEnVuelo.current) return; // el tick anterior sigue en vuelo: sin apilar ni desordenar
+        tickEnVuelo.current = true;
         intentos.current += 1;
-        const f = await estadoLlamadaVoz(agente.id, enCurso);
-        if (!activo) return;
-        setFase(f);
-        if (f.fase === "aterrizada" || f.fase === "error") {
-          setEnCurso(null);
-          if (f.fase === "aterrizada") router.refresh(); // contadores + pestaña Llamadas
-          return;
+        try {
+          const f = await estadoLlamadaVoz(agente.id, enCurso);
+          if (!activo) return;
+          setFase(f);
+          if (f.fase === "aterrizada" || f.fase === "error") {
+            setEnCurso(null);
+            if (f.fase === "aterrizada") router.refresh(); // contadores + pestaña Llamadas
+            return;
+          }
+        } catch {
+          // Transporte caído (red, deploy a mitad): tick perdido, se reintenta —
+          // el tope de intentos de abajo evita pollear para siempre.
+        } finally {
+          tickEnVuelo.current = false;
         }
+        if (!activo) return;
         if (intentos.current >= MAX_INTENTOS) {
           setEnCurso(null);
           setAgotado(true);
@@ -100,18 +112,26 @@ export function LabVoz({
     setAgotado(false);
     setSinId(false);
     intentos.current = 0;
+    tickEnVuelo.current = false;
     startTransition(async () => {
-      const r = await llamadaPruebaVoz(agente.id, telefono);
-      if ("error" in r) {
-        setError(r.error);
-        return;
-      }
-      if (r.conversationId) {
-        setEnCurso(r.conversationId);
-        setFase({ fase: "buscando" });
-      } else {
-        // Sin conversation_id no hay polling: el webhook aterriza igual.
-        setSinId(true);
+      try {
+        const r = await llamadaPruebaVoz(agente.id, telefono);
+        if ("error" in r) {
+          setError(r.error);
+          return;
+        }
+        if (r.conversationId) {
+          setEnCurso(r.conversationId);
+          setFase({ fase: "buscando" });
+        } else {
+          // Sin conversation_id no hay polling: el webhook aterriza igual.
+          setSinId(true);
+        }
+      } catch {
+        // Rechazo de transporte: no se sabe si la llamada salió o no.
+        setError(
+          "Se perdió la conexión al lanzar la llamada. Antes de reintentar, revisa la pestaña Llamadas: pudo haber salido igual.",
+        );
       }
     });
   }
@@ -139,11 +159,25 @@ export function LabVoz({
                 telefónica está exenta.
               </Banner>
             )}
-            {/* Vendorizado (v0.17.1, bundle autocontenido) en vez de unpkg:
-                es el único script de terceros del panel y correría en el
-                origen del admin — un unpkg/npm comprometido sería takeover.
-                El runtime del widget habla con la API de ElevenLabs igual. */}
-            <Script src="/voz/convai-widget-embed.js" strategy="lazyOnload" />
+            {/* Vendorizado y pineado (v0.17.1; sha256 y cómo actualizar en
+                public/voz/LICENSE-convai-widget-embed.txt) en vez de
+                unpkg-latest: correría en el origen autenticado del admin.
+                No es 100% autocontenido: la ruta de micrófono puede cargar un
+                worklet de resampleo desde cdn.jsdelivr.net (pineado) en
+                navegadores sin constraint sampleRate (Firefox/Safari), y el
+                runtime habla con la API de ElevenLabs. */}
+            <Script
+              src="/voz/convai-widget-embed-0.17.1.js"
+              strategy="lazyOnload"
+              onError={() => setWidgetCaido(true)}
+            />
+            {widgetCaido && (
+              <Banner variante="error">
+                No cargó el script del widget (/voz/convai-widget-embed-0.17.1.js).
+                Recarga la página; si persiste, el archivo vendorizado no está
+                desplegado.
+              </Banner>
+            )}
             <elevenlabs-convai agent-id={agente.agent_id_eleven!} />
             <div>
               <Button
