@@ -15,6 +15,7 @@ import {
 } from "@/lib/bots/tipos";
 import { Banner } from "@/components/admin/ui/Banner";
 import { Button } from "@/components/admin/ui/Button";
+import { Cockpit, CockpitBody } from "@/components/admin/ui/Cockpit";
 import { EmptyState } from "@/components/admin/ui/EmptyState";
 import { Island } from "@/components/admin/ui/Island";
 import { ListRow } from "@/components/admin/ui/ListRow";
@@ -149,7 +150,7 @@ export function ZakView({
   }));
 
   return (
-    <section>
+    <Cockpit>
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-hairline px-5 py-4">
         <div>
           <h1 className="text-lg font-semibold text-tinta">
@@ -174,7 +175,10 @@ export function ZakView({
         )}
       </header>
 
-      <div className="flex flex-col gap-4 px-5 py-4">
+      {/* Avisos y pestañas viven FUERA del body: alto natural, siempre a la
+          vista. Si vivieran dentro se irían con el scroll — y su alto variable
+          era justo lo que descuadraba el viejo calc(100dvh-13.5rem). */}
+      <div className="flex shrink-0 flex-col gap-4 px-5 pt-4">
         {!instancia && (
           <Banner>
             Sin conexión con el bot: se muestra lo último conocido. Recarga en un momento.
@@ -183,7 +187,9 @@ export function ZakView({
         {avisoSync && <Banner>{avisoSync}</Banner>}
 
         <Tabs pestanas={pestanas} activa={tab} onCambiar={setTab} />
+      </div>
 
+      <CockpitBody>
         {tab === "bandeja" && (
           <Conversaciones
             instanciaId={ID_ZAK}
@@ -351,7 +357,7 @@ export function ZakView({
             onEditarPrompt={() => setTab("prompt")}
           />
         )}
-      </div>
-    </section>
+      </CockpitBody>
+    </Cockpit>
   );
 }

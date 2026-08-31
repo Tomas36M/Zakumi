@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Cockpit, CockpitBody } from "@/components/admin/ui/Cockpit";
 import { verifySession } from "@/lib/admin/dal";
 import type { Solicitud } from "@/lib/portal/solicitudes";
 import {
@@ -37,7 +38,7 @@ export default async function SolicitudesAdminPage() {
   }
 
   return (
-    <section>
+    <Cockpit>
       <header className="border-b border-hairline px-5 py-4">
         <h1 className="text-lg font-semibold text-tinta">Solicitudes del portal</h1>
         <p className="text-xs text-tinta-60">
@@ -45,9 +46,9 @@ export default async function SolicitudesAdminPage() {
           activa. Cada activación crea el cliente y su producto en la cartera.
         </p>
       </header>
-      <div className="px-5 py-4">
+      <CockpitBody>
         <BandejaSolicitudes solicitudes={solicitudes} perfiles={perfiles} />
-      </div>
-    </section>
+      </CockpitBody>
+    </Cockpit>
   );
 }
