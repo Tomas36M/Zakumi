@@ -186,6 +186,16 @@ async function sincronizar(agente: AgenteVozFila): Promise<{ error: string | nul
 export async function crearAgenteVoz(
   datos: DatosConfig,
 ): Promise<{ id: string; aviso: string | null } | { error: string }> {
+  return crearAgente(datos, false);
+}
+
+/** El alta de verdad. `esZak` viaja en el INSERT (no en un update posterior):
+ * un segundo statement puede fallar y dejar el agente sin marcar — pasó el
+ * 2026-08-30, con la caché de esquema de PostgREST recién creada la columna. */
+async function crearAgente(
+  datos: DatosConfig,
+  esZak: boolean,
+): Promise<{ id: string; aviso: string | null } | { error: string }> {
   const { supabase } = await verifySession();
 
   const v = validarConfig(datos);
@@ -193,7 +203,7 @@ export async function crearAgenteVoz(
 
   const { data, error } = await supabase
     .from("agentes_voz")
-    .insert(v.fila)
+    .insert({ ...v.fila, es_zak: esZak })
     .select("id")
     .single();
   if (error || !data) {
@@ -574,32 +584,55 @@ export async function crearAgenteZakVoz(
   const existente = await agenteZakVoz(supabase);
   if (existente) return { error: "Zak ya tiene voz — edítala en su ficha." };
 
-  const creado = await crearAgenteVoz({
-    nombre: NOMBRE_AGENTE_ZAK,
-    clienteId: null,
-    voiceId,
-    primerMensaje: PRIMER_MENSAJE_ZAK,
-    secciones: SECCIONES_ZAK,
-    extraccion: [...EXTRACCION_ZAK],
-    capDiario: CAP_DIARIO_ZAK,
-  });
-  if ("error" in creado) return creado;
+  // es_zak va en el INSERT; el índice único parcial corta la carrera de dos
+  // admins creándolo a la vez (el segundo recibe el error del insert).
+  return crearAgente(
+    {
+      nombre: NOMBRE_AGENTE_ZAK,
+      clienteId: null,
+      voiceId,
+      primerMensaje: PRIMER_MENSAJE_ZAK,
+      secciones: SECCIONES_ZAK,
+      extraccion: [...EXTRACCION_ZAK],
+      capDiario: CAP_DIARIO_ZAK,
+    },
+    true,
+  );
+}
 
-  // El índice único parcial (es_zak) corta la carrera de dos admins creándolo.
-  const upd = await supabase
+/**
+ * Designa qué agente es la voz de Zak (el que usan el cockpit y el bot para
+ * llamar). Repara el caso de un agente creado sin la marca y permite mover la
+ * voz de Zak a otro agente sin SQL.
+ */
+export async function marcarAgenteComoZak(id: string): Promise<{ error: string | null }> {
+  const { supabase } = await verifySession();
+  if (!UUID.test(id)) return { error: "Agente no válido." };
+
+  const agente = await obtenerAgenteVoz(supabase, id);
+  if (!agente) return { error: "El agente no existe." };
+  if (agente.es_zak) return { error: null };
+
+  // Primero desmarcar: el índice único parcial no deja dos voces de Zak.
+  const limpia = await supabase
     .from("agentes_voz")
-    .update({ es_zak: true })
-    .eq("id", creado.id);
-  if (upd.error) {
-    console.error("[crearAgenteZakVoz] es_zak:", upd.error.message);
-    return {
-      id: creado.id,
-      aviso: "El agente quedó creado pero no marcado como Zak — ¿ya existía otro?",
-    };
+    .update({ es_zak: false })
+    .eq("es_zak", true);
+  if (limpia.error) {
+    console.error("[marcarAgenteComoZak] desmarcar:", limpia.error.message);
+    return { error: "No se pudo liberar la marca del agente anterior." };
   }
 
-  revalidarVoz(creado.id);
-  return creado;
+  const { error } = await supabase
+    .from("agentes_voz")
+    .update({ es_zak: true })
+    .eq("id", id);
+  if (error) {
+    console.error("[marcarAgenteComoZak]", error.message);
+    return { error: "No se pudo marcar el agente como la voz de Zak." };
+  }
+  revalidarVoz(id);
+  return { error: null };
 }
 
 export async function buscarVocesEspanol(
