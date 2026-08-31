@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import { X } from "lucide-react";
-import { crearAgenteVoz } from "@/lib/admin/voz-actions";
+import { crearAgenteVoz, crearAgenteZakVoz } from "@/lib/admin/voz-actions";
 import type { AgenteVozFila } from "@/lib/admin/voz";
 import type { VozEleven } from "@/lib/voz/api";
 import { seccionesVacias } from "@/lib/voz/guias";
@@ -15,10 +15,24 @@ import { EmptyState } from "@/components/admin/ui/EmptyState";
 import { Field, Input, Select, TextArea } from "@/components/admin/ui/Field";
 import { IconButton } from "@/components/admin/ui/IconButton";
 import { Island } from "@/components/admin/ui/Island";
+import { BibliotecaVoces } from "./BibliotecaVoces";
 
 type Cliente = { id: string; nombre: string };
 
-/** Selector de voz con oído: el nombre no dice nada, el preview sí. */
+function OpcionesVoz({ voces }: { voces: VozEleven[] }) {
+  return (
+    <>
+      {voces.map((v) => (
+        <option key={v.voice_id} value={v.voice_id}>
+          {v.nombre}
+          {v.etiquetas ? ` — ${v.etiquetas}` : ""}
+        </option>
+      ))}
+    </>
+  );
+}
+
+/** Selector de voz con oído: el nombre no dice nada, el preview sí. Español primero. */
 export function SelectorVoz({
   voces,
   valor,
@@ -29,17 +43,32 @@ export function SelectorVoz({
   onCambio: (voiceId: string) => void;
 }) {
   const elegida = useMemo(() => voces.find((v) => v.voice_id === valor) ?? null, [voces, valor]);
+  const enEspanol = useMemo(() => voces.filter((v) => v.idioma === "es"), [voces]);
+  const otras = useMemo(() => voces.filter((v) => v.idioma !== "es"), [voces]);
   return (
     <div className="flex flex-col gap-2">
       <Select value={valor} onChange={(e) => onCambio(e.target.value)}>
         <option value="">Elige una voz…</option>
-        {voces.map((v) => (
-          <option key={v.voice_id} value={v.voice_id}>
-            {v.nombre}
-            {v.etiquetas ? ` — ${v.etiquetas}` : ""}
-          </option>
-        ))}
+        {enEspanol.length > 0 ? (
+          <>
+            <optgroup label="En español">
+              <OpcionesVoz voces={enEspanol} />
+            </optgroup>
+            <optgroup label="Otros idiomas (suenan con acento extranjero)">
+              <OpcionesVoz voces={otras} />
+            </optgroup>
+          </>
+        ) : (
+          <OpcionesVoz voces={otras} />
+        )}
       </Select>
+      {enEspanol.length === 0 && (
+        <p className="text-xs text-tinta-40">
+          El workspace aún no tiene voces en español — agrégalas desde “Voces en
+          español” arriba en la consola; las llamadas son en español y estas
+          voces sonarían con acento extranjero.
+        </p>
+      )}
       {elegida?.preview_url && (
         // key: al cambiar de voz el <audio> recarga el preview nuevo.
         <audio
@@ -169,6 +198,60 @@ function NuevoAgenteForm({
   );
 }
 
+/** Alta de un clic de la voz de Zak: todo viene sembrado menos la voz. */
+function CrearZak({ voces }: { voces: VozEleven[] }) {
+  const router = useRouter();
+  const [pendiente, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+  const [voiceId, setVoiceId] = useState("");
+
+  return (
+    <Island
+      titulo="Zak todavía no tiene voz"
+      className="flex max-w-2xl flex-col gap-3 bg-acento-10"
+    >
+      <p className="text-xs text-tinta-60">
+        Se crea con su prompt completo (quién es, catálogo con precios, guion de
+        llamada, horarios y límites) y la extracción de leads. Solo falta
+        elegirle la voz — en español, que es el idioma de las llamadas.
+      </p>
+      <Field label="Voz de Zak *">
+        <SelectorVoz voces={voces} valor={voiceId} onCambio={setVoiceId} />
+      </Field>
+      {error && <Banner variante="error">{error}</Banner>}
+      <Button
+        variante="primaria"
+        className="self-start"
+        disabled={pendiente || !voiceId}
+        onClick={() => {
+          setError(null);
+          startTransition(async () => {
+            try {
+              const r = await crearAgenteZakVoz(voiceId);
+              if ("error" in r) {
+                setError(r.error);
+                return;
+              }
+              if (r.aviso) {
+                // Fallo parcial (ElevenLabs caído, o es_zak sin marcar): se
+                // muestra tal cual y NO se navega como si fuera éxito total.
+                setError(r.aviso);
+                router.refresh();
+                return;
+              }
+              router.push(`/admin/voz/${r.id}`);
+            } catch {
+              setError("Se perdió la conexión — mira la lista antes de reintentar (pudo crearse).");
+            }
+          });
+        }}
+      >
+        {pendiente ? "Creando a Zak…" : "Crear a Zak"}
+      </Button>
+    </Island>
+  );
+}
+
 export function VozView({
   agentes,
   llamadasHoy,
@@ -181,6 +264,7 @@ export function VozView({
   clientes: Cliente[];
 }) {
   const [creando, setCreando] = useState(false);
+  const [biblioteca, setBiblioteca] = useState(false);
 
   return (
     <section>
@@ -189,13 +273,18 @@ export function VozView({
         <span className="text-xs text-tinta-40">
           {agentes.length === 1 ? "1 agente" : `${agentes.length} agentes`}
         </span>
-        <Button
-          variante="primaria"
-          onClick={() => setCreando((v) => !v)}
-          disabled={voces === null}
-        >
-          {creando ? "Cancelar" : "Nuevo agente de voz"}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button onClick={() => setBiblioteca((v) => !v)} disabled={voces === null}>
+            Voces en español
+          </Button>
+          <Button
+            variante="primaria"
+            onClick={() => setCreando((v) => !v)}
+            disabled={voces === null}
+          >
+            {creando ? "Cancelar" : "Nuevo agente de voz"}
+          </Button>
+        </div>
       </header>
 
       <div className="flex flex-col gap-4 px-5 py-4">
@@ -205,6 +294,12 @@ export function VozView({
             responde. Los agentes ya creados se listan igual.
           </Banner>
         )}
+
+        {biblioteca && voces !== null && (
+          <BibliotecaVoces onCerrar={() => setBiblioteca(false)} />
+        )}
+
+        {voces !== null && !agentes.some((a) => a.es_zak) && <CrearZak voces={voces} />}
 
         {creando && voces !== null && (
           <NuevoAgenteForm voces={voces} clientes={clientes} onCerrar={() => setCreando(false)} />
@@ -227,9 +322,12 @@ export function VozView({
                 >
                   <header className="flex items-center justify-between gap-2">
                     <h2 className="truncate text-sm font-semibold text-tinta">{a.nombre}</h2>
-                    <Badge tono={a.activo ? "vivo" : "peligro"}>
-                      {a.activo ? "Activo" : "Apagado"}
-                    </Badge>
+                    <span className="flex shrink-0 items-center gap-1">
+                      {a.es_zak && <Badge tono="cliente">Zak</Badge>}
+                      <Badge tono={a.activo ? "vivo" : "peligro"}>
+                        {a.activo ? "Activo" : "Apagado"}
+                      </Badge>
+                    </span>
                   </header>
                   <p className="text-xs text-tinta-60">
                     Voz · {a.cliente_nombre ?? "Demo de Zakumi"}

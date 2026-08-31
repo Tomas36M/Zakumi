@@ -77,6 +77,8 @@ export type AgenteVoz = {
   extraccion: CampoExtraccion[];
   cap_diario: number;
   activo: boolean;
+  /** true = la voz de Zak (agente interno del cockpit); a lo sumo uno. */
+  es_zak: boolean;
   created_at: string;
   updated_at: string;
 };

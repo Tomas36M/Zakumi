@@ -12,12 +12,21 @@
 import { revalidatePath } from "next/cache";
 import { verifySession } from "./dal";
 import {
+  agenteZakVoz,
   contarLlamadasHoy,
   extraccionDe,
   obtenerAgenteVoz,
   obtenerLlamadaVoz,
   type AgenteVozFila,
 } from "./voz";
+import {
+  CAP_DIARIO_ZAK,
+  EXTRACCION_ZAK,
+  NOMBRE_AGENTE_ZAK,
+  PRIMER_MENSAJE_ZAK,
+  SECCIONES_ZAK,
+} from "@/lib/voz/zak";
+import { despacharLlamadaZak, mensajeDe, numeroSaliente } from "@/lib/voz/despacho";
 import {
   normalizarTelefono,
   payloadAgente,
@@ -35,36 +44,25 @@ import {
 } from "@/lib/voz/tipos";
 import {
   actualizarAgenteEleven,
+  agregarVozCompartida,
+  buscarVocesCompartidas,
   crearAgenteEleven,
   enviarBatch,
   llamadaSaliente,
   obtenerConversacion,
-  type ErrorVoz,
+  LOCALES_BIBLIOTECA,
+  type VozCompartida,
 } from "@/lib/voz/api";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const CLAVE_EXTRACCION = /^[a-z][a-z0-9_]{1,40}$/;
 const VOICE_ID = /^[A-Za-z0-9]{8,40}$/;
+const OWNER_ID = /^[a-f0-9]{16,128}$/i;
+// La whitelist del filtro sale de la misma lista que pintan los chips de la UI.
+const LOCALES_ES = new Set(LOCALES_BIBLIOTECA.map((l) => l.valor));
 const TIPOS_VALIDOS = new Set<TipoExtraccion>(["string", "boolean", "integer", "number"]);
 const MAX_CAMPOS_EXTRACCION = 15;
 const MAX_TANDA = 200;
-
-function mensajeDe(error: ErrorVoz): string {
-  switch (error) {
-    case "sin_configurar":
-      return "Falta ELEVENLABS_API_KEY en el servidor (ver .env.example).";
-    case "sin_conexion":
-      return "ElevenLabs no respondió. Inténtalo de nuevo en un momento.";
-    case "no_autorizado":
-      return "ElevenLabs rechazó la API key (¿scope ElevenAgents?).";
-    case "no_existe":
-      return "Ese recurso ya no existe en ElevenLabs.";
-    case "peticion_invalida":
-      return "ElevenLabs rechazó la configuración enviada.";
-    default:
-      return "ElevenLabs devolvió un error inesperado.";
-  }
-}
 
 function revalidarVoz(id?: string) {
   revalidatePath("/admin/voz");
@@ -325,10 +323,6 @@ async function validarCap(
   return null;
 }
 
-function numeroSaliente(agente: AgenteVozFila): string | null {
-  return agente.phone_number_id_eleven ?? process.env.ELEVENLABS_PHONE_NUMBER_ID ?? null;
-}
-
 export async function llamadaPruebaVoz(
   id: string,
   telefonoCrudo: string,
@@ -369,6 +363,97 @@ export async function llamadaPruebaVoz(
   // El conversation_id permite al lab narrar la llamada en vivo; si ElevenLabs
   // solo devolvió el callSid de Twilio, el resultado aterriza igual por webhook.
   return { conversationId: r.data.conversation_id };
+}
+
+/**
+ * Zak llama a un prospecto: despacha una saliente con el agente es_zak.
+ * Si viene negocioId, la llamada queda correlacionada (dynamic_variables) y
+ * el negocio pasa de 'nuevo' a 'contactado' — forward-only, como la tanda
+ * de WhatsApp; jamás degrada un respondido/interesado.
+ */
+export async function llamarConZak(datos: {
+  telefono: string;
+  nombreContacto?: string;
+  negocioId?: string;
+}): Promise<{ conversationId: string | null } | { error: string }> {
+  const { supabase } = await verifySession();
+  const r = await despacharLlamadaZak(supabase, datos);
+  if (!("error" in r)) revalidarVoz();
+  return r;
+}
+
+/** Crea el agente de voz de Zak (es_zak) con su prompt semilla completo. */
+export async function crearAgenteZakVoz(
+  voiceId: string,
+): Promise<{ id: string; aviso: string | null } | { error: string }> {
+  const { supabase } = await verifySession();
+  if (typeof voiceId !== "string" || !VOICE_ID.test(voiceId)) {
+    return { error: "Elige una voz (en español) para Zak." };
+  }
+
+  const existente = await agenteZakVoz(supabase);
+  if (existente) return { error: "Zak ya tiene voz — edítala en su ficha." };
+
+  const creado = await crearAgenteVoz({
+    nombre: NOMBRE_AGENTE_ZAK,
+    clienteId: null,
+    voiceId,
+    primerMensaje: PRIMER_MENSAJE_ZAK,
+    secciones: SECCIONES_ZAK,
+    extraccion: [...EXTRACCION_ZAK],
+    capDiario: CAP_DIARIO_ZAK,
+  });
+  if ("error" in creado) return creado;
+
+  // El índice único parcial (es_zak) corta la carrera de dos admins creándolo.
+  const upd = await supabase
+    .from("agentes_voz")
+    .update({ es_zak: true })
+    .eq("id", creado.id);
+  if (upd.error) {
+    console.error("[crearAgenteZakVoz] es_zak:", upd.error.message);
+    return {
+      id: creado.id,
+      aviso: "El agente quedó creado pero no marcado como Zak — ¿ya existía otro?",
+    };
+  }
+
+  revalidarVoz(creado.id);
+  return creado;
+}
+
+export async function buscarVocesEspanol(
+  locale: string,
+  busqueda: string,
+): Promise<{ voces: VozCompartida[] } | { error: string }> {
+  await verifySession();
+  if (typeof locale !== "string" || !LOCALES_ES.has(locale)) {
+    return { error: "Filtro de acento no válido." };
+  }
+  const b = typeof busqueda === "string" ? busqueda.trim().slice(0, 80) : "";
+  const r = await buscarVocesCompartidas({
+    locale: locale || undefined,
+    busqueda: b || undefined,
+  });
+  if (!r.ok) return { error: mensajeDe(r.error) };
+  return { voces: r.data };
+}
+
+export async function agregarVozEspanol(
+  publicOwnerId: string,
+  voiceId: string,
+  nombre: string,
+): Promise<{ error: string | null }> {
+  await verifySession();
+  if (!OWNER_ID.test(publicOwnerId) || !VOICE_ID.test(voiceId)) {
+    return { error: "Voz no válida." };
+  }
+  const n = typeof nombre === "string" ? nombre.trim().slice(0, 80) : "";
+  if (!n) return { error: "La voz necesita un nombre." };
+  const r = await agregarVozCompartida(publicOwnerId, voiceId, n);
+  if (!r.ok) return { error: mensajeDe(r.error) };
+  revalidarVoz();
+  return { error: null };
 }
 
 /** Fase de una llamada de prueba, para el polling del lab. */

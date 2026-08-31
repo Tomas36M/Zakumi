@@ -16,6 +16,7 @@ export type ErrorVoz =
   | "no_autorizado" // 401 (key mala o sin scope)
   | "no_existe" // 404 (agente/conversación borrados)
   | "peticion_invalida" // 400/422 (payload rechazado)
+  | "plan_insuficiente" // la voz de la biblioteca exige un plan pago mayor
   | "eleven_error"; // 5xx o cualquier otra cosa
 
 export type Resultado<T> = { ok: true; data: T } | { ok: false; error: ErrorVoz };
@@ -25,6 +26,19 @@ export type VozEleven = {
   nombre: string;
   preview_url: string | null;
   etiquetas: string;
+  /** labels.language de ElevenLabs ("es", "en", …) — null si no viene. */
+  idioma: string | null;
+};
+
+/** Una voz de la biblioteca compartida de ElevenLabs (aún no en el workspace). */
+export type VozCompartida = {
+  public_owner_id: string;
+  voice_id: string;
+  nombre: string;
+  idioma: string | null;
+  locale: string | null;
+  etiquetas: string;
+  preview_url: string | null;
 };
 
 const BASE = "https://api.elevenlabs.io";
@@ -104,25 +118,106 @@ export function actualizarAgenteEleven(
 
 // ---------- Voces del workspace (incluye las de Luci: se muestran, no pasa nada) ----------
 
-export function listarVoces(): Promise<Resultado<VozEleven[]>> {
-  return pedir("GET", "/v2/voices?page_size=100", (j) => {
-    const voces = (j as { voices?: unknown })?.voices;
-    if (!Array.isArray(voces)) return [];
-    return voces.map((v) => {
+function etiquetasDe(labels: Record<string, unknown>, claves: readonly string[]): string {
+  return claves
+    .map((k) => labels[k])
+    .filter((x): x is string => typeof x === "string" && x !== "")
+    .join(" · ");
+}
+
+/** Parser PURO del GET /v2/voices (testeable sin red). */
+export function parseVocesWorkspace(json: unknown): VozEleven[] {
+  const voces = (json as { voices?: unknown })?.voices;
+  if (!Array.isArray(voces)) return [];
+  return voces
+    .map((v) => {
       const voz = (v ?? {}) as Record<string, unknown>;
       const labels = (voz.labels ?? {}) as Record<string, unknown>;
-      const etiquetas = ["accent", "gender", "age", "description"]
-        .map((k) => labels[k])
-        .filter((x): x is string => typeof x === "string" && x !== "")
-        .join(" · ");
       return {
         voice_id: String(voz.voice_id ?? ""),
         nombre: String(voz.name ?? "(sin nombre)"),
         preview_url: typeof voz.preview_url === "string" ? voz.preview_url : null,
-        etiquetas,
+        etiquetas: etiquetasDe(labels, ["accent", "gender", "age", "description"]),
+        idioma: typeof labels.language === "string" ? labels.language : null,
       };
-    }).filter((v) => v.voice_id !== "");
-  });
+    })
+    .filter((v) => v.voice_id !== "");
+}
+
+export function listarVoces(): Promise<Resultado<VozEleven[]>> {
+  return pedir("GET", "/v2/voices?page_size=100", parseVocesWorkspace);
+}
+
+// ---------- Biblioteca compartida: voces en español para el workspace ----------
+
+/** Parser PURO del GET /v1/shared-voices (testeable sin red). */
+export function parseVocesCompartidas(json: unknown): VozCompartida[] {
+  const voces = (json as { voices?: unknown })?.voices;
+  if (!Array.isArray(voces)) return [];
+  return voces
+    .map((v) => {
+      const voz = (v ?? {}) as Record<string, unknown>;
+      return {
+        public_owner_id: String(voz.public_owner_id ?? ""),
+        voice_id: String(voz.voice_id ?? ""),
+        nombre: String(voz.name ?? "(sin nombre)"),
+        idioma: typeof voz.language === "string" ? voz.language : null,
+        locale: typeof voz.locale === "string" ? voz.locale : null,
+        etiquetas: etiquetasDe(voz, ["accent", "gender", "age", "use_case"]),
+        preview_url: typeof voz.preview_url === "string" ? voz.preview_url : null,
+      };
+    })
+    .filter((v) => v.voice_id !== "" && v.public_owner_id !== "");
+}
+
+/** Acentos que ofrece la biblioteca ("" = todo español). Única fuente:
+ * los chips de la UI y la whitelist del server action salen de aquí. */
+export const LOCALES_BIBLIOTECA: readonly { valor: string; label: string }[] = [
+  { valor: "es-CO", label: "Colombia" },
+  { valor: "es-MX", label: "México" },
+  { valor: "es-AR", label: "Argentina" },
+  { valor: "es-ES", label: "España" },
+  { valor: "", label: "Todo español" },
+] as const;
+
+/**
+ * Busca voces en la biblioteca pública de ElevenLabs. El workspace nace con
+ * puras voces en inglés; el español (el idioma principal del negocio) se trae
+ * de aquí — hay cientos con locale es-CO / es-MX / es-ES.
+ */
+export function buscarVocesCompartidas(opts: {
+  locale?: string;
+  busqueda?: string;
+}): Promise<Resultado<VozCompartida[]>> {
+  const params = new URLSearchParams({ page_size: "24", language: "es" });
+  if (opts.locale) params.set("locale", opts.locale);
+  if (opts.busqueda) params.set("search", opts.busqueda);
+  return pedir("GET", `/v1/shared-voices?${params.toString()}`, parseVocesCompartidas);
+}
+
+/** Agrega una voz de la biblioteca al workspace (aparece en el selector). */
+export async function agregarVozCompartida(
+  publicOwnerId: string,
+  voiceId: string,
+  nuevoNombre: string,
+): Promise<Resultado<{ voice_id: string }>> {
+  const path = `/v1/voices/add/${encodeURIComponent(publicOwnerId)}/${encodeURIComponent(voiceId)}`;
+  const r = await llamar("POST", path, { new_name: nuevoNombre });
+  if (!r.ok) return r;
+  const { status, json } = r.data;
+  if (status >= 200 && status < 300) {
+    return {
+      ok: true,
+      data: { voice_id: String((json as { voice_id?: unknown })?.voice_id ?? voiceId) },
+    };
+  }
+  // Verificado contra la API (2026-08-30): algunas voces de la biblioteca
+  // responden 400 {detail:{code:'paid_plan_required'}} — merece su propio
+  // mensaje, no el genérico de payload rechazado.
+  const code = ((json as { detail?: { code?: unknown } })?.detail?.code ?? "") as string;
+  if (code === "paid_plan_required") return { ok: false, error: "plan_insuficiente" };
+  console.error(`[voz] POST ${path} → ${status}:`, JSON.stringify(json)?.slice(0, 300));
+  return { ok: false, error: errorDeStatus(status) };
 }
 
 // ---------- Llamadas salientes ----------

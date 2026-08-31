@@ -4,8 +4,9 @@ import { parseEventoPostCall } from "@/lib/voz/webhook";
 import { createSupabaseService } from "@/lib/voz/supabase-service";
 import { avisarAdmin } from "@/lib/portal/avisos";
 
-// Webhook post-call de ElevenLabs — el ÚNICO endpoint público del repo
-// (src/proxy.ts no cubre /api/** a propósito: aquí la puerta es la firma).
+// Webhook post-call de ElevenLabs — endpoint público (src/proxy.ts no cubre
+// /api/** a propósito: aquí la puerta es la firma; el otro endpoint público
+// es /api/zak/llamar, con token).
 //
 // Contrato de respuestas (calcado del lazo probado de Luci):
 //   200 = procesado | duplicado | sin_agente | tipo no manejado
@@ -55,12 +56,39 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "db" }, { status: 500 });
   }
 
-  const r = (data ?? {}) as { status?: string; lead?: boolean; agente_nombre?: string };
+  const r = (data ?? {}) as {
+    status?: string;
+    lead?: boolean;
+    agente_nombre?: string;
+    sin_cliente?: boolean;
+  };
 
   // Aviso de lead por WhatsApp — fire-and-forget: nunca tumba el 200.
-  if (r.status === "ok" && r.lead === true) {
-    const d = evento.params.p_datos ?? {};
-    const quien = [d.lead_nombre, d.lead_telefono ?? evento.params.p_telefono]
+  // Dos casos: se creó la venta en el portal (lead=true, cualquier canal
+  // salvo prueba), o el agente es interno (Zak/demo, sin cliente): la RPC no
+  // crea venta pero el prospecto es de Zakumi. Para el interno solo avisan
+  // saliente/entrante — las sesiones de widget del agente interno son casi
+  // siempre el lab del panel, y las pruebas nunca avisan.
+  const d = evento.params.p_datos ?? {};
+  const dir = evento.params.p_direccion;
+  const hayDatosLead =
+    (typeof d.lead_nombre === "string" && d.lead_nombre !== "") ||
+    (typeof d.lead_telefono === "string" && d.lead_telefono !== "") ||
+    d.lead_interesado === true;
+  const debeAvisar =
+    r.status === "ok" &&
+    dir !== "prueba" &&
+    (r.lead === true ||
+      (r.sin_cliente === true &&
+        hayDatosLead &&
+        (dir === "saliente" || dir === "entrante")));
+  if (debeAvisar) {
+    // '' del extractor no es un teléfono: cae al número marcado del evento.
+    const telLead =
+      typeof d.lead_telefono === "string" && d.lead_telefono !== ""
+        ? d.lead_telefono
+        : evento.params.p_telefono;
+    const quien = [d.lead_nombre, telLead]
       .filter((x): x is string => typeof x === "string" && x !== "")
       .join(" · ");
     await avisarAdmin(

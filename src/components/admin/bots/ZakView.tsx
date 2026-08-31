@@ -27,6 +27,7 @@ import { Conversaciones } from "./Conversaciones";
 import { LabsChat } from "./LabsChat";
 import { PlantillasZak } from "./PlantillasZak";
 import { PromptEditor } from "./PromptEditor";
+import { BotonLlamarZak, type EstadoVozZak } from "@/components/admin/voz/BotonLlamarZak";
 
 export type PestanaZak =
   | "bandeja"
@@ -61,6 +62,8 @@ type Props = {
   verticales: VerticalProspeccion[];
   /** Las filas crudas de plantillas_zak para la pestaña Plantillas. */
   plantillas: PlantillaZakFila[];
+  /** Estado de la voz de Zak (server): habilita "Llamar con IA". */
+  vozZak: EstadoVozZak;
 };
 
 /**
@@ -79,6 +82,7 @@ export function ZakView({
   telefonoInicial = null,
   verticales,
   plantillas,
+  vozZak,
 }: Props) {
   const router = useRouter();
   const [tab, setTab] = useState<PestanaZak>(tabInicial);
@@ -186,6 +190,7 @@ export function ZakView({
             esZak
             abrirInicial={telefonoInicial}
             verticales={verticales}
+            vozZak={vozZak}
           />
         )}
 
@@ -223,7 +228,15 @@ export function ZakView({
                           {p.interes_resumen ?? "interés sin detalle"}
                         </p>
                       </div>
-                      <Button onClick={() => setTab("bandeja")}>Abrir chat</Button>
+                      <span className="flex shrink-0 flex-wrap items-center gap-2">
+                        <BotonLlamarZak
+                          vozZak={vozZak}
+                          telefono={`+${p.telefono}`}
+                          nombre={p.contexto.nombre ?? null}
+                          negocioId={p.negocio_id}
+                        />
+                        <Button onClick={() => setTab("bandeja")}>Abrir chat</Button>
+                      </span>
                     </ListRow>
                   </li>
                 ))}
