@@ -49,11 +49,22 @@ import {
   crearAgenteEleven,
   eliminarAgenteEleven,
   enviarBatch,
+  importarNumeroEleven,
+  listarNumerosEleven,
   llamadaSaliente,
   obtenerConversacion,
   LOCALES_BIBLIOTECA,
+  type NumeroEleven,
   type VozCompartida,
 } from "@/lib/voz/api";
+import {
+  buscarNumeros,
+  comprarNumero,
+  credencialesTwilio,
+  mensajeTwilio,
+  twilioConfigurado,
+  type NumeroDisponible,
+} from "@/lib/voz/twilio";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const CLAVE_EXTRACCION = /^[a-z][a-z0-9_]{1,40}$/;
@@ -381,6 +392,140 @@ export async function llamarConZak(datos: {
   const r = await despacharLlamadaZak(supabase, datos);
   if (!("error" in r)) revalidarVoz();
   return r;
+}
+
+// ---------- Telefonía: comprar en Twilio, importar en ElevenLabs, asignar ----------
+
+const PAISES_TELEFONIA = new Set(["US", "CO", "MX", "ES"]);
+const NUMERO_E164 = /^\+[1-9][0-9]{6,14}$/;
+
+export type EstadoTelefonia = {
+  twilioListo: boolean;
+  numeros: NumeroEleven[];
+  /** Número del env compartido (el fallback de todos los agentes). */
+  numeroEnv: string | null;
+  error: string | null;
+};
+
+export async function estadoTelefonia(): Promise<EstadoTelefonia> {
+  await verifySession();
+  const twilioListo = twilioConfigurado();
+  const r = await listarNumerosEleven();
+  return {
+    twilioListo,
+    numeros: r.ok ? r.data : [],
+    numeroEnv: process.env.ELEVENLABS_PHONE_NUMBER_ID ?? null,
+    error: r.ok ? null : mensajeDe(r.error),
+  };
+}
+
+export async function buscarNumerosTwilio(
+  pais: string,
+  prefijo: string,
+): Promise<{ numeros: NumeroDisponible[] } | { error: string }> {
+  await verifySession();
+  if (!PAISES_TELEFONIA.has(pais)) return { error: "País no soportado." };
+  const p = typeof prefijo === "string" ? prefijo.replace(/\D/g, "").slice(0, 5) : "";
+  const r = await buscarNumeros(pais, p || undefined);
+  if (!r.ok) return { error: mensajeTwilio(r.error) };
+  return { numeros: r.data };
+}
+
+/**
+ * COMPRA el número en Twilio (cuesta ~US$1.15/mes) y lo importa a ElevenLabs
+ * en un solo paso: un número comprado y no importado es plata botada que
+ * nadie ve. Si la importación falla, el número YA es tuyo — se avisa con el
+ * detalle para importarlo a mano y no volver a comprar.
+ */
+export async function comprarNumeroTelefonia(
+  numero: string,
+  etiqueta: string,
+): Promise<{ phoneNumberId: string } | { error: string }> {
+  await verifySession();
+  if (typeof numero !== "string" || !NUMERO_E164.test(numero)) {
+    return { error: "Número no válido." };
+  }
+  const cred = credencialesTwilio();
+  if (!cred) return { error: mensajeTwilio("sin_configurar") };
+
+  const compra = await comprarNumero(numero);
+  if (!compra.ok) return { error: mensajeTwilio(compra.error) };
+
+  const label = (typeof etiqueta === "string" ? etiqueta.trim() : "").slice(0, 80) || "Zakumi";
+  const imp = await importarNumeroEleven({
+    numero: compra.data.numero,
+    etiqueta: label,
+    sid: cred.sid,
+    token: cred.token,
+  });
+  if (!imp.ok) {
+    return {
+      error:
+        `El número ${compra.data.numero} SE COMPRÓ en Twilio pero no se importó a ` +
+        `ElevenLabs (${mensajeDe(imp.error)}). No vuelvas a comprarlo: impórtalo desde el dashboard.`,
+    };
+  }
+  revalidarVoz();
+  return { phoneNumberId: imp.data.phone_number_id };
+}
+
+/**
+ * Importa a ElevenLabs un número que YA compraste en Twilio (por la consola,
+ * o uno viejo). No compra nada: solo lo pone a disposición del panel.
+ */
+export async function importarNumeroExistente(
+  numero: string,
+  etiqueta: string,
+): Promise<{ phoneNumberId: string } | { error: string }> {
+  await verifySession();
+  if (typeof numero !== "string" || !NUMERO_E164.test(numero.trim())) {
+    return { error: "Número no válido (formato +57… o +1…)." };
+  }
+  const cred = credencialesTwilio();
+  if (!cred) return { error: mensajeTwilio("sin_configurar") };
+
+  const label = (typeof etiqueta === "string" ? etiqueta.trim() : "").slice(0, 80) || "Zakumi";
+  const r = await importarNumeroEleven({
+    numero: numero.trim(),
+    etiqueta: label,
+    sid: cred.sid,
+    token: cred.token,
+  });
+  if (!r.ok) {
+    return {
+      error:
+        r.error === "peticion_invalida"
+          ? "ElevenLabs rechazó el número: ¿está comprado en ESTA cuenta de Twilio y ya importado?"
+          : mensajeDe(r.error),
+    };
+  }
+  revalidarVoz();
+  return { phoneNumberId: r.data.phone_number_id };
+}
+
+/** Deja el número como saliente de ese agente (sin tocar envs ni desplegar). */
+export async function asignarNumeroAAgente(
+  agenteId: string,
+  phoneNumberId: string | null,
+): Promise<{ error: string | null }> {
+  const { supabase } = await verifySession();
+  if (!UUID.test(agenteId)) return { error: "Agente no válido." };
+  const id =
+    typeof phoneNumberId === "string" && /^[A-Za-z0-9_-]{6,80}$/.test(phoneNumberId)
+      ? phoneNumberId
+      : null;
+  if (phoneNumberId && !id) return { error: "Número no válido." };
+
+  const { error } = await supabase
+    .from("agentes_voz")
+    .update({ phone_number_id_eleven: id })
+    .eq("id", agenteId);
+  if (error) {
+    console.error("[asignarNumeroAAgente]", error.message);
+    return { error: "No se pudo asignar el número." };
+  }
+  revalidarVoz(agenteId);
+  return { error: null };
 }
 
 /**

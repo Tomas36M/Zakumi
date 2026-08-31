@@ -17,6 +17,7 @@ import { Banner } from "@/components/admin/ui/Banner";
 import { Button } from "@/components/admin/ui/Button";
 import { Field, Input, Select, TextArea } from "@/components/admin/ui/Field";
 import { Island } from "@/components/admin/ui/Island";
+import { NumeroAgente } from "./NumeroAgente";
 import { SelectorVoz } from "./VozView";
 
 type Cliente = { id: string; nombre: string };
@@ -189,6 +190,10 @@ export function ConfigAgenteVoz({
                 className="max-w-40"
               />
             </Field>
+            <NumeroAgente
+              agenteId={agente.id}
+              numeroActual={agente.phone_number_id_eleven}
+            />
             <div className="flex flex-col gap-2">
               <p className="text-xs font-medium text-tinta-60">
                 Extracción de datos por llamada — lead_nombre / lead_telefono /

@@ -17,6 +17,7 @@ import { Field, Input, Select, TextArea } from "@/components/admin/ui/Field";
 import { IconButton } from "@/components/admin/ui/IconButton";
 import { Island } from "@/components/admin/ui/Island";
 import { BibliotecaVoces } from "./BibliotecaVoces";
+import { Telefonia } from "./Telefonia";
 
 type Cliente = { id: string; nombre: string };
 
@@ -266,6 +267,7 @@ export function VozView({
 }) {
   const [creando, setCreando] = useState(false);
   const [biblioteca, setBiblioteca] = useState(false);
+  const [telefonia, setTelefonia] = useState(false);
 
   return (
     <Cockpit>
@@ -275,6 +277,7 @@ export function VozView({
           {agentes.length === 1 ? "1 agente" : `${agentes.length} agentes`}
         </span>
         <div className="flex items-center gap-2">
+          <Button onClick={() => setTelefonia((v) => !v)}>Telefonía</Button>
           <Button onClick={() => setBiblioteca((v) => !v)} disabled={voces === null}>
             Voces en español
           </Button>
@@ -295,6 +298,8 @@ export function VozView({
             responde. Los agentes ya creados se listan igual.
           </Banner>
         )}
+
+        {telefonia && <Telefonia onCerrar={() => setTelefonia(false)} />}
 
         {biblioteca && voces !== null && (
           <BibliotecaVoces onCerrar={() => setBiblioteca(false)} />
