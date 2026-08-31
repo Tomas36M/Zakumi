@@ -12,6 +12,7 @@ import type {
   VersionPrompt,
 } from "@/lib/bots/tipos";
 import { Banner } from "@/components/admin/ui/Banner";
+import { Cockpit, CockpitBody } from "@/components/admin/ui/Cockpit";
 import { Button } from "@/components/admin/ui/Button";
 import { Tabs } from "@/components/admin/ui/Tabs";
 import { Actividad } from "./Actividad";
@@ -88,7 +89,7 @@ export function AgenteView({ id, instancia, prompt, versiones, status, tabInicia
   }
 
   return (
-    <section>
+    <Cockpit>
       {dialogo}
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-hairline px-5 py-4">
         <div>
@@ -129,7 +130,9 @@ export function AgenteView({ id, instancia, prompt, versiones, status, tabInicia
         )}
       </header>
 
-      <div className="flex flex-col gap-4 px-5 py-4">
+      {/* Avisos y pestañas: alto natural, siempre a la vista, fuera del área
+          que scrollea. */}
+      <div className="flex shrink-0 flex-col gap-4 px-5 pt-4">
         {!instancia && (
           <Banner>
             Sin conexión con el bot: se muestra lo último conocido. Recarga en un momento.
@@ -138,7 +141,9 @@ export function AgenteView({ id, instancia, prompt, versiones, status, tabInicia
         {avisoOperacion && <Banner variante="error">{avisoOperacion}</Banner>}
 
         <Tabs pestanas={PESTANAS} activa={tab} onCambiar={setTab} />
+      </div>
 
+      <CockpitBody>
         {tab === "prompt" && (
           <PromptEditor
             instanciaId={id}
@@ -158,7 +163,7 @@ export function AgenteView({ id, instancia, prompt, versiones, status, tabInicia
           ) : (
             <Banner>Sin conexión con el bot: los ajustes necesitan la instancia viva.</Banner>
           ))}
-      </div>
-    </section>
+      </CockpitBody>
+    </Cockpit>
   );
 }

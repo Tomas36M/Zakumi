@@ -170,9 +170,10 @@ export function PlantillasZak({ filas: filasIniciales }: Props) {
   }
 
   return (
-    // Cockpit: la pestaña ocupa el alto de la pantalla y la lista scrollea
-    // por dentro — el intro, el botón de refrescar y los avisos quedan fijos.
-    <div className="flex flex-col gap-4 min-[900px]:h-[calc(100dvh-13.5rem)]">
+    // La pestaña llena el alto que le da el <CockpitBody> del padre y la lista
+    // scrollea por dentro — el intro, el botón de refrescar y los avisos quedan
+    // fijos. El alto lo manda el padre, nunca un calc() propio.
+    <div className="flex flex-col gap-4 min-[900px]:h-full">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="max-w-2xl text-sm text-tinta-60">
           Lo que Zak envía es siempre la <strong className="text-tinta">versión aprobada</strong>.

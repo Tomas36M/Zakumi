@@ -18,6 +18,7 @@ import {
 } from "@/lib/admin/cartera";
 import { mrrDeProductos, oportunidades } from "@/lib/admin/upsell";
 import type { StatusInstancia } from "@/lib/bots/tipos";
+import { Cockpit, CockpitBody } from "@/components/admin/ui/Cockpit";
 import { Badge } from "@/components/admin/ui/Badge";
 import { Banner } from "@/components/admin/ui/Banner";
 import { Button } from "@/components/admin/ui/Button";
@@ -81,7 +82,7 @@ export function Ficha360({ cliente, productos, pagos, botStatus, hoy }: Props) {
   ];
 
   return (
-    <section>
+    <Cockpit>
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-hairline px-5 py-4">
         <div>
           <h1 className="text-lg font-semibold text-tinta">
@@ -98,7 +99,7 @@ export function Ficha360({ cliente, productos, pagos, botStatus, hoy }: Props) {
         </div>
       </header>
 
-      <div className="flex flex-col gap-aire px-5 py-4">
+      <CockpitBody className="gap-aire">
         <div className="grid grid-cols-1 gap-aire sm:grid-cols-3">
           {cifras.map((c) => (
             <div key={c.label} className="rounded-fila bg-isla-alta px-4 py-3">
@@ -323,7 +324,7 @@ export function Ficha360({ cliente, productos, pagos, botStatus, hoy }: Props) {
             </Island>
           </aside>
         </div>
-      </div>
-    </section>
+      </CockpitBody>
+    </Cockpit>
   );
 }

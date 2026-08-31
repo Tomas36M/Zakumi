@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { verifySession } from "@/lib/admin/dal";
 import type { PerfilBuscado } from "@/lib/admin/perfiles-actions";
+import { Cockpit, CockpitBody } from "@/components/admin/ui/Cockpit";
 import { EquipoView } from "@/components/admin/equipo/EquipoView";
 
 export const metadata: Metadata = { title: "Equipo" };
@@ -22,7 +23,7 @@ export default async function EquipoPage() {
   }));
 
   return (
-    <section>
+    <Cockpit>
       <header className="border-b border-hairline px-5 py-4">
         <h1 className="text-lg font-semibold text-tinta">Equipo</h1>
         <p className="text-xs text-tinta-60">
@@ -31,9 +32,9 @@ export default async function EquipoPage() {
           del portal no se tocan desde aquí (eso vive en la ficha de cada cliente).
         </p>
       </header>
-      <div className="px-5 py-4">
+      <CockpitBody>
         <EquipoView admins={admins} miUserId={sesion.userId} />
-      </div>
-    </section>
+      </CockpitBody>
+    </Cockpit>
   );
 }

@@ -8,6 +8,7 @@ import { horaBogota } from "@/lib/admin/formato";
 import { Badge } from "@/components/admin/ui/Badge";
 import { Banner } from "@/components/admin/ui/Banner";
 import { Button } from "@/components/admin/ui/Button";
+import { Cockpit, CockpitBody } from "@/components/admin/ui/Cockpit";
 import { EmptyState } from "@/components/admin/ui/EmptyState";
 import { Skeleton } from "@/components/admin/ui/Skeleton";
 import { NuevoBotForm } from "./NuevoBotForm";
@@ -53,7 +54,7 @@ export function BotsView({ inicial }: { inicial: StatusGlobal | null }) {
   );
 
   return (
-    <section>
+    <Cockpit>
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-hairline px-5 py-4">
         <h1 className="text-lg font-semibold text-tinta">Bots</h1>
         {cola && (
@@ -67,7 +68,7 @@ export function BotsView({ inicial }: { inicial: StatusGlobal | null }) {
         </Button>
       </header>
 
-      <div className="flex flex-col gap-4 px-5 py-4">
+      <CockpitBody>
         {creando && (
           <NuevoBotForm
             onCreado={(id) => {
@@ -128,7 +129,7 @@ export function BotsView({ inicial }: { inicial: StatusGlobal | null }) {
             );
           })}
         </div>
-      </div>
-    </section>
+      </CockpitBody>
+    </Cockpit>
   );
 }

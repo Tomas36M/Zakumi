@@ -374,10 +374,11 @@ export function Conversaciones({
   const slugParaReabrir = slugReabrir ?? fichaActual?.verticalSlug ?? "generico";
 
   return (
-    // Cockpit: en desktop la bandeja ocupa el alto de la pantalla y CADA
-    // columna scrollea por dentro — el compositor y el «Reabrir» quedan
-    // siempre a la vista, sin scroll de página.
-    <div className="grid items-start gap-aire min-[900px]:h-[calc(100dvh-13.5rem)] min-[900px]:grid-cols-[340px_minmax(0,1fr)] min-[900px]:items-stretch">
+    // En desktop la bandeja llena el alto que le da el <CockpitBody> del padre
+    // y CADA columna scrollea por dentro — el compositor y el «Reabrir» quedan
+    // siempre a la vista, sin scroll de página. El alto lo manda el padre: un
+    // calc() propio se descuadraba en cuanto aparecía un banner encima.
+    <div className="grid items-start gap-aire min-[900px]:h-full min-[900px]:grid-cols-[340px_minmax(0,1fr)] min-[900px]:items-stretch">
       {dialogo}
       <div className="flex min-h-0 flex-col gap-3 rounded-isla border border-hairline bg-isla-alta/40 p-3">
         {esZak && (
