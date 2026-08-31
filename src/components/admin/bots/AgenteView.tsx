@@ -15,17 +15,19 @@ import { Banner } from "@/components/admin/ui/Banner";
 import { Button } from "@/components/admin/ui/Button";
 import { Tabs } from "@/components/admin/ui/Tabs";
 import { Actividad } from "./Actividad";
+import { AjustesBot } from "./AjustesBot";
 import { Conversaciones } from "./Conversaciones";
 import { LabsChat } from "./LabsChat";
 import { PromptEditor } from "./PromptEditor";
 
-export type Pestana = "prompt" | "labs" | "conversaciones" | "actividad";
+export type Pestana = "prompt" | "labs" | "conversaciones" | "actividad" | "ajustes";
 
 const PESTANAS: readonly { id: Pestana; label: string }[] = [
   { id: "prompt", label: "Prompt" },
   { id: "labs", label: "Labs" },
   { id: "conversaciones", label: "Conversaciones" },
   { id: "actividad", label: "Actividad" },
+  { id: "ajustes", label: "Ajustes" },
 ] as const;
 
 type Props = {
@@ -150,6 +152,12 @@ export function AgenteView({ id, instancia, prompt, versiones, status, tabInicia
         )}
         {tab === "conversaciones" && <Conversaciones instanciaId={id} />}
         {tab === "actividad" && <Actividad instanciaId={id} />}
+        {tab === "ajustes" &&
+          (instancia ? (
+            <AjustesBot instancia={instancia} />
+          ) : (
+            <Banner>Sin conexión con el bot: los ajustes necesitan la instancia viva.</Banner>
+          ))}
       </div>
     </section>
   );
