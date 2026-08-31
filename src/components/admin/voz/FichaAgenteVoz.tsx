@@ -14,6 +14,7 @@ import type { VozEleven } from "@/lib/voz/api";
 import type { LlamadaVoz } from "@/lib/voz/tipos";
 import { Banner } from "@/components/admin/ui/Banner";
 import { Button } from "@/components/admin/ui/Button";
+import { Cockpit, CockpitBody } from "@/components/admin/ui/Cockpit";
 import { useConfirmar } from "@/components/admin/ui/Confirmar";
 import { Tabs } from "@/components/admin/ui/Tabs";
 import { ConfigAgenteVoz } from "./ConfigAgenteVoz";
@@ -115,7 +116,7 @@ export function FichaAgenteVoz({
   }
 
   return (
-    <section>
+    <Cockpit>
       {dialogo}
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-hairline px-5 py-4">
         <div>
@@ -150,7 +151,8 @@ export function FichaAgenteVoz({
         </div>
       </header>
 
-      <div className="flex flex-col gap-4 px-5 py-4">
+      {/* Navegación fija: solo el contenido scrollea. */}
+      <div className="flex flex-col gap-3 px-5 pt-4">
         <Tabs
           pestanas={pestanas}
           activa={tab}
@@ -159,26 +161,24 @@ export function FichaAgenteVoz({
             if (t === "lab") setLabVisitado(true);
           }}
         />
-
         {aviso && <Banner variante="error">{aviso}</Banner>}
-
-        {/* Cockpit: el panel scrollea por dentro; la página no. */}
-        <div className="barra-fina flex flex-col gap-4 min-[900px]:h-[calc(100dvh-13.5rem)] min-[900px]:overflow-y-auto min-[900px]:pr-1">
-          {tab === "config" && (
-            <ConfigAgenteVoz agente={agente} voces={voces} clientes={clientes} />
-          )}
-          <div hidden={tab !== "lab"}>
-            {labVisitado && (
-              <LabVoz agente={agente} llamadasHoy={llamadasHoy} telefoniaLista={telefoniaLista} />
-            )}
-          </div>
-          {tab === "llamadas" && <LlamadasVoz agenteId={agente.id} llamadas={llamadas} />}
-          {tab === "tanda" && (
-            <TandaVoz agente={agente} llamadasHoy={llamadasHoy} telefoniaLista={telefoniaLista} />
-          )}
-          {tab === "widget" && <WidgetVoz agentIdEleven={agente.agent_id_eleven} />}
-        </div>
       </div>
-    </section>
+
+      <CockpitBody className="min-[900px]:pr-6">
+        {tab === "config" && (
+          <ConfigAgenteVoz agente={agente} voces={voces} clientes={clientes} />
+        )}
+        <div hidden={tab !== "lab"}>
+          {labVisitado && (
+            <LabVoz agente={agente} llamadasHoy={llamadasHoy} telefoniaLista={telefoniaLista} />
+          )}
+        </div>
+        {tab === "llamadas" && <LlamadasVoz agenteId={agente.id} llamadas={llamadas} />}
+        {tab === "tanda" && (
+          <TandaVoz agente={agente} llamadasHoy={llamadasHoy} telefoniaLista={telefoniaLista} />
+        )}
+        {tab === "widget" && <WidgetVoz agentIdEleven={agente.agent_id_eleven} />}
+      </CockpitBody>
+    </Cockpit>
   );
 }
