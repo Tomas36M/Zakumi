@@ -11,6 +11,7 @@ import { seccionesVacias } from "@/lib/voz/guias";
 import { Badge } from "@/components/admin/ui/Badge";
 import { Banner } from "@/components/admin/ui/Banner";
 import { Button } from "@/components/admin/ui/Button";
+import { Cockpit, CockpitBody } from "@/components/admin/ui/Cockpit";
 import { EmptyState } from "@/components/admin/ui/EmptyState";
 import { Field, Input, Select, TextArea } from "@/components/admin/ui/Field";
 import { IconButton } from "@/components/admin/ui/IconButton";
@@ -267,7 +268,7 @@ export function VozView({
   const [biblioteca, setBiblioteca] = useState(false);
 
   return (
-    <section>
+    <Cockpit>
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-hairline px-5 py-4">
         <h1 className="text-lg font-semibold text-tinta">Voz</h1>
         <span className="text-xs text-tinta-40">
@@ -287,7 +288,7 @@ export function VozView({
         </div>
       </header>
 
-      <div className="flex flex-col gap-4 px-5 py-4">
+      <CockpitBody>
         {voces === null && (
           <Banner>
             Sin conexión con ElevenLabs — falta ELEVENLABS_API_KEY o el proveedor no
@@ -343,7 +344,7 @@ export function VozView({
             })}
           </div>
         )}
-      </div>
-    </section>
+      </CockpitBody>
+    </Cockpit>
   );
 }

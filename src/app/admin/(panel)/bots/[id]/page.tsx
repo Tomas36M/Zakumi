@@ -11,7 +11,7 @@ import { AgenteView, type Pestana } from "@/components/admin/bots/AgenteView";
 
 export const metadata = { title: "Bot" };
 
-const PESTANAS: readonly Pestana[] = ["prompt", "labs", "conversaciones", "actividad"];
+const PESTANAS: readonly Pestana[] = ["prompt", "labs", "conversaciones", "actividad", "ajustes"];
 
 export default async function BotPage({
   params,

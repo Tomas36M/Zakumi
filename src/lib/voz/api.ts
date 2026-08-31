@@ -46,7 +46,7 @@ const BASE = "https://api.elevenlabs.io";
 type Crudo = { status: number; json: unknown };
 
 async function llamar(
-  metodo: "GET" | "POST" | "PATCH",
+  metodo: "GET" | "POST" | "PATCH" | "DELETE",
   path: string,
   body?: unknown,
   timeoutMs = 15_000,
@@ -83,7 +83,7 @@ function errorDeStatus(status: number): ErrorVoz {
 }
 
 async function pedir<T>(
-  metodo: "GET" | "POST" | "PATCH",
+  metodo: "GET" | "POST" | "PATCH" | "DELETE",
   path: string,
   mapear: (json: unknown) => T,
   body?: unknown,
@@ -114,6 +114,12 @@ export function actualizarAgenteEleven(
   payload: Record<string, unknown>,
 ): Promise<Resultado<true>> {
   return pedir("PATCH", `/v1/convai/agents/${encodeURIComponent(agentId)}`, () => true, payload);
+}
+
+/** Borra el agente en ElevenLabs. SOLO con agent_id guardados en agentes_voz
+ * (workspace compartido: jamás borrar agentes de Luci). */
+export function eliminarAgenteEleven(agentId: string): Promise<Resultado<true>> {
+  return pedir("DELETE", `/v1/convai/agents/${encodeURIComponent(agentId)}`, () => true);
 }
 
 // ---------- Voces del workspace (incluye las de Luci: se muestran, no pasa nada) ----------

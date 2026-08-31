@@ -47,6 +47,7 @@ import {
   agregarVozCompartida,
   buscarVocesCompartidas,
   crearAgenteEleven,
+  eliminarAgenteEleven,
   enviarBatch,
   llamadaSaliente,
   obtenerConversacion,
@@ -382,6 +383,40 @@ export async function llamarConZak(datos: {
   return r;
 }
 
+/**
+ * Borra el agente COMPLETO: primero en ElevenLabs (si está sincronizado) y
+ * luego aquí (las llamadas se van en cascada). Si ElevenLabs falla con algo
+ * distinto a "ya no existe", NO se borra la fila — un agente vivo y facturable
+ * sin registro local sería invisible para el panel.
+ */
+export async function eliminarAgenteVoz(id: string): Promise<{ error: string | null }> {
+  const { supabase } = await verifySession();
+  if (!UUID.test(id)) return { error: "Agente no válido." };
+
+  const agente = await obtenerAgenteVoz(supabase, id);
+  if (!agente) return { error: "El agente no existe." };
+
+  if (agente.agent_id_eleven) {
+    const r = await eliminarAgenteEleven(agente.agent_id_eleven);
+    if (!r.ok && r.error !== "no_existe") {
+      return { error: `No se borró en ElevenLabs: ${mensajeDe(r.error)}` };
+    }
+  }
+
+  const { error } = await supabase.from("agentes_voz").delete().eq("id", id);
+  if (error) {
+    console.error("[eliminarAgenteVoz]", error.message);
+    return {
+      error: agente.agent_id_eleven
+        ? "Se borró en ElevenLabs pero no aquí — reintenta para limpiar la fila."
+        : "No se pudo borrar el agente.",
+    };
+  }
+
+  revalidarVoz();
+  return { error: null };
+}
+
 /** Crea el agente de voz de Zak (es_zak) con su prompt semilla completo. */
 export async function crearAgenteZakVoz(
   voiceId: string,
@@ -436,7 +471,9 @@ export async function buscarVocesEspanol(
     busqueda: b || undefined,
   });
   if (!r.ok) return { error: mensajeDe(r.error) };
-  return { voces: r.data };
+  // El filtro `locale` de ElevenLabs es laxo (verificado 2026-08-30: coló
+  // voces hindi/inglés como "es-CO"): el idioma real de la voz manda.
+  return { voces: r.data.filter((v) => v.idioma === "es") };
 }
 
 export async function agregarVozEspanol(

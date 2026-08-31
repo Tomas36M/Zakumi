@@ -12,6 +12,7 @@ import {
   actualizarInstancia,
   borrarHistorial,
   crearInstancia,
+  eliminarInstancia,
   enviarManual as enviarManualApi,
   guardarPrompt as guardarPromptApi,
   obtenerInstancia,
@@ -23,6 +24,7 @@ import {
   type ErrorBot,
 } from "@/lib/bots/api";
 import { plantillaPorSlug } from "@/lib/bots/plantillas";
+import { ID_ZAK } from "@/lib/bots/tipos";
 
 const SLUG = /^[a-z0-9-]{2,40}$/;
 const PROVEEDORES_VALIDOS = new Set(["green", "cloud"]);
@@ -279,6 +281,19 @@ export async function restaurarVersion(
   if (!Number.isInteger(version) || version < 1) return { error: "Versión no válida." };
 
   const r = await activarVersion(id, version);
+  if (!r.ok) return { error: mensajeDe(r.error) };
+  revalidarBots();
+  return { error: null };
+}
+
+/** Borra el bot COMPLETO en el servicio (mensajes, leads, tandas, prompts).
+ * Zak (ID_ZAK) no se borra: doble guarda aquí y 403 en el servicio. */
+export async function eliminarBot(id: number): Promise<{ error: string | null }> {
+  await verifySession();
+  if (!Number.isInteger(id) || id <= 0) return { error: "Bot no válido." };
+  if (id === ID_ZAK) return { error: "Zak es el motor del negocio: no se borra." };
+
+  const r = await eliminarInstancia(id);
   if (!r.ok) return { error: mensajeDe(r.error) };
   revalidarBots();
   return { error: null };

@@ -370,6 +370,12 @@ export function enviarPlantillaDirecta(
   }), datos);
 }
 
+/** Borra el bot COMPLETO (mensajes, leads, tandas, prompts, jobs, uso).
+ * El servicio protege a Zak con 403. Irreversible: la UI confirma antes. */
+export function eliminarInstancia(id: number): Promise<Resultado<true>> {
+  return pedir("DELETE", `/instancias/${id}`, () => true);
+}
+
 /** Borra la conversación (la memoria del agente con esa persona) y despausa. */
 export function borrarHistorial(id: number, telefono: string): Promise<Resultado<true>> {
   return pedir(
