@@ -41,6 +41,11 @@ create table if not exists public.agentes_voz (
   updated_at             timestamptz not null default now()
 );
 
+-- Si la tabla ya existía (deploy anterior), el create table de arriba es un
+-- no-op: la columna nueva necesita su alter para que el script siga idempotente.
+alter table public.agentes_voz
+  add column if not exists es_zak boolean not null default false;
+
 create unique index if not exists agentes_voz_zak_unico
   on public.agentes_voz (es_zak) where es_zak;
 

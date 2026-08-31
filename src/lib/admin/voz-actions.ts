@@ -26,7 +26,7 @@ import {
   PRIMER_MENSAJE_ZAK,
   SECCIONES_ZAK,
 } from "@/lib/voz/zak";
-import { despacharLlamadaZak, mensajeDe } from "@/lib/voz/despacho";
+import { despacharLlamadaZak, mensajeDe, numeroSaliente } from "@/lib/voz/despacho";
 import {
   normalizarTelefono,
   payloadAgente,
@@ -50,6 +50,7 @@ import {
   enviarBatch,
   llamadaSaliente,
   obtenerConversacion,
+  LOCALES_BIBLIOTECA,
   type VozCompartida,
 } from "@/lib/voz/api";
 
@@ -57,8 +58,8 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const CLAVE_EXTRACCION = /^[a-z][a-z0-9_]{1,40}$/;
 const VOICE_ID = /^[A-Za-z0-9]{8,40}$/;
 const OWNER_ID = /^[a-f0-9]{16,128}$/i;
-// Locales que ofrece el filtro de la biblioteca (el mercado es Colombia).
-const LOCALES_ES = new Set(["", "es-CO", "es-MX", "es-ES", "es-AR"]);
+// La whitelist del filtro sale de la misma lista que pintan los chips de la UI.
+const LOCALES_ES = new Set(LOCALES_BIBLIOTECA.map((l) => l.valor));
 const TIPOS_VALIDOS = new Set<TipoExtraccion>(["string", "boolean", "integer", "number"]);
 const MAX_CAMPOS_EXTRACCION = 15;
 const MAX_TANDA = 200;
@@ -320,10 +321,6 @@ async function validarCap(
       : `Solo caben ${disponibles} llamadas más hoy (cap ${agente.cap_diario}).`;
   }
   return null;
-}
-
-function numeroSaliente(agente: AgenteVozFila): string | null {
-  return agente.phone_number_id_eleven ?? process.env.ELEVENLABS_PHONE_NUMBER_ID ?? null;
 }
 
 export async function llamadaPruebaVoz(

@@ -2,15 +2,32 @@
 //
 // Contenido semilla del agente de voz interno (es_zak): mismas 5 secciones
 // guiadas que cualquier agente (guias.ts las envuelve con las reglas duras:
-// presentarse como IA, no inventar precios, cerrar con end_call). Los precios
-// salen del catálogo real (src/lib/catalogo.ts) — si el catálogo cambia,
-// actualizar aquí y re-sincronizar el agente desde la ficha.
+// presentarse como IA, no inventar precios, cerrar con end_call). La sección
+// de negocio se GENERA desde el catálogo real (src/lib/catalogo.ts): si un
+// precio cambia allá, aquí cambia solo — falta re-sincronizar el agente
+// desde su ficha para que ElevenLabs reciba el prompt nuevo.
 //
 // {{nombre_contacto}} y {{negocio_id}} son dynamic variables de ElevenLabs:
 // viajan por llamada (payloadLlamadaUnica) y se sustituyen en el prompt.
 
+import { CATALOGO_ZAKUMI } from "@/lib/catalogo";
 import type { SeccionesVoz } from "./guias";
 import { EXTRACCION_LEAD, type CampoExtraccion } from "./tipos";
+
+const CICLO_HABLADO: Record<string, string> = {
+  mensual: "al mes",
+  unico: "pago único",
+  anual: "al año",
+};
+
+function catalogoHablado(): string {
+  return CATALOGO_ZAKUMI.map((s) => {
+    const precio = `$${s.tarifaSugerida.toLocaleString("es-CO")} ${
+      CICLO_HABLADO[s.cicloSugerido] ?? s.cicloSugerido
+    }`;
+    return `- ${s.nombre}: ${precio}. ${s.pitch}`;
+  }).join("\n");
+}
 
 export const NOMBRE_AGENTE_ZAK = "Zak — voz de Zakumi";
 
@@ -32,16 +49,10 @@ export const SECCIONES_ZAK: SeccionesVoz = {
     "canales digitales con agentes de inteligencia artificial.\n\n" +
     "Servicios y precios de lista (pesos colombianos, valores «desde» — la " +
     "cotización exacta la envía el equipo por WhatsApp):\n" +
-    "- Bot de WhatsApp: $150.000 al mes. Atiende, vende y captura clientes " +
-    "24/7, con escalado a una persona cuando hace falta.\n" +
-    "- Página web: $900.000 pago único. Dominio propio, SEO local y botón " +
-    "directo a WhatsApp.\n" +
-    "- Mantenimiento web: $80.000 al mes (hosting, cambios y soporte).\n" +
-    "- CRM: $120.000 al mes. Los clientes y pedidos del negocio en un solo " +
-    "lugar.\n" +
-    "- Agente de voz (como esta misma llamada): $250.000 al mes.\n\n" +
-    "Sitio: zakumistudio punto com. El siguiente paso siempre es que el " +
-    "equipo escriba por WhatsApp con una demo hecha para el negocio.",
+    catalogoHablado() +
+    "\n\nEl agente de voz es como esta misma llamada. Sitio: zakumistudio " +
+    "punto com. El siguiente paso siempre es que el equipo escriba por " +
+    "WhatsApp con una demo hecha para el negocio.",
   guion:
     "Objetivo de la llamada: despertar interés y dejar acordado que el equipo " +
     "de Zakumi escriba por WhatsApp con una demo. NO cerrar ventas ni cobrar.\n\n" +

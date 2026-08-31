@@ -1,10 +1,10 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { X } from "lucide-react";
 import { agregarVozEspanol, buscarVocesEspanol } from "@/lib/admin/voz-actions";
-import type { VozCompartida } from "@/lib/voz/api";
+import { LOCALES_BIBLIOTECA, type VozCompartida } from "@/lib/voz/api";
 import { cn } from "@/lib/cn";
 import { Banner } from "@/components/admin/ui/Banner";
 import { Button } from "@/components/admin/ui/Button";
@@ -13,14 +13,6 @@ import { IconButton } from "@/components/admin/ui/IconButton";
 import { Input } from "@/components/admin/ui/Field";
 import { Island } from "@/components/admin/ui/Island";
 import { ListRow } from "@/components/admin/ui/ListRow";
-
-const LOCALES: readonly { valor: string; label: string }[] = [
-  { valor: "es-CO", label: "Colombia" },
-  { valor: "es-MX", label: "México" },
-  { valor: "es-AR", label: "Argentina" },
-  { valor: "es-ES", label: "España" },
-  { valor: "", label: "Todo español" },
-] as const;
 
 /**
  * Biblioteca pública de ElevenLabs filtrada a español: el workspace nace con
@@ -37,44 +29,48 @@ export function BibliotecaVoces({ onCerrar }: { onCerrar: () => void }) {
   const [error, setError] = useState<string | null>(null);
   const [agregadas, setAgregadas] = useState<Set<string>>(new Set());
   const [agregandoId, setAgregandoId] = useState<string | null>(null);
+  // Secuencia de búsquedas: una respuesta vieja y lenta no pisa a la nueva.
+  const busquedaSeq = useRef(0);
 
-  function buscar(loc: string, q: string) {
-    setError(null);
+  const buscar = useCallback((loc: string, q: string) => {
+    const id = ++busquedaSeq.current;
     startBuscar(async () => {
-      const r = await buscarVocesEspanol(loc, q);
-      if ("error" in r) {
-        setError(r.error);
-        return;
+      setError(null);
+      try {
+        const r = await buscarVocesEspanol(loc, q);
+        if (busquedaSeq.current !== id) return; // llegó tarde: ya hay otra búsqueda
+        if ("error" in r) setError(r.error);
+        else setVoces(r.voces);
+      } catch {
+        if (busquedaSeq.current === id) {
+          setError("Se perdió la conexión — intenta la búsqueda otra vez.");
+        }
       }
-      setVoces(r.voces);
     });
-  }
+  }, []);
 
-  // Primera carga: voces colombianas sin búsqueda. Todo el setState ocurre
-  // dentro de la transición async, nunca síncrono en el effect.
+  // Primera carga: voces colombianas sin búsqueda.
   useEffect(() => {
-    startBuscar(async () => {
-      const r = await buscarVocesEspanol("es-CO", "");
-      if ("error" in r) {
-        setError(r.error);
-        return;
-      }
-      setVoces(r.voces);
-    });
-  }, [startBuscar]);
+    buscar("es-CO", "");
+  }, [buscar]);
 
   function agregar(v: VozCompartida) {
     setError(null);
     setAgregandoId(v.voice_id);
     startAgregar(async () => {
-      const r = await agregarVozEspanol(v.public_owner_id, v.voice_id, v.nombre);
-      setAgregandoId(null);
-      if (r.error) {
-        setError(r.error);
-        return;
+      try {
+        const r = await agregarVozEspanol(v.public_owner_id, v.voice_id, v.nombre);
+        if (r.error) {
+          setError(r.error);
+          return;
+        }
+        setAgregadas((prev) => new Set(prev).add(v.voice_id));
+        router.refresh(); // la voz nueva aparece en los selectores
+      } catch {
+        setError("Se perdió la conexión — la voz pudo no agregarse; reintenta.");
+      } finally {
+        setAgregandoId(null);
       }
-      setAgregadas((prev) => new Set(prev).add(v.voice_id));
-      router.refresh(); // la voz nueva aparece en los selectores
     });
   }
 
@@ -94,7 +90,7 @@ export function BibliotecaVoces({ onCerrar }: { onCerrar: () => void }) {
       </p>
 
       <div className="flex flex-wrap items-center gap-2">
-        {LOCALES.map((l) => (
+        {LOCALES_BIBLIOTECA.map((l) => (
           <button
             key={l.valor}
             type="button"

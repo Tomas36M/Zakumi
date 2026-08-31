@@ -57,7 +57,9 @@ export async function POST(request: Request) {
     negocioId: typeof b.negocio_id === "string" ? b.negocio_id : undefined,
   });
   if ("error" in r) {
-    return NextResponse.json({ error: r.error }, { status: 409 });
+    // infra (config/red/DB) → 503: es un problema de operación, no un "no" de
+    // negocio — el bot debe reintentar/escalar, no decirle al prospecto que no.
+    return NextResponse.json({ error: r.error }, { status: r.infra ? 503 : 409 });
   }
   return NextResponse.json({ ok: true, conversation_id: r.conversationId });
 }

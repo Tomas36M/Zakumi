@@ -80,9 +80,11 @@ entrada "Voz" en `Sidebar.tsx`) — no queda ninguna clase `adm-*`.
   `agent_7401…`, `phnum_6501…` ni el webhook de Luci; el panel solo opera los
   `agent_id_eleven` guardados en `agentes_voz`. Gate pendiente: verificar si el
   webhook post-call se asigna POR AGENTE (riesgo 1 del spec).
-- **`/api/voz/webhook` es el ÚNICO endpoint público del repo**: HMAC `t=,v0=`
-  sobre el raw body + filtro por `agent_id`. Es también el único sitio con
-  `SUPABASE_SERVICE_ROLE_KEY` (solo invoca la RPC `registrar_llamada_voz`).
+- **Endpoints públicos del repo — exactamente DOS** (fuera del matcher del
+  proxy a propósito): `/api/voz/webhook` (HMAC `t=,v0=` sobre el raw body +
+  filtro por `agent_id`) y `/api/zak/llamar` (Bearer `ZAK_VOZ_TOKEN` en tiempo
+  constante). Son también los únicos sitios con `SUPABASE_SERVICE_ROLE_KEY`
+  (la RPC `registrar_llamada_voz` y el despacho de Zak, respectivamente).
 - Leads extraídos (`lead_nombre`/`lead_telefono`) → `ventas_cliente` origen
   'bot' dentro de la RPC + aviso WhatsApp. **Excepción: `direccion='prueba'`
   jamás promueve el lead** (el lab no vende; los datos quedan en

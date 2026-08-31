@@ -29,26 +29,40 @@ export function mensajeDe(error: ErrorVoz): string {
   }
 }
 
-function numeroSalienteDe(agente: AgenteVozFila): string | null {
-  return agente.phone_number_id_eleven ?? process.env.ELEVENLABS_PHONE_NUMBER_ID ?? null;
+/** El número saliente del agente, o el compartido de env. `||` a propósito:
+ * una cadena vacía sembrada a mano no debe bloquear el fallback. */
+export function numeroSaliente(agente: AgenteVozFila): string | null {
+  return agente.phone_number_id_eleven || process.env.ELEVENLABS_PHONE_NUMBER_ID || null;
 }
+
+export type ResultadoDespacho =
+  | { conversationId: string | null }
+  // infra=true → el problema es de operación (config, red, DB), no de negocio:
+  // /api/zak/llamar lo traduce a 503 para que el bot reintente/escale en vez
+  // de decirle al prospecto que no se puede.
+  | { error: string; infra?: boolean };
 
 /**
  * Zak marca a un prospecto con su agente de voz (es_zak). Valida agente,
  * número, teléfono E.164 y cap diario; si viene negocioId, la llamada queda
  * correlacionada en dynamic_variables y el negocio pasa de 'nuevo' a
  * 'contactado' (forward-only). Nunca lanza.
+ *
+ * Limitación conocida del cap: cuenta filas de llamadas_voz, que escribe el
+ * webhook AL COLGAR — las llamadas en vuelo son invisibles, así que una
+ * ráfaga puede pasarse del cap. Aceptable mientras despacha 1-a-1 el cockpit
+ * y la tool del bot; el cron de tandas necesitará su cola propia (ver spec).
  */
 export async function despacharLlamadaZak(
   supabase: SupabaseClient,
   datos: { telefono: string; nombreContacto?: string; negocioId?: string },
-): Promise<{ conversationId: string | null } | { error: string }> {
+): Promise<ResultadoDespacho> {
   const agente = await agenteZakVoz(supabase);
   if (!agente) return { error: "Zak no tiene voz todavía — créala en /admin/voz." };
   if (!agente.agent_id_eleven) return { error: "Sincroniza a Zak en /admin/voz antes de llamar." };
   if (!agente.activo) return { error: "La voz de Zak está apagada." };
 
-  const phoneNumberId = numeroSalienteDe(agente);
+  const phoneNumberId = numeroSaliente(agente);
   if (!phoneNumberId) {
     return { error: "Sin número saliente: falta ELEVENLABS_PHONE_NUMBER_ID (interruptor del piloto)." };
   }
@@ -64,7 +78,7 @@ export async function despacharLlamadaZak(
     typeof datos.nombreContacto === "string" ? datos.nombreContacto.trim().slice(0, 120) : "";
 
   const hoy = await contarLlamadasHoy(supabase, agente.id);
-  if (hoy === null) return { error: "No se pudo verificar el cap diario." };
+  if (hoy === null) return { error: "No se pudo verificar el cap diario.", infra: true };
   if (hoy + 1 > agente.cap_diario) {
     return { error: `Zak ya alcanzó su cap de ${agente.cap_diario} llamadas hoy.` };
   }
@@ -84,7 +98,11 @@ export async function despacharLlamadaZak(
       variables,
     }),
   );
-  if (!r.ok) return { error: mensajeDe(r.error) };
+  if (!r.ok) {
+    const infra =
+      r.error === "sin_configurar" || r.error === "sin_conexion" || r.error === "eleven_error";
+    return { error: mensajeDe(r.error), ...(infra ? { infra: true } : {}) };
+  }
 
   if (negocioId) {
     const { error } = await supabase

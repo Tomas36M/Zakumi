@@ -42,13 +42,17 @@ export default async function ZakPage({
       agenteZakVoz(supabase), // la voz de Zak, para "Llamar con IA"
     ]);
 
-  const vozZak: EstadoVozZak =
-    !zakVoz || !zakVoz.agent_id_eleven || !zakVoz.activo
-      ? "sin_agente"
-      : Boolean(process.env.ELEVENLABS_PHONE_NUMBER_ID) ||
-          Boolean(zakVoz.phone_number_id_eleven)
-        ? "lista"
-        : "sin_numero";
+  // Cada rechazo con su remedio: el tooltip del botón guía al fix correcto.
+  const vozZak: EstadoVozZak = !zakVoz
+    ? "sin_agente"
+    : !zakVoz.agent_id_eleven
+      ? "sin_sincronizar"
+      : !zakVoz.activo
+        ? "apagada"
+        : Boolean(process.env.ELEVENLABS_PHONE_NUMBER_ID) ||
+            Boolean(zakVoz.phone_number_id_eleven)
+          ? "lista"
+          : "sin_numero";
 
   const tabInicial: PestanaZak = telefonoInicial
     ? "bandeja"

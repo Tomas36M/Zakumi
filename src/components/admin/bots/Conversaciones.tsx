@@ -94,6 +94,9 @@ export function Conversaciones({
   // Fichas del CRM por teléfono (formato del bot): quién es cada número,
   // qué tipo de negocio es y en qué estado va. Sin ficha = número suelto.
   const [fichas, setFichas] = useState<Record<string, FichaNegocio>>({});
+  // Teléfonos cuyo cruce con el CRM ya respondió (con o sin match): antes de
+  // eso, "Llamar con IA" espera para no despachar sin el negocio_id.
+  const [telsResueltos, setTelsResueltos] = useState<Set<string>>(new Set());
   const [slugReabrir, setSlugReabrir] = useState<string | null>(null);
   // Teléfonos ya consultados (con o sin negocio): cada número viaja al CRM
   // UNA vez por visita — ni clics repetidos ni paginar re-preguntan.
@@ -154,6 +157,13 @@ export function Conversaciones({
         if (!res.ok) throw new Error(String(res.status));
         const data = (await res.json()) as { fichas: Record<string, FichaNegocio> };
         setFichas((prev) => ({ ...prev, ...data.fichas }));
+        // Resueltos (con o sin match en el CRM): "Llamar con IA" ya puede
+        // despachar sin riesgo de perder el negocio_id por un click temprano.
+        setTelsResueltos((prev) => {
+          const s = new Set(prev);
+          for (const t of nuevas) s.add(t);
+          return s;
+        });
       } catch {
         // Informativo: sin ficha la bandeja sigue sirviendo. Reintentables.
         for (const t of nuevas) pedidasRef.current.delete(t);
@@ -504,6 +514,7 @@ export function Conversaciones({
                       telefono={fichaActual?.telefono ?? `+${telefono}`}
                       nombre={fichaActual?.nombre ?? null}
                       negocioId={fichaActual?.negocioId ?? null}
+                      cargando={!telsResueltos.has(telefono)}
                     />
                   )}
                   <Button disabled={operando} onClick={alternarPausa}>

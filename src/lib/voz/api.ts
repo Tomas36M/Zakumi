@@ -170,6 +170,16 @@ export function parseVocesCompartidas(json: unknown): VozCompartida[] {
     .filter((v) => v.voice_id !== "" && v.public_owner_id !== "");
 }
 
+/** Acentos que ofrece la biblioteca ("" = todo español). Única fuente:
+ * los chips de la UI y la whitelist del server action salen de aquí. */
+export const LOCALES_BIBLIOTECA: readonly { valor: string; label: string }[] = [
+  { valor: "es-CO", label: "Colombia" },
+  { valor: "es-MX", label: "México" },
+  { valor: "es-AR", label: "Argentina" },
+  { valor: "es-ES", label: "España" },
+  { valor: "", label: "Todo español" },
+] as const;
+
 /**
  * Busca voces en la biblioteca pública de ElevenLabs. El workspace nace con
  * puras voces en inglés; el español (el idioma principal del negocio) se trae

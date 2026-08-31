@@ -226,12 +226,23 @@ function CrearZak({ voces }: { voces: VozEleven[] }) {
         onClick={() => {
           setError(null);
           startTransition(async () => {
-            const r = await crearAgenteZakVoz(voiceId);
-            if ("error" in r) {
-              setError(r.error);
-              return;
+            try {
+              const r = await crearAgenteZakVoz(voiceId);
+              if ("error" in r) {
+                setError(r.error);
+                return;
+              }
+              if (r.aviso) {
+                // Fallo parcial (ElevenLabs caído, o es_zak sin marcar): se
+                // muestra tal cual y NO se navega como si fuera éxito total.
+                setError(r.aviso);
+                router.refresh();
+                return;
+              }
+              router.push(`/admin/voz/${r.id}`);
+            } catch {
+              setError("Se perdió la conexión — mira la lista antes de reintentar (pudo crearse).");
             }
-            router.push(`/admin/voz/${r.id}`);
           });
         }}
       >
