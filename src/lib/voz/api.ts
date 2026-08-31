@@ -246,6 +246,59 @@ export function enviarBatch(
   }), payload, 30_000);
 }
 
+// ---------- Números de teléfono del workspace ----------
+
+export type NumeroEleven = {
+  phone_number_id: string;
+  numero: string;
+  etiqueta: string;
+  /** agent_id asignado para entrantes (null = ninguno). */
+  agente_asignado: string | null;
+};
+
+/** Parser PURO del GET /v1/convai/phone-numbers (testeable sin red). */
+export function parseNumerosEleven(json: unknown): NumeroEleven[] {
+  if (!Array.isArray(json)) return [];
+  return json
+    .map((f) => {
+      const n = (f ?? {}) as Record<string, unknown>;
+      const asignado = (n.assigned_agent ?? null) as { agent_id?: unknown } | null;
+      return {
+        phone_number_id: String(n.phone_number_id ?? ""),
+        numero: String(n.phone_number ?? ""),
+        etiqueta: String(n.label ?? ""),
+        agente_asignado:
+          typeof asignado?.agent_id === "string" ? asignado.agent_id : null,
+      };
+    })
+    .filter((n) => n.phone_number_id !== "");
+}
+
+export function listarNumerosEleven(): Promise<Resultado<NumeroEleven[]>> {
+  return pedir("GET", "/v1/convai/phone-numbers", parseNumerosEleven);
+}
+
+/** Importa a ElevenLabs un número que YA es tuyo en Twilio. */
+export function importarNumeroEleven(datos: {
+  numero: string;
+  etiqueta: string;
+  sid: string;
+  token: string;
+}): Promise<Resultado<{ phone_number_id: string }>> {
+  return pedir(
+    "POST",
+    "/v1/convai/phone-numbers",
+    (j) => ({ phone_number_id: String((j as { phone_number_id?: unknown })?.phone_number_id ?? "") }),
+    {
+      provider: "twilio",
+      phone_number: datos.numero,
+      label: datos.etiqueta,
+      sid: datos.sid,
+      token: datos.token,
+    },
+  );
+}
+
 // ---------- Estado de una conversación (polling del lab) ----------
 
 export type EstadoConversacionEleven =

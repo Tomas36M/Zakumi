@@ -1,8 +1,9 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { ChevronDown } from "lucide-react";
-import { guardarConfigVoz } from "@/lib/admin/voz-actions";
+import { guardarConfigVoz, marcarAgenteComoZak } from "@/lib/admin/voz-actions";
 import type { AgenteVozFila } from "@/lib/admin/voz";
 import type { VozEleven } from "@/lib/voz/api";
 import { CAMPOS_VOZ, seccionesDe, type CampoVoz, type SeccionesVoz } from "@/lib/voz/guias";
@@ -17,6 +18,7 @@ import { Banner } from "@/components/admin/ui/Banner";
 import { Button } from "@/components/admin/ui/Button";
 import { Field, Input, Select, TextArea } from "@/components/admin/ui/Field";
 import { Island } from "@/components/admin/ui/Island";
+import { NumeroAgente } from "./NumeroAgente";
 import { SelectorVoz } from "./VozView";
 
 type Cliente = { id: string; nombre: string };
@@ -35,6 +37,7 @@ export function ConfigAgenteVoz({
   voces: VozEleven[] | null;
   clientes: Cliente[];
 }) {
+  const router = useRouter();
   const [pendiente, startTransition] = useTransition();
   const [mensaje, setMensaje] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -49,6 +52,24 @@ export function ConfigAgenteVoz({
 
   const [abierto, setAbierto] = useState<CampoVoz | null>(null);
   const [avanzado, setAvanzado] = useState(false);
+  const [marcando, startMarcar] = useTransition();
+
+  function marcarZak() {
+    setMensaje(null);
+    setError(null);
+    startMarcar(async () => {
+      try {
+        const r = await marcarAgenteComoZak(agente.id);
+        if (r.error) setError(r.error);
+        else {
+          setMensaje("Listo: este agente es la voz de Zak.");
+          router.refresh();
+        }
+      } catch {
+        setError("Se perdió la conexión — recarga para ver si quedó marcado.");
+      }
+    });
+  }
 
   function guardar() {
     setMensaje(null);
@@ -189,6 +210,26 @@ export function ConfigAgenteVoz({
                 className="max-w-40"
               />
             </Field>
+            <NumeroAgente
+              agenteId={agente.id}
+              numeroActual={agente.phone_number_id_eleven}
+            />
+            <div className="flex flex-wrap items-center gap-3 rounded-fila bg-isla p-3">
+              <div className="min-w-0 flex-1">
+                <p className="text-sm text-tinta">Voz de Zak</p>
+                <p className="text-xs text-tinta-40">
+                  El agente que usan el cockpit («Llamar con IA») y el bot de WhatsApp
+                  para llamar. Solo uno a la vez.
+                </p>
+              </div>
+              {agente.es_zak ? (
+                <Badge tono="cliente">Es la voz de Zak</Badge>
+              ) : (
+                <Button disabled={marcando} onClick={marcarZak}>
+                  {marcando ? "Marcando…" : "Usar como voz de Zak"}
+                </Button>
+              )}
+            </div>
             <div className="flex flex-col gap-2">
               <p className="text-xs font-medium text-tinta-60">
                 Extracción de datos por llamada — lead_nombre / lead_telefono /

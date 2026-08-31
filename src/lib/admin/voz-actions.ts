@@ -49,11 +49,22 @@ import {
   crearAgenteEleven,
   eliminarAgenteEleven,
   enviarBatch,
+  importarNumeroEleven,
+  listarNumerosEleven,
   llamadaSaliente,
   obtenerConversacion,
   LOCALES_BIBLIOTECA,
+  type NumeroEleven,
   type VozCompartida,
 } from "@/lib/voz/api";
+import {
+  buscarNumeros,
+  comprarNumero,
+  credencialesTwilio,
+  mensajeTwilio,
+  twilioConfigurado,
+  type NumeroDisponible,
+} from "@/lib/voz/twilio";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const CLAVE_EXTRACCION = /^[a-z][a-z0-9_]{1,40}$/;
@@ -175,6 +186,16 @@ async function sincronizar(agente: AgenteVozFila): Promise<{ error: string | nul
 export async function crearAgenteVoz(
   datos: DatosConfig,
 ): Promise<{ id: string; aviso: string | null } | { error: string }> {
+  return crearAgente(datos, false);
+}
+
+/** El alta de verdad. `esZak` viaja en el INSERT (no en un update posterior):
+ * un segundo statement puede fallar y dejar el agente sin marcar — pasó el
+ * 2026-08-30, con la caché de esquema de PostgREST recién creada la columna. */
+async function crearAgente(
+  datos: DatosConfig,
+  esZak: boolean,
+): Promise<{ id: string; aviso: string | null } | { error: string }> {
   const { supabase } = await verifySession();
 
   const v = validarConfig(datos);
@@ -182,7 +203,7 @@ export async function crearAgenteVoz(
 
   const { data, error } = await supabase
     .from("agentes_voz")
-    .insert(v.fila)
+    .insert({ ...v.fila, es_zak: esZak })
     .select("id")
     .single();
   if (error || !data) {
@@ -383,6 +404,140 @@ export async function llamarConZak(datos: {
   return r;
 }
 
+// ---------- Telefonía: comprar en Twilio, importar en ElevenLabs, asignar ----------
+
+const PAISES_TELEFONIA = new Set(["US", "CO", "MX", "ES"]);
+const NUMERO_E164 = /^\+[1-9][0-9]{6,14}$/;
+
+export type EstadoTelefonia = {
+  twilioListo: boolean;
+  numeros: NumeroEleven[];
+  /** Número del env compartido (el fallback de todos los agentes). */
+  numeroEnv: string | null;
+  error: string | null;
+};
+
+export async function estadoTelefonia(): Promise<EstadoTelefonia> {
+  await verifySession();
+  const twilioListo = twilioConfigurado();
+  const r = await listarNumerosEleven();
+  return {
+    twilioListo,
+    numeros: r.ok ? r.data : [],
+    numeroEnv: process.env.ELEVENLABS_PHONE_NUMBER_ID ?? null,
+    error: r.ok ? null : mensajeDe(r.error),
+  };
+}
+
+export async function buscarNumerosTwilio(
+  pais: string,
+  prefijo: string,
+): Promise<{ numeros: NumeroDisponible[] } | { error: string }> {
+  await verifySession();
+  if (!PAISES_TELEFONIA.has(pais)) return { error: "País no soportado." };
+  const p = typeof prefijo === "string" ? prefijo.replace(/\D/g, "").slice(0, 5) : "";
+  const r = await buscarNumeros(pais, p || undefined);
+  if (!r.ok) return { error: mensajeTwilio(r.error) };
+  return { numeros: r.data };
+}
+
+/**
+ * COMPRA el número en Twilio (cuesta ~US$1.15/mes) y lo importa a ElevenLabs
+ * en un solo paso: un número comprado y no importado es plata botada que
+ * nadie ve. Si la importación falla, el número YA es tuyo — se avisa con el
+ * detalle para importarlo a mano y no volver a comprar.
+ */
+export async function comprarNumeroTelefonia(
+  numero: string,
+  etiqueta: string,
+): Promise<{ phoneNumberId: string } | { error: string }> {
+  await verifySession();
+  if (typeof numero !== "string" || !NUMERO_E164.test(numero)) {
+    return { error: "Número no válido." };
+  }
+  const cred = credencialesTwilio();
+  if (!cred) return { error: mensajeTwilio("sin_configurar") };
+
+  const compra = await comprarNumero(numero);
+  if (!compra.ok) return { error: mensajeTwilio(compra.error) };
+
+  const label = (typeof etiqueta === "string" ? etiqueta.trim() : "").slice(0, 80) || "Zakumi";
+  const imp = await importarNumeroEleven({
+    numero: compra.data.numero,
+    etiqueta: label,
+    sid: cred.sid,
+    token: cred.token,
+  });
+  if (!imp.ok) {
+    return {
+      error:
+        `El número ${compra.data.numero} SE COMPRÓ en Twilio pero no se importó a ` +
+        `ElevenLabs (${mensajeDe(imp.error)}). No vuelvas a comprarlo: impórtalo desde el dashboard.`,
+    };
+  }
+  revalidarVoz();
+  return { phoneNumberId: imp.data.phone_number_id };
+}
+
+/**
+ * Importa a ElevenLabs un número que YA compraste en Twilio (por la consola,
+ * o uno viejo). No compra nada: solo lo pone a disposición del panel.
+ */
+export async function importarNumeroExistente(
+  numero: string,
+  etiqueta: string,
+): Promise<{ phoneNumberId: string } | { error: string }> {
+  await verifySession();
+  if (typeof numero !== "string" || !NUMERO_E164.test(numero.trim())) {
+    return { error: "Número no válido (formato +57… o +1…)." };
+  }
+  const cred = credencialesTwilio();
+  if (!cred) return { error: mensajeTwilio("sin_configurar") };
+
+  const label = (typeof etiqueta === "string" ? etiqueta.trim() : "").slice(0, 80) || "Zakumi";
+  const r = await importarNumeroEleven({
+    numero: numero.trim(),
+    etiqueta: label,
+    sid: cred.sid,
+    token: cred.token,
+  });
+  if (!r.ok) {
+    return {
+      error:
+        r.error === "peticion_invalida"
+          ? "ElevenLabs rechazó el número: ¿está comprado en ESTA cuenta de Twilio y ya importado?"
+          : mensajeDe(r.error),
+    };
+  }
+  revalidarVoz();
+  return { phoneNumberId: r.data.phone_number_id };
+}
+
+/** Deja el número como saliente de ese agente (sin tocar envs ni desplegar). */
+export async function asignarNumeroAAgente(
+  agenteId: string,
+  phoneNumberId: string | null,
+): Promise<{ error: string | null }> {
+  const { supabase } = await verifySession();
+  if (!UUID.test(agenteId)) return { error: "Agente no válido." };
+  const id =
+    typeof phoneNumberId === "string" && /^[A-Za-z0-9_-]{6,80}$/.test(phoneNumberId)
+      ? phoneNumberId
+      : null;
+  if (phoneNumberId && !id) return { error: "Número no válido." };
+
+  const { error } = await supabase
+    .from("agentes_voz")
+    .update({ phone_number_id_eleven: id })
+    .eq("id", agenteId);
+  if (error) {
+    console.error("[asignarNumeroAAgente]", error.message);
+    return { error: "No se pudo asignar el número." };
+  }
+  revalidarVoz(agenteId);
+  return { error: null };
+}
+
 /**
  * Borra el agente COMPLETO: primero en ElevenLabs (si está sincronizado) y
  * luego aquí (las llamadas se van en cascada). Si ElevenLabs falla con algo
@@ -429,32 +584,55 @@ export async function crearAgenteZakVoz(
   const existente = await agenteZakVoz(supabase);
   if (existente) return { error: "Zak ya tiene voz — edítala en su ficha." };
 
-  const creado = await crearAgenteVoz({
-    nombre: NOMBRE_AGENTE_ZAK,
-    clienteId: null,
-    voiceId,
-    primerMensaje: PRIMER_MENSAJE_ZAK,
-    secciones: SECCIONES_ZAK,
-    extraccion: [...EXTRACCION_ZAK],
-    capDiario: CAP_DIARIO_ZAK,
-  });
-  if ("error" in creado) return creado;
+  // es_zak va en el INSERT; el índice único parcial corta la carrera de dos
+  // admins creándolo a la vez (el segundo recibe el error del insert).
+  return crearAgente(
+    {
+      nombre: NOMBRE_AGENTE_ZAK,
+      clienteId: null,
+      voiceId,
+      primerMensaje: PRIMER_MENSAJE_ZAK,
+      secciones: SECCIONES_ZAK,
+      extraccion: [...EXTRACCION_ZAK],
+      capDiario: CAP_DIARIO_ZAK,
+    },
+    true,
+  );
+}
 
-  // El índice único parcial (es_zak) corta la carrera de dos admins creándolo.
-  const upd = await supabase
+/**
+ * Designa qué agente es la voz de Zak (el que usan el cockpit y el bot para
+ * llamar). Repara el caso de un agente creado sin la marca y permite mover la
+ * voz de Zak a otro agente sin SQL.
+ */
+export async function marcarAgenteComoZak(id: string): Promise<{ error: string | null }> {
+  const { supabase } = await verifySession();
+  if (!UUID.test(id)) return { error: "Agente no válido." };
+
+  const agente = await obtenerAgenteVoz(supabase, id);
+  if (!agente) return { error: "El agente no existe." };
+  if (agente.es_zak) return { error: null };
+
+  // Primero desmarcar: el índice único parcial no deja dos voces de Zak.
+  const limpia = await supabase
     .from("agentes_voz")
-    .update({ es_zak: true })
-    .eq("id", creado.id);
-  if (upd.error) {
-    console.error("[crearAgenteZakVoz] es_zak:", upd.error.message);
-    return {
-      id: creado.id,
-      aviso: "El agente quedó creado pero no marcado como Zak — ¿ya existía otro?",
-    };
+    .update({ es_zak: false })
+    .eq("es_zak", true);
+  if (limpia.error) {
+    console.error("[marcarAgenteComoZak] desmarcar:", limpia.error.message);
+    return { error: "No se pudo liberar la marca del agente anterior." };
   }
 
-  revalidarVoz(creado.id);
-  return creado;
+  const { error } = await supabase
+    .from("agentes_voz")
+    .update({ es_zak: true })
+    .eq("id", id);
+  if (error) {
+    console.error("[marcarAgenteComoZak]", error.message);
+    return { error: "No se pudo marcar el agente como la voz de Zak." };
+  }
+  revalidarVoz(id);
+  return { error: null };
 }
 
 export async function buscarVocesEspanol(
