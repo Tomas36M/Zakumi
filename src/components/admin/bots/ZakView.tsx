@@ -1,9 +1,17 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { sincronizarEstadosZak } from "@/lib/admin/zak-actions";
-import { fechaCorta } from "@/lib/admin/formato";
+import {
+  PESTANAS_CHAT,
+  PESTANAS_VOZ,
+  PESTANA_INICIAL,
+  caraDe,
+  type CaraZak,
+  type PestanaVoz,
+  type PestanaZak,
+} from "@/lib/admin/zak-caras";
 import {
   ID_ZAK,
   type Instancia,
@@ -14,40 +22,42 @@ import {
   type VersionPrompt,
 } from "@/lib/bots/tipos";
 import { Banner } from "@/components/admin/ui/Banner";
-import { Button } from "@/components/admin/ui/Button";
 import { Cockpit, CockpitBody } from "@/components/admin/ui/Cockpit";
-import { EmptyState } from "@/components/admin/ui/EmptyState";
-import { Island } from "@/components/admin/ui/Island";
-import { ListRow } from "@/components/admin/ui/ListRow";
 import { Tabs } from "@/components/admin/ui/Tabs";
 import { cn } from "@/lib/cn";
 import type { PlantillaZakFila } from "@/lib/admin/plantillas";
 import type { VerticalProspeccion } from "@/lib/admin/zak";
-import { Actividad } from "./Actividad";
+import type { AgenteVozFila } from "@/lib/admin/voz";
+import type { VozEleven } from "@/lib/voz/api";
+import type { LlamadaVoz } from "@/lib/voz/tipos";
 import { Conversaciones } from "./Conversaciones";
+import { InteresadosZak } from "./InteresadosZak";
 import { LabsChat } from "./LabsChat";
+import { MetricasZak } from "./MetricasZak";
 import { PlantillasZak } from "./PlantillasZak";
 import { PromptEditor } from "./PromptEditor";
-import { BotonLlamarZak, type EstadoVozZak } from "@/components/admin/voz/BotonLlamarZak";
+import { TandasZak } from "./TandasZak";
+import { CarasZak } from "./CarasZak";
+import { ZakVoz } from "./ZakVoz";
+import type { EstadoVozZak } from "@/components/admin/voz/BotonLlamarZak";
 
-export type PestanaZak =
-  | "bandeja"
-  | "interesados"
-  | "tandas"
-  | "plantillas"
-  | "metricas"
-  | "prompt"
-  | "labs";
+const LABEL_CHAT: Record<(typeof PESTANAS_CHAT)[number], string> = {
+  bandeja: "Bandeja",
+  interesados: "Interesados",
+  tandas: "Tandas",
+  plantillas: "Plantillas",
+  metricas: "Métricas",
+  prompt: "Prompt",
+  labs: "Labs",
+};
 
-const PESTANAS: readonly { valor: PestanaZak; label: string }[] = [
-  { valor: "bandeja", label: "Bandeja" },
-  { valor: "interesados", label: "Interesados" },
-  { valor: "tandas", label: "Tandas" },
-  { valor: "plantillas", label: "Plantillas" },
-  { valor: "metricas", label: "Métricas" },
-  { valor: "prompt", label: "Prompt" },
-  { valor: "labs", label: "Labs" },
-] as const;
+const LABEL_VOZ: Record<PestanaVoz, string> = {
+  "voz-config": "Configuración",
+  "voz-lab": "Lab",
+  "voz-llamadas": "Llamadas",
+  "voz-tanda": "Tanda",
+  "voz-widget": "Widget",
+};
 
 type Props = {
   instancia: Instancia | null;
@@ -65,12 +75,21 @@ type Props = {
   plantillas: PlantillaZakFila[];
   /** Estado de la voz de Zak (server): habilita "Llamar con IA". */
   vozZak: EstadoVozZak;
+  /** La cara de Voz: el agente es_zak y lo que necesitan sus pestañas. */
+  agenteVoz: AgenteVozFila | null;
+  llamadasVoz: LlamadaVoz[];
+  llamadasVozHoy: number;
+  voces: VozEleven[] | null;
+  clientes: { id: string; nombre: string }[];
+  telefoniaLista: boolean;
 };
 
 /**
- * El cockpit de Zak: el agente de Zakumi con su bandeja, sus interesados,
- * el funnel de prospección y su configuración. Los bots de /admin/bots son
- * productos vendibles; este es el motor del negocio.
+ * El cockpit de Zak: el mismo empleado con sus DOS caras — el chatbot de
+ * WhatsApp (bandeja, prospección, prompt) y el agente de voz (llamadas).
+ * /admin/bots y /admin/voz quedan para lo que se le VENDE a clientes.
+ *
+ * Este componente es solo el shell: cada pestaña vive en su propio archivo.
  */
 export function ZakView({
   instancia,
@@ -84,12 +103,23 @@ export function ZakView({
   verticales,
   plantillas,
   vozZak,
+  agenteVoz,
+  llamadasVoz,
+  llamadasVozHoy,
+  voces,
+  clientes,
+  telefoniaLista,
 }: Props) {
   const router = useRouter();
   const [tab, setTab] = useState<PestanaZak>(tabInicial);
   const [sincronizando, startSync] = useTransition();
   const [avisoSync, setAvisoSync] = useState<string | null>(null);
   const syncHecho = useRef(false);
+  // El Lab de voz se monta en la primera visita y NO se desmonta después:
+  // destruirlo cortaría el polling de una prueba en vuelo.
+  const [labVozVisitado, setLabVozVisitado] = useState(tabInicial === "voz-lab");
+
+  const cara = caraDe(tab);
 
   function sincronizar(silencioso: boolean) {
     startSync(async () => {
@@ -118,7 +148,7 @@ export function ZakView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const interesados = prospectos.filter((p) => p.interesado);
+  const interesados = useMemo(() => prospectos.filter((p) => p.interesado), [prospectos]);
   const uso = status?.uso_hoy;
 
   // Tasa de respuesta agregada de la prospección (los fallidos no cuentan
@@ -129,12 +159,22 @@ export function ZakView({
   );
   const respondidos = tandas.reduce((t, x) => t + x.funnel.respondido, 0);
 
-  const pestanas = PESTANAS.map((p) => ({
-    id: p.valor,
+  function cambiarCara(nueva: CaraZak) {
+    if (nueva === cara) return;
+    irA(PESTANA_INICIAL[nueva]);
+  }
+
+  function irA(destino: PestanaZak) {
+    if (destino === "voz-lab") setLabVozVisitado(true);
+    setTab(destino);
+  }
+
+  const pestanasChat = PESTANAS_CHAT.map((p) => ({
+    id: p as PestanaZak,
     label:
-      p.valor === "interesados" && interesados.length > 0 ? (
+      p === "interesados" && interesados.length > 0 ? (
         <span className="inline-flex items-center gap-1.5">
-          {p.label}
+          {LABEL_CHAT[p]}
           <span
             className={cn(
               "rounded-full px-1.5 text-[0.7rem] font-bold",
@@ -145,8 +185,13 @@ export function ZakView({
           </span>
         </span>
       ) : (
-        p.label
+        LABEL_CHAT[p]
       ),
+  }));
+
+  const pestanasVoz = PESTANAS_VOZ.map((p) => ({
+    id: p as PestanaZak,
+    label: p === "voz-llamadas" ? `${LABEL_VOZ[p]} (${llamadasVoz.length})` : LABEL_VOZ[p],
   }));
 
   return (
@@ -161,8 +206,9 @@ export function ZakView({
           </h1>
           {instancia && (
             <p className="text-xs text-tinta-60">
-              {instancia.nombre} · {instancia.proveedor === "cloud" ? "API oficial de Meta" : "Green API"} ·
-              prompt v{instancia.prompt_version}
+              {instancia.nombre} ·{" "}
+              {instancia.proveedor === "cloud" ? "API oficial de Meta" : "Green API"} · prompt v
+              {instancia.prompt_version}
               {!instancia.activo && " · APAGADO"}
             </p>
           )}
@@ -175,18 +221,26 @@ export function ZakView({
         )}
       </header>
 
-      {/* Avisos y pestañas viven FUERA del body: alto natural, siempre a la
-          vista. Si vivieran dentro se irían con el scroll — y su alto variable
-          era justo lo que descuadraba el viejo calc(100dvh-13.5rem). */}
+      {/* Caras, avisos y pestañas: alto natural, siempre a la vista. Fuera del
+          body para que el contenido scrollee por debajo. */}
       <div className="flex shrink-0 flex-col gap-4 px-5 pt-4">
-        {!instancia && (
+        <CarasZak activa={cara} onCambiar={cambiarCara} vozPendiente={agenteVoz === null} />
+
+        {!instancia && cara === "chat" && (
           <Banner>
             Sin conexión con el bot: se muestra lo último conocido. Recarga en un momento.
           </Banner>
         )}
         {avisoSync && <Banner>{avisoSync}</Banner>}
 
-        <Tabs pestanas={pestanas} activa={tab} onCambiar={setTab} />
+        {/* Sin agente de voz no hay pestañas que enseñar: solo el alta. */}
+        {(cara === "chat" || agenteVoz !== null) && (
+          <Tabs
+            pestanas={cara === "chat" ? pestanasChat : pestanasVoz}
+            activa={tab}
+            onCambiar={irA}
+          />
+        )}
       </div>
 
       <CockpitBody>
@@ -201,144 +255,26 @@ export function ZakView({
         )}
 
         {tab === "interesados" && (
-          <div className="flex flex-col gap-4">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <p className="text-sm text-tinta-60">
-                Negocios que Zak calentó y están listos para que tú cierres.
-              </p>
-              <Button disabled={sincronizando} onClick={() => sincronizar(false)}>
-                {sincronizando ? "Sincronizando…" : "Sincronizar con el CRM"}
-              </Button>
-            </div>
-            {interesados.length === 0 ? (
-              <EmptyState
-                titulo="Todavía nadie levanta la mano."
-                detalle="Manda una tanda desde Negocios y deja que Zak caliente."
-              />
-            ) : (
-              <ul className="flex flex-col">
-                {interesados.map((p) => (
-                  <li key={p.id}>
-                    <ListRow
-                      interactiva={false}
-                      className="flex items-start justify-between gap-3"
-                    >
-                      <div className="min-w-0">
-                        <strong className="text-sm font-semibold text-tinta">
-                          {p.contexto.nombre ?? p.telefono}
-                        </strong>
-                        <span className="text-xs text-tinta-40">
-                          {" "}· {p.telefono} · {fechaCorta(p.actualizado_en)}
-                        </span>
-                        <p className="text-xs text-tinta-60">
-                          {p.interes_resumen ?? "interés sin detalle"}
-                        </p>
-                      </div>
-                      <span className="flex shrink-0 flex-wrap items-center gap-2">
-                        <BotonLlamarZak
-                          vozZak={vozZak}
-                          telefono={`+${p.telefono}`}
-                          nombre={p.contexto.nombre ?? null}
-                          negocioId={p.negocio_id}
-                        />
-                        <Button onClick={() => setTab("bandeja")}>Abrir chat</Button>
-                      </span>
-                    </ListRow>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
+          <InteresadosZak
+            interesados={interesados}
+            vozZak={vozZak}
+            sincronizando={sincronizando}
+            onSincronizar={() => sincronizar(false)}
+            onAbrirChat={() => irA("bandeja")}
+          />
         )}
 
-        {tab === "tandas" && (
-          <div className="flex flex-col gap-4">
-            {tandas.length === 0 && (
-              <EmptyState
-                titulo="Sin tandas todavía."
-                detalle="En Negocios: selecciona prospectos y dale a «Que Zak los contacte»."
-              />
-            )}
-            {tandas.map((t) => {
-              const total =
-                t.funnel.pendiente + t.funnel.enviado + t.funnel.entregado +
-                t.funnel.leido + t.funnel.respondido + t.funnel.fallido;
-              return (
-                <Island
-                  key={t.id}
-                  className="bg-isla-alta"
-                  titulo={
-                    <>
-                      Tanda #{t.id} · {fechaCorta(t.creado_en)}
-                    </>
-                  }
-                  acciones={
-                    <span className="text-xs text-tinta-40">
-                      {t.plantilla} · {total} prospectos
-                    </span>
-                  }
-                >
-                  <div className="flex flex-col gap-3">
-                    <div className="grid grid-cols-[repeat(auto-fit,minmax(110px,1fr))] gap-aire">
-                      {([
-                        ["pendiente", "En cola"],
-                        ["enviado", "Enviado"],
-                        ["entregado", "Entregado"],
-                        ["leido", "Leído"],
-                        ["respondido", "Respondió"],
-                      ] as const).map(([clave, label]) => (
-                        <div key={clave} className="flex flex-col gap-0.5 rounded-fila bg-isla p-3">
-                          <span className="text-2xl font-semibold text-tinta">
-                            {t.funnel[clave]}
-                          </span>
-                          <span className="text-xs text-tinta-60">{label}</span>
-                        </div>
-                      ))}
-                      <div className="flex flex-col gap-0.5 rounded-fila bg-acento-10 p-3">
-                        <span className="text-2xl font-semibold text-acento">{t.interesados}</span>
-                        <span className="text-xs text-tinta-60">Interesados 🧡</span>
-                      </div>
-                    </div>
-                    {t.funnel.fallido > 0 && (
-                      <Banner variante="error">
-                        {t.funnel.fallido} envío(s) fallidos — si el error menciona la
-                        plantilla, revisa que «{t.plantilla}» esté aprobada en Meta.
-                      </Banner>
-                    )}
-                    {t.notas && <p className="text-xs text-tinta-60">{t.notas}</p>}
-                  </div>
-                </Island>
-              );
-            })}
-          </div>
-        )}
+        {tab === "tandas" && <TandasZak tandas={tandas} />}
 
-        {tab === "plantillas" && (
-          <PlantillasZak filas={plantillas} />
-        )}
+        {tab === "plantillas" && <PlantillasZak filas={plantillas} />}
 
         {tab === "metricas" && (
-          <div className="flex flex-col gap-6">
-            <div className="grid grid-cols-[repeat(auto-fit,minmax(160px,1fr))] gap-aire">
-              <div className="flex flex-col gap-0.5 rounded-fila bg-isla-alta p-4">
-                <span className="text-2xl font-semibold text-tinta">
-                  {enviados > 0 ? `${Math.round((respondidos / enviados) * 100)}%` : "—"}
-                </span>
-                <span className="text-xs text-tinta-60">
-                  tasa de respuesta de la prospección ({respondidos}/{enviados})
-                </span>
-              </div>
-              <div className="flex flex-col gap-0.5 rounded-fila bg-isla-alta p-4">
-                <span className="text-2xl font-semibold text-tinta">{interesados.length}</span>
-                <span className="text-xs text-tinta-60">interesados en total</span>
-              </div>
-              <div className="flex flex-col gap-0.5 rounded-fila bg-isla-alta p-4">
-                <span className="text-2xl font-semibold text-tinta">{tandas.length}</span>
-                <span className="text-xs text-tinta-60">tandas enviadas</span>
-              </div>
-            </div>
-            <Actividad instanciaId={ID_ZAK} />
-          </div>
+          <MetricasZak
+            enviados={enviados}
+            respondidos={respondidos}
+            interesados={interesados.length}
+            tandas={tandas.length}
+          />
         )}
 
         {tab === "prompt" && (
@@ -346,15 +282,24 @@ export function ZakView({
             instanciaId={ID_ZAK}
             prompt={prompt}
             versiones={versiones}
-            onProbarEnLabs={() => setTab("labs")}
+            onProbarEnLabs={() => irA("labs")}
           />
         )}
 
         {tab === "labs" && (
-          <LabsChat
-            instanciaId={ID_ZAK}
-            prompt={prompt}
-            onEditarPrompt={() => setTab("prompt")}
+          <LabsChat instanciaId={ID_ZAK} prompt={prompt} onEditarPrompt={() => irA("prompt")} />
+        )}
+
+        {cara === "voz" && (
+          <ZakVoz
+            tab={tab as PestanaVoz}
+            agente={agenteVoz}
+            llamadas={llamadasVoz}
+            llamadasHoy={llamadasVozHoy}
+            voces={voces}
+            clientes={clientes}
+            telefoniaLista={telefoniaLista}
+            labVisitado={labVozVisitado}
           />
         )}
       </CockpitBody>

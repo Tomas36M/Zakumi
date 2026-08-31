@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { verifySession } from "@/lib/admin/dal";
 import { contarLlamadasHoy, llamadasDeAgente, obtenerAgenteVoz } from "@/lib/admin/voz";
 import { listarVoces } from "@/lib/voz/api";
@@ -23,6 +23,14 @@ export default async function AgenteVozPage({
 
   const agente = await obtenerAgenteVoz(sesion.supabase, id);
   if (!agente) notFound();
+
+  // La voz de Zak vive en su cockpit, no aquí: dos puertas a la misma ficha
+  // se desincronizan (se edita en una y la otra sigue mostrando lo viejo).
+  // Los enlaces viejos siguen funcionando gracias a este redirect.
+  if (agente.es_zak) {
+    const destino = PESTANAS.includes(tab as Pestana) ? `voz-${tab}` : "voz-config";
+    redirect(`/admin/zak?tab=${destino}`);
+  }
 
   const [llamadas, hoy, voces, clientes] = await Promise.all([
     llamadasDeAgente(sesion.supabase, id),

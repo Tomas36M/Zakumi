@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import { X } from "lucide-react";
-import { crearAgenteVoz, crearAgenteZakVoz } from "@/lib/admin/voz-actions";
+import { crearAgenteVoz } from "@/lib/admin/voz-actions";
 import type { AgenteVozFila } from "@/lib/admin/voz";
 import type { VozEleven } from "@/lib/voz/api";
 import { seccionesVacias } from "@/lib/voz/guias";
@@ -201,59 +201,6 @@ function NuevoAgenteForm({
 }
 
 /** Alta de un clic de la voz de Zak: todo viene sembrado menos la voz. */
-function CrearZak({ voces }: { voces: VozEleven[] }) {
-  const router = useRouter();
-  const [pendiente, startTransition] = useTransition();
-  const [error, setError] = useState<string | null>(null);
-  const [voiceId, setVoiceId] = useState("");
-
-  return (
-    <Island
-      titulo="Zak todavía no tiene voz"
-      className="flex max-w-2xl flex-col gap-3 bg-acento-10"
-    >
-      <p className="text-xs text-tinta-60">
-        Se crea con su prompt completo (quién es, catálogo con precios, guion de
-        llamada, horarios y límites) y la extracción de leads. Solo falta
-        elegirle la voz — en español, que es el idioma de las llamadas.
-      </p>
-      <Field label="Voz de Zak *">
-        <SelectorVoz voces={voces} valor={voiceId} onCambio={setVoiceId} />
-      </Field>
-      {error && <Banner variante="error">{error}</Banner>}
-      <Button
-        variante="primaria"
-        className="self-start"
-        disabled={pendiente || !voiceId}
-        onClick={() => {
-          setError(null);
-          startTransition(async () => {
-            try {
-              const r = await crearAgenteZakVoz(voiceId);
-              if ("error" in r) {
-                setError(r.error);
-                return;
-              }
-              if (r.aviso) {
-                // Fallo parcial (ElevenLabs caído, o es_zak sin marcar): se
-                // muestra tal cual y NO se navega como si fuera éxito total.
-                setError(r.aviso);
-                router.refresh();
-                return;
-              }
-              router.push(`/admin/voz/${r.id}`);
-            } catch {
-              setError("Se perdió la conexión — mira la lista antes de reintentar (pudo crearse).");
-            }
-          });
-        }}
-      >
-        {pendiente ? "Creando a Zak…" : "Crear a Zak"}
-      </Button>
-    </Island>
-  );
-}
-
 export function VozView({
   agentes,
   llamadasHoy,
@@ -269,12 +216,16 @@ export function VozView({
   const [biblioteca, setBiblioteca] = useState(false);
   const [telefonia, setTelefonia] = useState(false);
 
+  // Zak NO se lista aquí: vive en /admin/zak con sus dos caras (chat y voz).
+  // Esta pantalla es el catálogo de agentes que se le VENDEN a clientes.
+  const deClientes = agentes.filter((a) => !a.es_zak);
+
   return (
     <Cockpit>
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-hairline px-5 py-4">
         <h1 className="text-lg font-semibold text-tinta">Voz</h1>
         <span className="text-xs text-tinta-40">
-          {agentes.length === 1 ? "1 agente" : `${agentes.length} agentes`}
+          {deClientes.length === 1 ? "1 agente" : `${deClientes.length} agentes`}
         </span>
         <div className="flex items-center gap-2">
           <Button onClick={() => setTelefonia((v) => !v)}>Telefonía</Button>
@@ -305,20 +256,18 @@ export function VozView({
           <BibliotecaVoces onCerrar={() => setBiblioteca(false)} />
         )}
 
-        {voces !== null && !agentes.some((a) => a.es_zak) && <CrearZak voces={voces} />}
-
         {creando && voces !== null && (
           <NuevoAgenteForm voces={voces} clientes={clientes} onCerrar={() => setCreando(false)} />
         )}
 
-        {agentes.length === 0 && !creando ? (
+        {deClientes.length === 0 && !creando ? (
           <EmptyState
-            titulo="Todavía no hay agentes de voz."
-            detalle="El primero debería ser la demo de Zakumi: créalo sin cliente y pruébalo en su Lab antes de venderlo."
+            titulo="Todavía no hay agentes de voz para clientes."
+            detalle="Estos son los que le vendes a clientes. La voz de Zak vive en su propia pantalla, en /admin/zak."
           />
         ) : (
           <div className="grid gap-aire md:grid-cols-2 xl:grid-cols-3">
-            {agentes.map((a) => {
+            {deClientes.map((a) => {
               const hoy = llamadasHoy[a.id] ?? 0;
               return (
                 <Link
@@ -329,7 +278,6 @@ export function VozView({
                   <header className="flex items-center justify-between gap-2">
                     <h2 className="truncate text-sm font-semibold text-tinta">{a.nombre}</h2>
                     <span className="flex shrink-0 items-center gap-1">
-                      {a.es_zak && <Badge tono="cliente">Zak</Badge>}
                       <Badge tono={a.activo ? "vivo" : "peligro"}>
                         {a.activo ? "Activo" : "Apagado"}
                       </Badge>
