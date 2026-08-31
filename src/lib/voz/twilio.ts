@@ -1,15 +1,15 @@
 // Cliente de Twilio para la telefonía del panel (/admin/voz → Telefonía).
 //
-// SOLO SERVIDOR: usa TWILIO_ACCOUNT_SID + TWILIO_AUTH_TOKEN (sin prefijo
-// NEXT_PUBLIC a propósito — con esas credenciales se compran números y se
-// gastan dólares). Mismo contrato degradable que el resto de lib/voz:
+// SOLO SERVIDOR: TWILIO_ACCOUNT_SID + (API key o auth token — ver
+// credenciales() abajo; sin prefijo NEXT_PUBLIC a propósito, porque con esas
+// credenciales se compran números y se gastan dólares). Contrato degradable:
 // Resultado<T> y JAMÁS lanza.
 //
 // Twilio habla form-encoded en los POST (no JSON) y Basic auth con
 // sid:token — no es un capricho, su API es de 2010.
 
 export type ErrorTwilio =
-  | "sin_configurar" // faltan TWILIO_ACCOUNT_SID / TWILIO_AUTH_TOKEN
+  | "sin_configurar" // falta el Account SID o el par de credenciales
   | "sin_conexion"
   | "no_autorizado" // credenciales malas
   | "saldo_insuficiente" // 21606 y familia: la cuenta no puede comprar
@@ -34,11 +34,29 @@ export type NumeroComprado = {
 
 const BASE = "https://api.twilio.com/2010-04-01";
 
-function credenciales(): { sid: string; token: string } | null {
-  const sid = process.env.TWILIO_ACCOUNT_SID;
+/**
+ * Credenciales de Twilio. Dos formas, en orden de preferencia:
+ *
+ *  1. **API key** (`TWILIO_API_KEY_SID` + `TWILIO_API_KEY_SECRET`): el usuario
+ *     del Basic auth es el `SK…`, pero la URL sigue llevando el Account SID.
+ *     Preferida porque se revoca sola, sin tumbar el resto de la cuenta.
+ *  2. **Auth token** (`TWILIO_AUTH_TOKEN`): la credencial maestra; sirve, pero
+ *     revocarla obliga a re-configurar todo lo que la use.
+ *
+ * `cuenta` va en la ruta; `usuario`/`clave` en el Basic auth.
+ */
+function credenciales(): { cuenta: string; usuario: string; clave: string } | null {
+  const cuenta = process.env.TWILIO_ACCOUNT_SID;
+  if (!cuenta) return null;
+
+  const keySid = process.env.TWILIO_API_KEY_SID;
+  const keySecret = process.env.TWILIO_API_KEY_SECRET;
+  if (keySid && keySecret) return { cuenta, usuario: keySid, clave: keySecret };
+
   const token = process.env.TWILIO_AUTH_TOKEN;
-  if (!sid || !token) return null;
-  return { sid, token };
+  if (token) return { cuenta, usuario: cuenta, clave: token };
+
+  return null;
 }
 
 /** true si el panel puede operar telefonía (para degradar la UI). */
@@ -49,7 +67,15 @@ export function twilioConfigurado(): boolean {
 /** Las credenciales para importar el número en ElevenLabs. SOLO servidor:
  * quien la llame no puede devolverlas al browser. */
 export function credencialesTwilio(): { sid: string; token: string } | null {
-  return credenciales();
+  const c = credenciales();
+  if (!c) return null;
+  // ElevenLabs documenta el par de CUENTA (Account SID + Auth Token) y podría
+  // usar el `sid` para armar la ruta /Accounts/{sid}/… — si el auth token está
+  // disponible, se le manda ese par. Si solo hay API key, se le manda esa
+  // (verificado el 2026-08-31: la acepta y llega a hablar con Twilio).
+  const token = process.env.TWILIO_AUTH_TOKEN;
+  if (token) return { sid: c.cuenta, token };
+  return { sid: c.usuario, token: c.clave };
 }
 
 function errorDe(status: number, json: unknown): ErrorTwilio {
@@ -70,12 +96,12 @@ async function llamar(
 ): Promise<Resultado<unknown>> {
   const cred = credenciales();
   if (!cred) {
-    console.error("[twilio] faltan TWILIO_ACCOUNT_SID / TWILIO_AUTH_TOKEN");
+    console.error("[twilio] falta TWILIO_ACCOUNT_SID o el par de credenciales");
     return { ok: false, error: "sin_configurar" };
   }
-  const auth = Buffer.from(`${cred.sid}:${cred.token}`).toString("base64");
+  const auth = Buffer.from(`${cred.usuario}:${cred.clave}`).toString("base64");
   try {
-    const res = await fetch(`${BASE}/Accounts/${encodeURIComponent(cred.sid)}${path}`, {
+    const res = await fetch(`${BASE}/Accounts/${encodeURIComponent(cred.cuenta)}${path}`, {
       method: metodo,
       headers: {
         Authorization: `Basic ${auth}`,
@@ -148,13 +174,17 @@ export async function comprarNumero(numero: string): Promise<Resultado<NumeroCom
 export function mensajeTwilio(error: ErrorTwilio): string {
   switch (error) {
     case "sin_configurar":
-      return "Falta conectar Twilio: TWILIO_ACCOUNT_SID y TWILIO_AUTH_TOKEN en el servidor.";
+      return "Falta conectar Twilio en el servidor: TWILIO_ACCOUNT_SID más la API key (TWILIO_API_KEY_SID + TWILIO_API_KEY_SECRET) o el TWILIO_AUTH_TOKEN.";
     case "sin_conexion":
       return "Twilio no respondió. Inténtalo de nuevo en un momento.";
     case "no_autorizado":
-      return "Twilio rechazó las credenciales (¿SID y token correctos?).";
+      return "Twilio rechazó las credenciales (¿la API key sigue activa?).";
     case "saldo_insuficiente":
-      return "La cuenta de Twilio no puede comprar: revisa el saldo o sal del trial.";
+      return (
+        "Tu cuenta de Twilio está en modo trial y no permite buscar ni comprar " +
+        "números. Entra a twilio.com → \"Upgrade for full access\", agrega fondos " +
+        "y vuelve a intentar."
+      );
     case "regulacion":
       return "Ese país exige documentación (bundle regulatorio) en Twilio antes de comprar. Prueba con un número de Estados Unidos.";
     case "no_disponible":
