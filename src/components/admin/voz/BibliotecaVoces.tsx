@@ -135,7 +135,8 @@ export function BibliotecaVoces({ onCerrar }: { onCerrar: () => void }) {
         <EmptyState titulo="Nada con ese filtro." detalle="Prueba otro acento o borra la búsqueda." />
       )}
 
-      <div className="flex flex-col gap-1">
+      {/* La lista scrollea por dentro: la página del panel no se estira. */}
+      <div className="barra-fina flex max-h-96 flex-col gap-1 overflow-y-auto pr-1">
         {(voces ?? []).map((v) => (
           <ListRow key={v.voice_id} interactiva={false} className="flex flex-wrap items-center gap-3">
             <div className="min-w-0 flex-1">
