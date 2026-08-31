@@ -1,6 +1,8 @@
 import { verifySession } from "@/lib/admin/dal";
-import { agenteZakVoz } from "@/lib/admin/voz";
+import { agenteZakVoz, contarLlamadasHoy, llamadasDeAgente } from "@/lib/admin/voz";
 import { catalogoVerticales } from "@/lib/admin/zak-verticales";
+import { pestanaInicial } from "@/lib/admin/zak-caras";
+import { listarVoces } from "@/lib/voz/api";
 import type { EstadoVozZak } from "@/components/admin/voz/BotonLlamarZak";
 import {
   listarProspectos,
@@ -11,13 +13,9 @@ import {
   statusInstancia,
 } from "@/lib/bots/api";
 import { ID_ZAK } from "@/lib/bots/tipos";
-import { ZakView, type PestanaZak } from "@/components/admin/bots/ZakView";
+import { ZakView } from "@/components/admin/bots/ZakView";
 
 export const metadata = { title: "Zak" };
-
-const PESTANAS: readonly PestanaZak[] = [
-  "bandeja", "interesados", "tandas", "plantillas", "metricas", "prompt", "labs",
-];
 
 export default async function ZakPage({
   searchParams,
@@ -39,8 +37,22 @@ export default async function ZakPage({
       listarTandas(ID_ZAK),
       listarProspectos(ID_ZAK),
       catalogoVerticales(supabase), // vivo; sin la tabla cae al estático
-      agenteZakVoz(supabase), // la voz de Zak, para "Llamar con IA"
+      agenteZakVoz(supabase), // la voz de Zak: su cara de Voz y "Llamar con IA"
     ]);
+
+  // La cara de Voz solo necesita datos si Zak YA tiene agente; si no, lo único
+  // que se pinta es el alta (que sí necesita el catálogo de voces).
+  const [llamadasVoz, llamadasVozHoy, voces] = await Promise.all([
+    zakVoz ? llamadasDeAgente(supabase, zakVoz.id) : Promise.resolve([]),
+    zakVoz ? contarLlamadasHoy(supabase, zakVoz.id) : Promise.resolve(0),
+    listarVoces(),
+  ]);
+
+  const clientes = await supabase
+    .from("clientes")
+    .select("id, nombre")
+    .eq("activo", true)
+    .order("nombre");
 
   // Cada rechazo con su remedio: el tooltip del botón guía al fix correcto.
   const vozZak: EstadoVozZak = !zakVoz
@@ -54,12 +66,6 @@ export default async function ZakPage({
           ? "lista"
           : "sin_numero";
 
-  const tabInicial: PestanaZak = telefonoInicial
-    ? "bandeja"
-    : PESTANAS.includes(tab as PestanaZak)
-      ? (tab as PestanaZak)
-      : "bandeja";
-
   return (
     <ZakView
       telefonoInicial={telefonoInicial}
@@ -69,10 +75,19 @@ export default async function ZakPage({
       status={status.ok ? status.data : null}
       tandas={tandas.ok ? tandas.data : []}
       prospectos={prospectos.ok ? prospectos.data : []}
-      tabInicial={tabInicial}
+      tabInicial={telefonoInicial ? "bandeja" : pestanaInicial(tab)}
       verticales={[...catalogo.todos]}
       plantillas={catalogo.filas}
       vozZak={vozZak}
+      agenteVoz={zakVoz}
+      llamadasVoz={llamadasVoz}
+      llamadasVozHoy={llamadasVozHoy ?? 0}
+      voces={voces.ok ? voces.data : null}
+      clientes={(clientes.data ?? []) as { id: string; nombre: string }[]}
+      telefoniaLista={
+        Boolean(process.env.ELEVENLABS_PHONE_NUMBER_ID) ||
+        Boolean(zakVoz?.phone_number_id_eleven)
+      }
     />
   );
 }
