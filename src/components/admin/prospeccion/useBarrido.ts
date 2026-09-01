@@ -19,8 +19,17 @@ import type { Territorio } from "@/lib/admin/territorios";
 // desde acá, como en el resto de la API pública de useBarrido.
 export type { ResumenBarrido };
 
-/** Cuatro peticiones en vuelo: suficiente para que 310 teselas tarden ~20s sin
- * que Google nos vea como un abuso. */
+/** Cuatro peticiones en vuelo. Es el equilibrio entre acabar en un tiempo
+ * razonable y no parecerle un abuso a Google.
+ *
+ * El orden de magnitud, para que nadie espere otra cosa: la unidad de trabajo
+ * es una LLAMADA (tesela × vertical), no una tesela. Un territorio de 31
+ * teselas por 10 verticales son 310 llamadas; a ~1 s de ida y vuelta contra
+ * Places y 4 en paralelo, eso son MINUTOS, no segundos — y las zonas densas se
+ * subdividen y añaden más. Todo esto corre en el navegador: **la pestaña tiene
+ * que quedarse abierta**. Cerrarla no pierde lo ya barrido (queda en
+ * `teselas_hechas`, y las celdas densas en `teselas_saturadas`), pero corta el
+ * barrido donde vaya. */
 const CONCURRENCIA = 4;
 
 export type EstadoBarrido = {
@@ -109,10 +118,12 @@ export function useBarrido(territorio: Territorio) {
         (t) => !hechasLocal.current.has(t.clave),
       );
 
-      // Lo que quedó pendiente de un barrido pausado — incluidas las hijas de
-      // una celda saturada, que ya no se pueden regenerar: su tesela madre
-      // quedó anotada como hecha y el plan nuevo la salta. Van primero: son
-      // las más profundas y las únicas irrecuperables.
+      // Lo que quedó pendiente de un barrido pausado, incluidas las hijas de una
+      // celda saturada. Van primero por ser lo más profundo: reanudar sigue por
+      // donde iba en vez de volver a empezar por la superficie. (Regenerables
+      // no lo son solo por esto: desde que la saturación se anota en
+      // `teselas_saturadas`, `planDeBarrido` vuelve a bajar a esas hijas aunque
+      // la cola se pierda entera.)
       const pendientes = cola.current.filter((t) => verticales.includes(t.vertical));
       const yaEnCola = new Set(pendientes.map((t) => t.clave));
       cola.current = [...pendientes, ...plan.filter((t) => !yaEnCola.has(t.clave))];
@@ -243,9 +254,10 @@ export function useBarrido(territorio: Territorio) {
           // Volvieron 20 (el techo de Nearby Search): hay negocios que no
           // vimos. Se parte la celda y se reconsulta SOLO esta vertical.
           // La cola y su `total` NO van guardados por vigencia: esas hijas son
-          // trabajo real que la corrida nueva va a drenar (su tesela madre ya
-          // quedó anotada como hecha, así que ningún plan futuro las
-          // regeneraría), y el total tiene que contarlas.
+          // trabajo real que la corrida nueva va a drenar, y el total tiene que
+          // contarlas. (El mismo RPC que anota la madre como hecha la anota
+          // como saturada, así que un plan futuro las volvería a generar; esto
+          // es para no esperar a ese plan futuro.)
           const hijas = hijasDe(t);
           cola.current.push(...hijas);
           setEstado((e) => ({ ...e, total: e.total + hijas.length }));

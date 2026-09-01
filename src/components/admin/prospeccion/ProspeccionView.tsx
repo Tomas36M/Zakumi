@@ -7,7 +7,9 @@ import type { Negocio } from "@/lib/admin/negocios";
 import type { Territorio } from "@/lib/admin/territorios";
 import { NegociosView } from "@/components/admin/negocios/NegociosView";
 import { Banner } from "@/components/admin/ui/Banner";
+import { Button } from "@/components/admin/ui/Button";
 import { Cockpit } from "@/components/admin/ui/Cockpit";
+import type { AvisoBarrido } from "./BarridoProgreso";
 import { CarasProspeccion } from "./CarasProspeccion";
 import { TerritorioView, type BarridoAbierto } from "./TerritorioView";
 
@@ -62,6 +64,12 @@ export function ProspeccionView({
   // El barrido abierto vive acá arriba para que las caras puedan marcarlo; lo
   // maneja TerritorioView, que es quien monta la banda de progreso.
   const [barrido, setBarrido] = useState<BarridoAbierto | null>(null);
+  // Y su estado vivo, que la banda publica hacia acá. La cara Territorio se
+  // esconde con `hidden` (desmontarla mataría el barrido), así que estando en
+  // Leads el usuario no veía NADA: ni la barra, ni Pausar, ni el banner del
+  // tope de gasto, ni el 429 de Google. El guardarraíl que protege su
+  // consentimiento quedaba invisible justo cuando salta.
+  const [aviso, setAviso] = useState<AvisoBarrido | null>(null);
 
   const sinWeb = negocios.filter((n) => !n.sitio_web).length;
 
@@ -115,6 +123,42 @@ export function ProspeccionView({
           </Banner>
         )}
 
+        {/* El barrido, visible desde esta cara. El punto que late en la
+            pestaña dice que hay uno; esto dice cómo va y deja pararlo. */}
+        {cara === "leads" && aviso && (
+          <Banner variante={aviso.error || aviso.capado ? "error" : "aviso"}>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span>
+                {aviso.corriendo
+                  ? "Barriendo"
+                  : aviso.termino
+                    ? "Barrido terminado"
+                    : aviso.capado
+                      ? "Barrido en pausa: se pasó de lo aprobado"
+                      : "Barrido en pausa"}{" "}
+                · <strong>{aviso.territorio}</strong> · {aviso.hechos} de{" "}
+                {aviso.total} en esta tanda
+                {aviso.error && <> — {aviso.error}</>}
+                {aviso.sinContabilizar > 0 && (
+                  <>
+                    {" "}
+                    — {aviso.sinContabilizar}{" "}
+                    {aviso.sinContabilizar === 1
+                      ? "tesela cobrada sin contabilizar"
+                      : "teselas cobradas sin contabilizar"}
+                  </>
+                )}
+              </span>
+              <span className="flex shrink-0 gap-2">
+                {aviso.corriendo && <Button onClick={aviso.pausar}>Pausar</Button>}
+                <Button variante="primaria" onClick={() => cambiarCara("territorio")}>
+                  {aviso.termino ? "Ver el resumen" : "Ver el barrido"}
+                </Button>
+              </span>
+            </div>
+          </Banner>
+        )}
+
         {/* Un censo que no dice que está recortado no es un censo. */}
         {truncada && (
           <Banner variante="error">
@@ -136,6 +180,7 @@ export function ProspeccionView({
         fallaTerritorios={fallaTerritorios}
         barrido={barrido}
         onBarrido={setBarrido}
+        onAvisoBarrido={setAviso}
         oculta={cara !== "territorio"}
       />
 

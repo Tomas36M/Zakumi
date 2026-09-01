@@ -12,7 +12,7 @@ import { cn } from "@/lib/cn";
 import { Button } from "@/components/admin/ui/Button";
 import { MapCanvas } from "@/components/admin/mapa/MapCanvas";
 import { SearchPanel } from "@/components/admin/mapa/SearchPanel";
-import { BarridoProgreso } from "./BarridoProgreso";
+import { BarridoProgreso, type AvisoBarrido } from "./BarridoProgreso";
 import { DialogoBarrer } from "./DialogoBarrer";
 import { DibujarTerritorio } from "./DibujarTerritorio";
 import { FichaLateral } from "./FichaLateral";
@@ -55,6 +55,10 @@ type Props = {
   /** El barrido abierto vive en el shell (las caras lo marcan). */
   barrido: BarridoAbierto | null;
   onBarrido: (barrido: BarridoAbierto | null) => void;
+  /** El estado vivo del barrido, para que el shell lo pinte en la cara Leads
+   * (donde esta cara está `hidden` y no se ve nada). Se pasa tal cual: tiene
+   * que conservar su identidad entre renders. */
+  onAvisoBarrido: (aviso: AvisoBarrido | null) => void;
   /** La cara está en segundo plano: se esconde, NUNCA se desmonta (adentro
    * puede haber un barrido en vuelo). */
   oculta: boolean;
@@ -70,6 +74,7 @@ export function TerritorioView({
   fallaTerritorios,
   barrido,
   onBarrido,
+  onAvisoBarrido,
   oculta,
 }: Props) {
   const router = useRouter();
@@ -231,6 +236,7 @@ export function TerritorioView({
             verticales={barrido.verticales}
             llamadasAprobadas={barrido.llamadasAprobadas}
             fallaTerritorios={fallaTerritorios}
+            onAviso={onAvisoBarrido}
             onCerrar={() => onBarrido(null)}
           />
         </div>

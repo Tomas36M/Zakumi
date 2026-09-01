@@ -54,10 +54,18 @@ export function useConfirmar() {
         </p>
       )}
       <div className="flex justify-end gap-2">
-        <Button onClick={() => cerrar(false)}>Cancelar</Button>
+        {/* Con `peligro`, el foco arranca en Cancelar. El diálogo se abre por
+            teclado tan a menudo como por ratón, y un Enter de más confirmaba
+            de inmediato "Cerrar y perderlas" o "Eliminar" sin que nadie
+            llegara a leer el mensaje — un barrido cortado a medias, o unos
+            leads borrados. Lo inocuo sigue enfocando el botón que confirma:
+            ahí el Enter es la comodidad que se busca. */}
+        <Button autoFocus={pendiente.peligro} onClick={() => cerrar(false)}>
+          Cancelar
+        </Button>
         <Button
           variante={pendiente.peligro ? "peligro" : "primaria"}
-          autoFocus
+          autoFocus={!pendiente.peligro}
           onClick={() => cerrar(true)}
         >
           {pendiente.accion ?? "Confirmar"}

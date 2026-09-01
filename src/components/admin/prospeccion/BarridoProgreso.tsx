@@ -12,6 +12,28 @@ import { useConfirmar } from "@/components/admin/ui/Confirmar";
 import { IconButton } from "@/components/admin/ui/IconButton";
 import { useBarrido } from "./useBarrido";
 
+/** Lo mínimo que el shell necesita para pintar el barrido desde la OTRA cara.
+ *
+ * La cara Leads esconde esta banda con `hidden` (desmontarla mataría el
+ * barrido), así que desde ahí no se ve nada: ni el tope de gasto, ni la cuota
+ * de Google, ni Pausar. El guardarraíl que protege el consentimiento del
+ * usuario quedaba invisible justo cuando salta. */
+export type AvisoBarrido = {
+  territorio: string;
+  hechos: number;
+  total: number;
+  corriendo: boolean;
+  /** Drenó la cola entera: ya no queda nada que barrer en esta tanda. */
+  termino: boolean;
+  /** El barrido se frenó solo por pasarse de lo aprobado. */
+  capado: boolean;
+  /** Cuota de Google, sesión vencida, key mal configurada. */
+  error: string | null;
+  /** Teselas cobradas que no quedaron contabilizadas. */
+  sinContabilizar: number;
+  pausar: () => void;
+};
+
 type Props = {
   territorio: Territorio;
   /** Las verticales que se confirmaron en el diálogo de estimación. */
@@ -21,6 +43,10 @@ type Props = {
   /** La consulta de territorios falló: el contador de gasto que trae el prop
    * `territorio` es viejo y no se puede presentar como si estuviera al día. */
   fallaTerritorios: boolean;
+  /** Sube el estado al shell para que la cara Leads lo muestre. Tiene que ser
+   * de identidad estable (un `setState` sirve): va en las dependencias de un
+   * efecto. */
+  onAviso: (aviso: AvisoBarrido | null) => void;
   onCerrar: () => void;
 };
 
@@ -76,6 +102,7 @@ export function BarridoProgreso({
   verticales,
   llamadasAprobadas,
   fallaTerritorios,
+  onAviso,
   onCerrar,
 }: Props) {
   const { estado, arrancar, pausar } = useBarrido(territorio);
@@ -203,7 +230,14 @@ export function BarridoProgreso({
     intento.hechos === hechos &&
     intento.total === total;
 
-  const barridasEnTotal = territorio.teselas_hechas?.length ?? 0;
+  // `teselas_hechas` guarda claves de TRABAJO (tesela#vertical), no teselas: un
+  // barrido de 10 verticales sobre 31 teselas deja 310 entradas, no 31. La
+  // pantalla las llamaba "teselas barridas" al lado de "llamadas" y presentaba
+  // así la MISMA cantidad dos veces con dos nombres — el nombre correcto es lo
+  // que las distingue: se separan cuando una llamada se cobra dos veces por el
+  // mismo trabajo (reintento tras fallar el insert) o cuando una anotación no
+  // llega.
+  const trabajosHechos = territorio.teselas_hechas?.length ?? 0;
   const yaEstaban = Math.max(
     0,
     resumenTotal.encontrados -
@@ -212,6 +246,35 @@ export function BarridoProgreso({
       resumenTotal.insertados,
   );
 
+  // El aviso para la otra cara. Dos efectos y no uno: si la limpieza colgara
+  // del mismo efecto que publica, cada cambio de `hechos` publicaría un null
+  // antes del valor nuevo y la banda parpadearía en la cara Leads.
+  useEffect(() => {
+    onAviso({
+      territorio: territorio.nombre,
+      hechos,
+      total,
+      corriendo,
+      termino,
+      capado,
+      error,
+      sinContabilizar: resumenTotal.sinContabilizar,
+      pausar,
+    });
+  }, [
+    onAviso,
+    territorio.nombre,
+    hechos,
+    total,
+    corriendo,
+    termino,
+    capado,
+    error,
+    resumenTotal.sinContabilizar,
+    pausar,
+  ]);
+  useEffect(() => () => onAviso(null), [onAviso]);
+
   function reanudar(ampliarTope: boolean) {
     if (ampliarTope) setAmpliaciones((a) => a + 1);
     setIntento({ hechos, total });
@@ -219,19 +282,21 @@ export function BarridoProgreso({
   }
 
   async function cerrar() {
-    // Cerrar con cola pendiente NO es gratis: las hijas de una celda saturada
-    // no se pueden regenerar (su tesela madre ya está en teselas_hechas, así
-    // que el plan siguiente la salta) y esa zona queda sin censar para siempre,
-    // sin que `saturadasAlFondo` lo cuente.
+    // Cerrar con cola pendiente ya no pierde nada de forma permanente: desde
+    // que la saturación se anota en `teselas_saturadas`, un barrido nuevo
+    // vuelve a bajar a las hijas de una celda densa aunque la madre cuente como
+    // barrida. Lo que sí se pierde es esta tanda —hay que volver a estimar y a
+    // confirmar—, y esas teselas siguen sin censar hasta que alguien lo haga.
     if (faltan > 0) {
       const ok = await confirmar({
         titulo: "¿Cerrar el barrido a medias?",
         mensaje:
-          `Quedan ${faltan} teselas en la cola. Las que salieron de partir una zona ` +
-          "densa NO se pueden recuperar: su celda madre ya cuenta como barrida, así " +
-          "que un barrido nuevo la salta y esa zona queda sin censar.\n\n" +
-          "Reanudar no cuesta nada extra: lo ya barrido no se vuelve a pagar.",
-        accion: "Cerrar y perderlas",
+          `Quedan ${faltan} teselas en la cola, y esa parte del territorio se ` +
+          "queda sin censar hasta que vuelvas a barrerlo.\n\n" +
+          "No se pierde nada para siempre: las zonas densas quedan anotadas y un " +
+          "barrido nuevo baja solo a sus sub-teselas. Y lo ya barrido no se " +
+          "vuelve a pagar — solo lo que falta.",
+        accion: "Cerrar el barrido",
         peligro: true,
       });
       if (!ok) return;
@@ -277,7 +342,7 @@ export function BarridoProgreso({
               </span>
             ) : (
               <>
-                el territorio lleva {barridasEnTotal} teselas barridas ·{" "}
+                el territorio lleva {trabajosHechos} teselas×vertical barridas ·{" "}
                 {territorio.llamadas ?? 0} llamadas ≈{" "}
                 {formatoUsd((territorio.llamadas ?? 0) * PRECIO_POR_LLAMADA_USD)}
               </>

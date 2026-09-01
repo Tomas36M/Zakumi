@@ -13,6 +13,7 @@ import type { ResultadoPlace } from "@/lib/admin/places";
 import type { Territorio } from "@/lib/admin/territorios";
 import { cn } from "@/lib/cn";
 import type { Seleccion } from "@/components/admin/prospeccion/TerritorioView";
+import { ACENTO } from "./colores";
 
 // Solo el encuadre de arranque del mapa (Madrid, Cundinamarca) — ya NO es un
 // preset de búsqueda: con territorios libres el sesgo de la búsqueda sale del
@@ -39,10 +40,6 @@ const PIN_ACTIVO = "scale-[1.45] border-white";
 // relleno (estado, COLOR_PIN) y al contorno naranja (resultado sin importar,
 // más abajo), para que las tres señales se puedan leer a la vez.
 const PIN_SIN_WEB = "ring-2 ring-offset-1 ring-acento ring-offset-transparent";
-
-// El naranja del panel (--color-acento). Un overlay de Google no lee tokens
-// CSS: hay que darle el literal (mismo valor que TrazoEnCurso.tsx).
-const ACENTO = "#DB5227";
 
 /** Padding de 9px = target táctil ~34px sobre el pin de 16px. */
 function PinHit({ children }: { children: React.ReactNode }) {

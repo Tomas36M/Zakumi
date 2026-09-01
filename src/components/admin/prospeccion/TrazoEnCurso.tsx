@@ -3,10 +3,7 @@
 import { useEffect, useRef } from "react";
 import { AdvancedMarker, useMap } from "@vis.gl/react-google-maps";
 import type { Punto } from "@/lib/admin/barrido";
-
-// El naranja del panel (--color-acento). Un overlay de Google no lee tokens
-// CSS: hay que darle el literal.
-const ACENTO = "#DB5227";
+import { ACENTO } from "@/components/admin/mapa/colores";
 
 /**
  * El área que el usuario está dibujando, pintada sobre el mapa. Va DENTRO de
