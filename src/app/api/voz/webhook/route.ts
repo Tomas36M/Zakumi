@@ -3,6 +3,7 @@ import { verificarFirma } from "@/lib/voz/hmac";
 import { parseEventoPostCall } from "@/lib/voz/webhook";
 import { createSupabaseService } from "@/lib/voz/supabase-service";
 import { avisarAdmin } from "@/lib/portal/avisos";
+import { registrarSolicitudEntrante } from "@/lib/solicitudes/entrada";
 
 // Webhook post-call de ElevenLabs — endpoint público (src/proxy.ts no cubre
 // /api/** a propósito: aquí la puerta es la firma; el otro endpoint público
@@ -63,39 +64,58 @@ export async function POST(request: Request) {
     sin_cliente?: boolean;
   };
 
-  // Aviso de lead por WhatsApp — fire-and-forget: nunca tumba el 200.
-  // Dos casos: se creó la venta en el portal (lead=true, cualquier canal
-  // salvo prueba), o el agente es interno (Zak/demo, sin cliente): la RPC no
-  // crea venta pero el prospecto es de Zakumi. Para el interno solo avisan
-  // saliente/entrante — las sesiones de widget del agente interno son casi
-  // siempre el lab del panel, y las pruebas nunca avisan.
+  // Qué hacemos al colgar, según de quién sea el agente:
+  //   - agente NUESTRO (sin_cliente): la persona es un prospecto de Zakumi →
+  //     solicitud en la bandeja + cita + aviso (todo dentro de entrada.ts).
+  //   - agente DE UN CLIENTE (lead): se comporta igual que siempre — la venta
+  //     ya la creó la RPC en ventas_cliente y aquí solo sale el aviso.
+  // 'prueba' (el lab del panel) nunca produce efectos comerciales. Del agente
+  // interno solo cuentan saliente/entrante: sus sesiones de widget son casi
+  // siempre el propio lab.
   const d = evento.params.p_datos ?? {};
   const dir = evento.params.p_direccion;
+  const texto = (v: unknown) => (typeof v === "string" && v !== "" ? v : null);
+
   const hayDatosLead =
-    (typeof d.lead_nombre === "string" && d.lead_nombre !== "") ||
-    (typeof d.lead_telefono === "string" && d.lead_telefono !== "") ||
+    texto(d.lead_nombre) !== null ||
+    texto(d.lead_telefono) !== null ||
+    texto(d.lead_detalle) !== null ||
+    texto(d.servicio_interes) !== null ||
     d.lead_interesado === true;
-  const debeAvisar =
-    r.status === "ok" &&
-    dir !== "prueba" &&
-    (r.lead === true ||
-      (r.sin_cliente === true &&
-        hayDatosLead &&
-        (dir === "saliente" || dir === "entrante")));
-  if (debeAvisar) {
+
+  if (r.status === "ok" && dir !== "prueba") {
     // '' del extractor no es un teléfono: cae al número marcado del evento.
-    const telLead =
-      typeof d.lead_telefono === "string" && d.lead_telefono !== ""
-        ? d.lead_telefono
-        : evento.params.p_telefono;
-    const quien = [d.lead_nombre, telLead]
-      .filter((x): x is string => typeof x === "string" && x !== "")
-      .join(" · ");
-    await avisarAdmin(
-      `🎙️ Lead por llamada de voz — ${r.agente_nombre ?? "agente"}\n` +
-        `${quien || "sin datos de contacto"}\n` +
-        `${evento.params.p_resumen ?? ""}`.trim(),
-    );
+    const telLead = texto(d.lead_telefono) ?? evento.params.p_telefono;
+
+    if (r.sin_cliente === true && hayDatosLead && (dir === "saliente" || dir === "entrante")) {
+      // La RPC no devuelve el id de la llamada: se busca por conversation_id
+      // (tiene índice único) en vez de tocar una RPC que ya está en producción.
+      const { data: llamada } = await supabase
+        .from("llamadas_voz")
+        .select("id")
+        .eq("conversation_id", evento.params.p_conversation_id)
+        .maybeSingle();
+
+      await registrarSolicitudEntrante(supabase, {
+        origen: "voz",
+        claveOrigen: `voz:${evento.params.p_conversation_id}`,
+        contacto: { nombre: texto(d.lead_nombre), telefono: telLead, email: null },
+        servicioInteres: texto(d.servicio_interes),
+        detalle: texto(d.lead_detalle) ?? evento.params.p_resumen,
+        mejorHorario: texto(d.mejor_horario),
+        citaCruda: d.cita_fecha_hora,
+        llamadaId: (llamada as { id?: string } | null)?.id ?? null,
+      });
+    } else if (r.lead === true) {
+      const quien = [d.lead_nombre, telLead]
+        .filter((x): x is string => typeof x === "string" && x !== "")
+        .join(" · ");
+      await avisarAdmin(
+        `🎙️ Lead por llamada de voz — ${r.agente_nombre ?? "agente"}\n` +
+          `${quien || "sin datos de contacto"}\n` +
+          `${evento.params.p_resumen ?? ""}`.trim(),
+      );
+    }
   }
 
   return NextResponse.json({ status: r.status ?? "ok" });

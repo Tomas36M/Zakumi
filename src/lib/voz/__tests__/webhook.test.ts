@@ -111,3 +111,31 @@ describe("parseEventoPostCall", () => {
     expect(parseEventoPostCall({ type: "post_call_transcription", data: {} }).tipo).toBe("ignorar");
   });
 });
+
+describe("parseEventoPostCall — campos de solicitud y cita", () => {
+  it("aplana servicio_interes y cita_fecha_hora como el resto de la extracción", () => {
+    const r = parseEventoPostCall(
+      evento({
+        analysis: {
+          data_collection_results: {
+            lead_nombre: { value: "María" },
+            lead_detalle: { value: "Quiere un bot para su restaurante" },
+            servicio_interes: { value: "bot de WhatsApp" },
+            cita_fecha_hora: { value: "2026-09-03T10:00" },
+            cita_confirmada: { value: true },
+          },
+          call_successful: "success",
+          transcript_summary: "María quiere un bot.",
+        },
+      }),
+    );
+    if (r.tipo !== "llamada") throw new Error("debió parsear");
+    expect(r.params.p_datos).toEqual({
+      lead_nombre: "María",
+      lead_detalle: "Quiere un bot para su restaurante",
+      servicio_interes: "bot de WhatsApp",
+      cita_fecha_hora: "2026-09-03T10:00",
+      cita_confirmada: true,
+    });
+  });
+});
