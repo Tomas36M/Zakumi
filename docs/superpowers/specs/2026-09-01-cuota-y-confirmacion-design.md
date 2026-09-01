@@ -15,14 +15,20 @@
 
 | Decisión | Elegido | Descartado |
 |---|---|---|
-| De dónde sale el consumo del mes | **Que el panel lleve la cuenta** (tabla propia con fechas) | Preguntarle a Google (Cloud Monitoring); un tope manual por tanda |
+| De dónde sale el consumo del mes | **Que el panel lleve la cuenta** (tabla propia con fechas) | Preguntarle a Google (Cloud Monitoring — investigado y descartado, ver abajo); un tope manual por tanda |
 | Cuándo pedir confirmación escrita | **Solo cuando el barrido supere la cuota gratuita** | Siempre; por encima de un monto fijo |
 | Al agotarse la cuota | **Avisar fuerte, no bloquear** | Bloquear hasta el mes siguiente |
 | Qué se escribe para confirmar | **El monto** | Una palabra tipo "BARRER" |
 
 ## Por qué cada una
 
-**La cuenta propia, no la de Google.** Integrar Cloud Monitoring daría el número exacto y contaría todo lo que consuma la key, pero cuesta una cuenta de servicio, credenciales nuevas y una API más que puede caerse — y habría que decidir qué hace el botón cuando falla. La cuenta propia es aproximada **por lo bajo** (no ve lo que gaste la búsqueda de texto suelta, que usa la misma key) y a cambio no depende de nadie. Y resuelve de paso el hallazgo abierto de la auditoría: sin registro con fechas, el contador de gasto no se puede reconciliar nunca contra la factura de Google.
+**La cuenta propia, no la de Google.** Se investigó Cloud Monitoring antes de descartarlo, y el resultado sorprendió: **Monitoring no expone el SKU**. Sus métricas para Maps Platform son técnicas —conteo de peticiones y latencias, con etiquetas de `service`, `method`, `response_code`, `credential_id`— y el desglose por SKU vive en los informes de Billing, que llegan con retraso y suelen necesitar export a BigQuery. Para un botón que decide en el momento, Billing no sirve.
+
+Sí habría una salida: Monitoring separa por **método**, y como el SKU depende del FieldMask y el FieldMask lo controlamos nosotros, "peticiones a `SearchNearby`" equivale a "consultas del SKU Enterprise" en este proyecto. Pero funciona por una suposición, no porque Google lo garantice.
+
+Y esa suposición **es la misma que hace exacta a la tabla**: hoy este panel es el único consumidor de Places del proyecto, así que la cuenta propia no es un piso — es el número real. Monitoring daría hoy la misma cifra a cambio de una cuenta de servicio, credenciales nuevas, una API más que puede caerse y una decisión incómoda sobre qué hace el botón cuando se cae.
+
+La tabla resuelve además el hallazgo abierto de la auditoría, que Monitoring no toca: sin registro con fechas, el gasto no se puede atribuir a un territorio ni a un día.
 
 **La fricción solo donde cuesta.** Una confirmación que se escribe siempre se convierte en memoria muscular: a las dos semanas se teclea sin leer y deja de proteger. Atarla a la frontera gratis/pagado la pone exactamente donde el dinero empieza, que además es la frontera que al usuario le importa.
 
@@ -122,11 +128,13 @@ Cuando la tanda **supera lo que queda de cuota**, el botón de barrer completo s
 ## Fuera de alcance
 
 - **Permiso de gasto por perfil.** Es la salida correcta si algún día entra al panel gente que no debe gastar nunca — hoy todos son `admin` y no hay esa granularidad. Cuando haga falta, va en `perfiles`, no en un tope.
-- **Leer el consumo real de Google.** Descartado arriba por costo. Si el gasto crece hasta que el piso no alcance, Cloud Monitoring es el siguiente paso.
+- **Leer el consumo real de Google.** Descartado arriba: Monitoring no da el SKU, y por método daría hoy el mismo número que la tabla.
+
+  **El disparador para reabrirlo, concreto:** cuando algo distinto de este panel empiece a consumir Places con la misma key, o cuando al reconciliar contra la consola de Google los números no cuadren. Ese desajuste es la señal, y va a ser visible justamente porque la tabla da con qué comparar. Si llega ese día, el camino es Monitoring filtrado por `method`, documentando que el mapeo método→SKU depende de que el FieldMask no cambie.
 - **Cambiar el nombre de la columna `territorios.llamadas`.** Sigue siendo correcto: son llamadas a una API.
 
 ## Riesgos
 
-1. **El conteo es un piso.** Alguien puede creerse dentro de la cuota y estar fuera, porque el consumo previo a esta tabla no se ve y la búsqueda suelta empezó a contarse solo ahora. Mitigado diciéndolo en pantalla; el enlace a las métricas de Google queda como la fuente de verdad.
+1. **El conteo es exacto hoy y se degrada a piso mañana.** Mientras este panel sea el único consumidor de Places del proyecto, la cuenta es la real. Deja de serlo en cuanto otra cosa use la key — y nadie recibe un aviso cuando eso pasa. El riesgo concreto no es equivocarse por poco: es que alguien nuevo lea "te quedan 800 gratis", gaste creyendo que no cuesta, y el contador que existe para protegerlo lo haya engañado. Mitigado diciendo en pantalla que la cifra es "según lo que este panel lleva registrado" y dejando el enlace a las métricas de Google como fuente de verdad. Tampoco ve el consumo anterior a esta migración.
 2. **La confirmación escrita puede erosionarse igual.** Si el equipo acaba barriendo siempre por encima de la cuota, escribir el monto vuelve a ser rutina. Si eso pasa, la respuesta no es más fricción sino el permiso por perfil.
 3. **`anotar_tesela` sube a seis argumentos.** Es la segunda vez que cambia de firma; el `drop function` explícito de la anterior no es opcional, y el usuario ya tiene aplicadas dos versiones distintas en su base.
