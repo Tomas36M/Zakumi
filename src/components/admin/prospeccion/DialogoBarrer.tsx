@@ -25,7 +25,9 @@ const VERTICALES = VERTICALES_PROSPECCION.filter(
 type Props = {
   territorio: Territorio;
   onCerrar: () => void;
-  onConfirmar: (verticales: string[]) => void;
+  /** `llamadasAprobadas` es la cifra que el usuario está aceptando gastar: el
+   * barrido se frena solo al doblarla en vez de seguir comprando. */
+  onConfirmar: (verticales: string[], llamadasAprobadas: number) => void;
 };
 
 /**
@@ -137,8 +139,20 @@ export function DialogoBarrer({ territorio, onCerrar, onConfirmar }: Props) {
             )}
           </p>
           <p className="mt-1">
-            Puede subir hasta ~{formatoUsd(tanda.costoMaxUsd)} si hay zonas densas
-            (una tesela saturada se parte en cuatro).
+            {/* NO es un techo: FACTOR_DENSIDAD es un margen. Con
+                PROFUNDIDAD_MAX = 2 una sola celda saturada llega a costar
+                1 + 4 + 16 = 21 llamadas por vertical, y "saturada" solo
+                significa que Google devolvió sus 20 resultados — lo normal en
+                un centro denso, que es justo donde vale la pena barrer.
+                Prometer un máximo acá sería prometer una factura que nadie
+                puede garantizar. */}
+            Es un <strong className="text-tinta">estimado, no un techo</strong>:
+            donde Google devuelva su tope de 20 resultados la celda se parte en
+            cuatro y se vuelve a consultar (hasta dos veces), así que cada zona
+            densa multiplica sus llamadas. En densidad típica esto termina cerca
+            de {formatoUsd(tanda.costoMaxUsd)}; en un centro muy denso, bastante
+            más. El barrido se frena solo al doblar lo aprobado y te vuelve a
+            preguntar.
           </p>
           <p className="mt-2 border-t border-hairline pt-2">
             Este territorio lleva <strong className="text-tinta">{gastado}</strong>{" "}
@@ -162,7 +176,7 @@ export function DialogoBarrer({ territorio, onCerrar, onConfirmar }: Props) {
           <Button
             variante="primaria"
             disabled={pendientes === 0}
-            onClick={() => onConfirmar(slugs)}
+            onClick={() => onConfirmar(slugs, tanda.llamadas)}
           >
             Barrer y gastar {formatoUsd(tanda.costoUsd)}
           </Button>

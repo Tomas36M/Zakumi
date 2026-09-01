@@ -37,24 +37,41 @@ const ERRORES_BUSQUEDA: Record<string, string> = {
 const ISLA_FLOTANTE =
   "min-[1000px]:absolute min-[1000px]:top-8 min-[1000px]:z-10 min-[1000px]:max-h-[calc(100%-5rem)] min-[1000px]:rounded-isla min-[1000px]:border min-[1000px]:border-hairline min-[1000px]:bg-isla/95 min-[1000px]:p-4 min-[1000px]:backdrop-blur-sm";
 
+/** Un barrido abierto: el id del territorio, las verticales confirmadas y las
+ * llamadas que el usuario aprobó al confirmar. El territorio se busca vivo en
+ * el array — el prop se renueva en cada router.refresh() del barrido y una
+ * copia se quedaría con el contador viejo. */
+export type BarridoAbierto = {
+  territorioId: string;
+  verticales: string[];
+  llamadasAprobadas: number;
+};
+
 type Props = {
   negocios: Negocio[];
   territorios: Territorio[];
+  /** La consulta de territorios falló: la lista vacía no es "no hay". */
+  fallaTerritorios: boolean;
+  /** El barrido abierto vive en el shell (las caras lo marcan). */
+  barrido: BarridoAbierto | null;
+  onBarrido: (barrido: BarridoAbierto | null) => void;
   /** La cara está en segundo plano: se esconde, NUNCA se desmonta (adentro
    * puede haber un barrido en vuelo). */
   oculta: boolean;
 };
 
-/** Un barrido abierto: el id del territorio y las verticales confirmadas. El
- * territorio se busca vivo en el array — el prop se renueva en cada
- * router.refresh() del barrido y una copia se quedaría con el contador viejo. */
-type BarridoAbierto = { territorioId: string; verticales: string[] };
-
 /**
  * La cara Territorio: el mapa donde se dibuja un área, se estima lo que cuesta
  * barrerla y se ve avanzar el barrido.
  */
-export function TerritorioView({ negocios, territorios, oculta }: Props) {
+export function TerritorioView({
+  negocios,
+  territorios,
+  fallaTerritorios,
+  barrido,
+  onBarrido,
+  oculta,
+}: Props) {
   const router = useRouter();
   const [resultados, setResultados] = useState<ResultadoPlace[]>([]);
   const [seleccion, setSeleccion] = useState<Seleccion>(null);
@@ -66,7 +83,6 @@ export function TerritorioView({ negocios, territorios, oculta }: Props) {
   const [errorBusqueda, setErrorBusqueda] = useState<string | null>(null);
   const [buscadorAbierto, setBuscadorAbierto] = useState(false);
   const [aEstimarId, setAEstimarId] = useState<string | null>(null);
-  const [barrido, setBarrido] = useState<BarridoAbierto | null>(null);
 
   const negocioSeleccionado = useMemo(() => {
     if (seleccion?.tipo !== "negocio") return null;
@@ -81,9 +97,20 @@ export function TerritorioView({ negocios, territorios, oculta }: Props) {
   // Los territorios abiertos se buscan VIVOS en el array: el prop se renueva en
   // cada router.refresh() y una copia guardada en estado mostraría el contador
   // de llamadas de hace un minuto — justo el número que no puede mentir.
-  const territorioBarrido = barrido
+  //
+  // Pero la última lectura buena se recuerda: `page.tsx` degrada una consulta
+  // fallida a [], y perder la referencia a media faena desmontaría la banda
+  // (abortando el barrido) para que el refresh siguiente la remontara y
+  // disparara `arrancar` OTRA VEZ, sin que nadie lo confirmara.
+  const vivo = barrido
     ? (territorios.find((t) => t.id === barrido.territorioId) ?? null)
     : null;
+  const [ultimoVivo, setUltimoVivo] = useState<Territorio | null>(null);
+  if (vivo !== null && vivo !== ultimoVivo) setUltimoVivo(vivo);
+  const territorioBarrido =
+    vivo ??
+    (barrido && ultimoVivo?.id === barrido.territorioId ? ultimoVivo : null);
+
   const aEstimar = aEstimarId
     ? (territorios.find((t) => t.id === aEstimarId) ?? null)
     : null;
@@ -184,7 +211,8 @@ export function TerritorioView({ negocios, territorios, oculta }: Props) {
             key={territorioBarrido.id}
             territorio={territorioBarrido}
             verticales={barrido.verticales}
-            onCerrar={() => setBarrido(null)}
+            llamadasAprobadas={barrido.llamadasAprobadas}
+            onCerrar={() => onBarrido(null)}
           />
         </div>
       )}
@@ -200,6 +228,7 @@ export function TerritorioView({ negocios, territorios, oculta }: Props) {
           <PanelTerritorios
             territorios={territorios}
             negocios={negocios}
+            fallaCarga={fallaTerritorios}
             dibujando={dibujando}
             onDibujar={() => {
               setModoCaptura(false);
@@ -305,8 +334,8 @@ export function TerritorioView({ negocios, territorios, oculta }: Props) {
         <DialogoBarrer
           territorio={aEstimar}
           onCerrar={() => setAEstimarId(null)}
-          onConfirmar={(verticales) => {
-            setBarrido({ territorioId: aEstimar.id, verticales });
+          onConfirmar={(verticales, llamadasAprobadas) => {
+            onBarrido({ territorioId: aEstimar.id, verticales, llamadasAprobadas });
             setAEstimarId(null);
           }}
         />

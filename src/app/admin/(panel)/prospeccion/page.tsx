@@ -19,8 +19,10 @@ export default async function ProspeccionPage({
     supabase.from("territorios").select("*").order("created_at", { ascending: false }),
   ]);
 
-  // Cada mitad degrada por su lado: sin la tabla `territorios` (migración sin
-  // aplicar) la pantalla abre igual con el mapa y los leads.
+  // El detalle del error va al log del servidor; a la vista solo baja el hecho
+  // de que falló. Y BAJA: una consulta caída que se degrada a [] en silencio
+  // pinta "ningún territorio todavía" sobre territorios que existen y ya están
+  // pagados, y quien los redibuje le paga a Google otra vez lo mismo.
   if (negocios.error) console.error("[prospección] negocios:", negocios.error.message);
   if (territorios.error) console.error("[prospección] territorios:", territorios.error.message);
 
@@ -29,6 +31,8 @@ export default async function ProspeccionPage({
       tab={tab ?? null}
       negocios={(negocios.data as Negocio[]) ?? []}
       territorios={(territorios.data as Territorio[]) ?? []}
+      fallaNegocios={negocios.error !== null}
+      fallaTerritorios={territorios.error !== null}
     />
   );
 }

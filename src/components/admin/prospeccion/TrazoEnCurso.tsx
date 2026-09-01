@@ -41,9 +41,13 @@ export function TrazoEnCurso({ trazo }: { trazo: readonly Punto[] }) {
     };
   }, [map]);
 
+  // `map` va en las dependencias aunque no se use aquí: sin él, el orden de
+  // los dos efectos (crear y luego pintar) sería lo único que garantiza que el
+  // path se aplique al overlay recién creado, y eso es un acoplamiento que se
+  // rompe callado el día que alguien reordene.
   useEffect(() => {
     poligono.current?.setPath([...trazo]);
-  }, [trazo]);
+  }, [map, trazo]);
 
   return (
     <>

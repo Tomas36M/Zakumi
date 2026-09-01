@@ -12,6 +12,9 @@ type Props = {
   territorios: number;
   leads: number;
   sinWeb: number;
+  /** Hay un barrido abierto: se marca la cara de Territorio con un punto para
+   * que desde Leads se vea que se está gastando plata al otro lado. */
+  barriendo?: boolean;
 };
 
 /**
@@ -25,6 +28,7 @@ export function CarasProspeccion({
   territorios,
   leads,
   sinWeb,
+  barriendo = false,
 }: Props) {
   const caras = [
     {
@@ -69,11 +73,18 @@ export function CarasProspeccion({
             <span className="flex flex-col">
               <span
                 className={cn(
-                  "text-sm font-semibold",
+                  "flex items-center gap-1.5 text-sm font-semibold",
                   esActiva ? "text-tinta" : "text-tinta-60",
                 )}
               >
                 {label}
+                {id === "territorio" && barriendo && (
+                  <span
+                    aria-label="barrido en curso"
+                    title="Hay un barrido en curso"
+                    className="h-1.5 w-1.5 animate-pulse rounded-full bg-acento"
+                  />
+                )}
               </span>
               <span className="text-xs text-tinta-40">{detalle}</span>
             </span>

@@ -6,14 +6,18 @@ import { caraDe, pestanaInicial, type CaraProspeccion } from "@/lib/admin/prospe
 import type { Negocio } from "@/lib/admin/negocios";
 import type { Territorio } from "@/lib/admin/territorios";
 import { NegociosView } from "@/components/admin/negocios/NegociosView";
+import { Banner } from "@/components/admin/ui/Banner";
 import { Cockpit } from "@/components/admin/ui/Cockpit";
 import { CarasProspeccion } from "./CarasProspeccion";
-import { TerritorioView } from "./TerritorioView";
+import { TerritorioView, type BarridoAbierto } from "./TerritorioView";
 
 type Props = {
   tab: string | null;
   negocios: Negocio[];
   territorios: Territorio[];
+  /** La consulta falló: la lista vacía NO significa que no haya nada. */
+  fallaNegocios: boolean;
+  fallaTerritorios: boolean;
 };
 
 // Dos cockpits anidados con altura fija de viewport se desbordan y devuelven
@@ -25,9 +29,17 @@ const COCKPIT_ANIDADO = "min-[900px]:h-auto min-[900px]:min-h-0 min-[900px]:flex
  * "Encontrar clientes": el shell de las dos caras. Territorio es el mapa donde
  * se dibuja y se barre; Leads es el CRM que llena el barrido.
  *
- * El shell no sabe nada de barrido ni de Google: solo decide qué cara se ve.
+ * El shell no sabe nada de Google ni de teselas, pero SÍ sabe si hay un
+ * barrido abierto: es lo único que se gasta plata sola y tiene que verse desde
+ * la otra cara.
  */
-export function ProspeccionView({ tab, negocios, territorios }: Props) {
+export function ProspeccionView({
+  tab,
+  negocios,
+  territorios,
+  fallaNegocios,
+  fallaTerritorios,
+}: Props) {
   const router = useRouter();
 
   // La URL manda (es compartible y sobrevive al atrás del navegador), pero la
@@ -41,6 +53,10 @@ export function ProspeccionView({ tab, negocios, territorios }: Props) {
     setTabVisto(tab);
     setCara(caraDe(tab));
   }
+
+  // El barrido abierto vive acá arriba para que las caras puedan marcarlo; lo
+  // maneja TerritorioView, que es quien monta la banda de progreso.
+  const [barrido, setBarrido] = useState<BarridoAbierto | null>(null);
 
   const sinWeb = negocios.filter((n) => !n.sitio_web).length;
 
@@ -66,14 +82,23 @@ export function ProspeccionView({ tab, negocios, territorios }: Props) {
         </span>
       </header>
 
-      <div className="shrink-0 px-5 pt-4">
+      <div className="flex shrink-0 flex-col gap-3 px-5 pt-4">
         <CarasProspeccion
           activa={cara}
           onCambiar={cambiarCara}
           territorios={territorios.length}
           leads={negocios.length}
           sinWeb={sinWeb}
+          barriendo={barrido !== null}
         />
+
+        {fallaNegocios && (
+          <Banner variante="error">
+            No se pudieron cargar los negocios. Los contadores de leads y de «sin
+            web» están incompletos: no tomes decisiones con estos números hasta
+            recargar.
+          </Banner>
+        )}
       </div>
 
       {/* Territorio se monta SIEMPRE y se esconde con `hidden`: desmontarlo
@@ -82,6 +107,9 @@ export function ProspeccionView({ tab, negocios, territorios }: Props) {
       <TerritorioView
         negocios={negocios}
         territorios={territorios}
+        fallaTerritorios={fallaTerritorios}
+        barrido={barrido}
+        onBarrido={setBarrido}
         oculta={cara !== "territorio"}
       />
 

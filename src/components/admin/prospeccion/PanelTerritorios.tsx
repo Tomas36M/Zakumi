@@ -20,6 +20,9 @@ import { Modal } from "@/components/admin/ui/Modal";
 type Props = {
   territorios: Territorio[];
   negocios: Negocio[];
+  /** La consulta de territorios falló: la lista está vacía por error, no
+   * porque no haya territorios. */
+  fallaCarga: boolean;
   dibujando: boolean;
   onDibujar: () => void;
   /** El territorio cuyo barrido está montado ahora mismo (o null). */
@@ -35,6 +38,7 @@ type Props = {
 export function PanelTerritorios({
   territorios,
   negocios,
+  fallaCarga,
   dibujando,
   onDibujar,
   barriendoId,
@@ -80,8 +84,9 @@ export function PanelTerritorios({
     const ok = await confirmar({
       titulo: `¿Eliminar ${territorio.nombre}?`,
       mensaje:
-        "Se borra el área y su historial de teselas barridas: volver a barrirla se " +
-        "le paga a Google otra vez. Los leads que ya produjo NO se borran.",
+        "Se borra el área y su historial de teselas barridas: para volver a " +
+        "barrerla hay que pagarle a Google otra vez. Los leads que ya produjo " +
+        "NO se borran.",
       accion: "Eliminar",
       peligro: true,
     });
@@ -103,14 +108,32 @@ export function PanelTerritorios({
 
       <div className="flex items-center justify-between gap-2">
         <h2 className="text-sm font-semibold text-tinta-85">Territorios</h2>
-        <Button variante={dibujando ? "primaria" : "fantasma"} onClick={onDibujar}>
+        <Button
+          variante={dibujando ? "primaria" : "fantasma"}
+          // Sin la lista no se sabe qué ya está dibujado (y pagado): dibujar a
+          // ciegas termina en un territorio duplicado que se le vuelve a
+          // comprar a Google entero.
+          disabled={fallaCarga}
+          onClick={onDibujar}
+        >
           {dibujando ? "Dibujando… (clic para salir)" : "Dibujar territorio"}
         </Button>
       </div>
 
       {error && <Banner variante="error">{error}</Banner>}
 
-      {territorios.length === 0 ? (
+      {fallaCarga ? (
+        // "Ningún territorio todavía" sobre una consulta caída es la mentira
+        // cara de esta pantalla: invita a redibujar un área que ya existe, y
+        // el territorio nuevo nace con teselas_hechas vacío — barrerlo le paga
+        // a Google de cero todo lo que el original invisible ya compró.
+        <Banner variante="error">
+          No se pudieron cargar los territorios. La lista está vacía por el
+          error, no porque no haya ninguno: <strong>no dibujes uno nuevo</strong>{" "}
+          hasta que vuelva, o pagarás otra vez un área que ya está barrida.
+          Recarga en un momento.
+        </Banner>
+      ) : territorios.length === 0 ? (
         <EmptyState
           titulo="Ningún territorio todavía"
           detalle="Dibuja un área sobre el mapa y ponle nombre. Barrerla llena el CRM con los negocios que hay dentro."
@@ -140,7 +163,10 @@ export function PanelTerritorios({
                     <div className="flex shrink-0 items-center">
                       <IconButton
                         etiqueta={`Renombrar ${t.nombre}`}
-                        disabled={ocupado}
+                        // Renombrar o borrar el territorio que se está
+                        // barriendo deja al pool haciendo POST contra un id
+                        // muerto: llamadas que se cobran y no se anotan.
+                        disabled={ocupado || barriendoId === t.id}
                         onClick={() => {
                           setRenombrando(t);
                           setNombre(t.nombre);
@@ -151,7 +177,7 @@ export function PanelTerritorios({
                       </IconButton>
                       <IconButton
                         etiqueta={`Eliminar ${t.nombre}`}
-                        disabled={ocupado}
+                        disabled={ocupado || barriendoId === t.id}
                         onClick={() => void borrar(t)}
                       >
                         <Trash2 className="h-4 w-4" />
@@ -161,10 +187,19 @@ export function PanelTerritorios({
                   <Button
                     variante="primaria"
                     className="self-start"
-                    disabled={barriendoId === t.id}
+                    // Bloqueado en TODAS las filas mientras haya un barrido
+                    // abierto, no solo en la suya: confirmar otro territorio
+                    // cambia el `key` de la banda, y el barrido viejo se
+                    // desmonta sin que nadie vea su resumen — con su pool
+                    // todavía comprando teselas.
+                    disabled={barriendoId !== null}
                     onClick={() => onBarrer(t)}
                   >
-                    {barriendoId === t.id ? "Barrido abierto" : "Barrer"}
+                    {barriendoId === t.id
+                      ? "Barrido abierto"
+                      : barriendoId !== null
+                        ? "Hay un barrido abierto"
+                        : "Barrer"}
                   </Button>
                 </ListRow>
               </li>
