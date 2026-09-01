@@ -77,7 +77,7 @@ export default async function proxy(request: NextRequest) {
     return redirigirConCookies(request, response, "/admin/login");
   }
   if (haySesion && esLogin) {
-    return redirigirConCookies(request, response, "/admin/mapa");
+    return redirigirConCookies(request, response, "/admin/prospeccion?tab=territorio");
   }
   return response;
 }
@@ -93,7 +93,12 @@ function redirigirConCookies(
   destino: string,
 ) {
   const url = request.nextUrl.clone();
-  url.pathname = destino;
+  // `destino` puede traer query (`/admin/prospeccion?tab=territorio`) y
+  // `url.pathname` la escaparía a `%3Ftab%3D…`: se separan a mano. Los
+  // destinos sin query limpian la búsqueda heredada, que era de otra ruta.
+  const [ruta, busqueda = ""] = destino.split("?");
+  url.pathname = ruta;
+  url.search = busqueda;
   const redirect = NextResponse.redirect(url);
   for (const cookie of response.cookies.getAll()) {
     redirect.cookies.set(cookie);

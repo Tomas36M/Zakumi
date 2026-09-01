@@ -26,27 +26,7 @@ const FIELD_MASK = [
   "places.addressComponents",
 ].join(",");
 
-type Payload = { query?: unknown; centro?: unknown; radio?: unknown };
-
-const RADIO_MIN = 1_000;
-const RADIO_MAX = 50_000;
-
-/** El sesgo de la búsqueda ahora viene del viewport del mapa (centro+radio
- * del cliente), no de un preset de ciudad. Sin ninguno de los dos, la
- * búsqueda va sin locationBias — nada raro: hoy ningún cliente los manda
- * todavía (llega en una tarea posterior). */
-function centroValido(valor: unknown): valor is { lat: number; lng: number } {
-  if (typeof valor !== "object" || valor === null) return false;
-  const { lat, lng } = valor as { lat?: unknown; lng?: unknown };
-  return (
-    typeof lat === "number" &&
-    typeof lng === "number" &&
-    Number.isFinite(lat) &&
-    Number.isFinite(lng) &&
-    Math.abs(lat) <= 90 &&
-    Math.abs(lng) <= 180
-  );
-}
+type Payload = { query?: unknown };
 
 export async function POST(request: Request) {
   // La key de Places vive solo en el servidor; la sesión evita que este
@@ -68,29 +48,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "consulta_invalida" }, { status: 400 });
   }
 
-  // Ambos ausentes: búsqueda sin sesgo. Cualquiera presente sin el otro (o
-  // fuera de rango) es una consulta mal formada — 400, no un bias silencioso.
-  let locationBias: {
-    circle: { center: { latitude: number; longitude: number }; radius: number };
-  } | null = null;
-  if (payload.centro !== undefined || payload.radio !== undefined) {
-    if (
-      !centroValido(payload.centro) ||
-      typeof payload.radio !== "number" ||
-      !Number.isFinite(payload.radio) ||
-      payload.radio < RADIO_MIN ||
-      payload.radio > RADIO_MAX
-    ) {
-      return NextResponse.json({ error: "consulta_invalida" }, { status: 400 });
-    }
-    locationBias = {
-      circle: {
-        center: { latitude: payload.centro.lat, longitude: payload.centro.lng },
-        radius: payload.radio,
-      },
-    };
-  }
-
   let respuesta: Response;
   try {
     respuesta = await fetch("https://places.googleapis.com/v1/places:searchText", {
@@ -106,7 +63,8 @@ export async function POST(request: Request) {
         languageCode: "es",
         regionCode: "CO", // sin esto, "Madrid" es España
         pageSize: 20,
-        ...(locationBias ? { locationBias } : {}),
+        // Sin locationBias: los presets de ciudad murieron con el enum y
+        // ningún cliente manda centro+radio. El único sesgo es regionCode.
       }),
     });
   } catch (error) {

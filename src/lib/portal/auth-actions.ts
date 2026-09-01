@@ -37,7 +37,7 @@ export async function loginPortal(
 
   // Cada rol a su casa: el admin que entre por /app/login va al panel.
   const sesion = await getSesion();
-  redirect(sesion?.rol === "admin" ? "/admin/mapa" : "/app");
+  redirect(sesion?.rol === "admin" ? "/admin/prospeccion?tab=territorio" : "/app");
 }
 
 export async function registroPortal(

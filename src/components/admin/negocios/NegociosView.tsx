@@ -355,7 +355,7 @@ export function NegociosView({
         {negocios.length === 0 ? (
           <EmptyState
             titulo="Todavía no hay negocios."
-            detalle="Ve al Mapa, busca «ferreterías en Ubaté» e importa los que tengan teléfono."
+            detalle="Ve a Territorio, dibuja el área que quieras trabajar y bárrela: los negocios con teléfono que haya adentro aterrizan solos en esta lista."
           />
         ) : filtrados.length === 0 ? (
           <EmptyState titulo="Ningún negocio coincide con esos filtros." />

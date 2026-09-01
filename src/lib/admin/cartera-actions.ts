@@ -122,8 +122,7 @@ export async function convertirNegocioEnCliente(
   // El pipeline se alinea solo; el trigger de la base deja la nota automática.
   if (negocio.estado !== "cliente") {
     await supabase.from("negocios").update({ estado: "cliente" }).eq("id", negocio.id);
-    revalidatePath("/admin/mapa");
-    revalidatePath("/admin/negocios");
+    revalidatePath("/admin/prospeccion");
   }
 
   revalidarCartera();

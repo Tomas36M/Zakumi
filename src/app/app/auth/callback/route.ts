@@ -20,7 +20,8 @@ export async function GET(request: Request) {
     if (!error) {
       // Cada rol a su casa (el rol vive en perfiles, no en el JWT).
       const sesion = await getSesion();
-      const destino = sesion?.rol === "admin" ? "/admin/mapa" : destinoPedido;
+      const destino =
+        sesion?.rol === "admin" ? "/admin/prospeccion?tab=territorio" : destinoPedido;
       return NextResponse.redirect(new URL(destino, url.origin));
     }
     console.error("[auth/callback]", error.message);

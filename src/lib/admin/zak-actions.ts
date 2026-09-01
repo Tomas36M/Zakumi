@@ -127,7 +127,7 @@ export async function enviarTandaZak(negocioIds: string[]): Promise<
     if (e2) console.error("[enviarTandaZak] estados:", e2.message);
   }
 
-  revalidatePath("/admin/negocios");
+  revalidatePath("/admin/prospeccion");
   revalidatePath("/admin/zak");
   return {
     contactados: idsCreados.length,
@@ -233,7 +233,7 @@ export async function sincronizarEstadosZak(): Promise<
       .from("negocios").update({ estado: "interesado" }).in("id", aInteresado);
     if (e2) console.error("[sincronizarEstadosZak] interesados:", e2.message);
   }
-  if (avances.length > 0) revalidatePath("/admin/negocios");
+  if (avances.length > 0) revalidatePath("/admin/prospeccion");
 
   return { respondidos: aRespondido.length, interesados: aInteresado.length };
 }
