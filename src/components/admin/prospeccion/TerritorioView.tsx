@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { importarNegocios } from "@/lib/admin/actions";
@@ -83,6 +83,13 @@ export function TerritorioView({
   const [errorBusqueda, setErrorBusqueda] = useState<string | null>(null);
   const [buscadorAbierto, setBuscadorAbierto] = useState(false);
   const [aEstimarId, setAEstimarId] = useState<string | null>(null);
+  // Clic sobre un polígono del mapa: solo lo resalta (más opacidad), no abre
+  // nada — no hay ficha de territorio todavía. Mientras hay un barrido
+  // abierto, ESE territorio manda (ver `territorioActivo` más abajo): es el
+  // que se está gastando plata en barrer ahora mismo.
+  const [territorioResaltado, setTerritorioResaltado] = useState<string | null>(
+    null,
+  );
 
   const negocioSeleccionado = useMemo(() => {
     if (seleccion?.tipo !== "negocio") return null;
@@ -114,6 +121,17 @@ export function TerritorioView({
   const aEstimar = aEstimarId
     ? (territorios.find((t) => t.id === aEstimarId) ?? null)
     : null;
+
+  // El territorio con el barrido abierto manda sobre el resaltado a mano: es
+  // el que de verdad importa mientras se está gastando plata en él.
+  const territorioActivo = barrido?.territorioId ?? territorioResaltado;
+
+  // Memoizado: va en las dependencias del efecto que dibuja los polígonos en
+  // MapCanvas, y una función nueva en cada render los redibujaría todos en
+  // cada tecla que se pulse en el panel.
+  const onSeleccionarTerritorio = useCallback((id: string) => {
+    setTerritorioResaltado((actual) => (actual === id ? null : id));
+  }, []);
 
   async function buscar(query: string) {
     setBuscando(true);
@@ -281,6 +299,9 @@ export function TerritorioView({
             negocios={negocios}
             resultados={resultados}
             seleccion={seleccion}
+            territorios={territorios}
+            territorioActivo={territorioActivo}
+            onSeleccionarTerritorio={onSeleccionarTerritorio}
             // En MapCanvas esto solo pone el cursor en cruz, y dibujar también
             // es "toca el mapa": el puntero tiene que decirlo.
             modoCaptura={modoCaptura || dibujando}

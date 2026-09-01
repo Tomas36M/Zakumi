@@ -1,13 +1,16 @@
 "use client";
 
+import { useEffect } from "react";
 import {
   AdvancedMarker,
   APIProvider,
   ControlPosition,
   Map as GoogleMap,
+  useMap,
 } from "@vis.gl/react-google-maps";
 import { ESTADOS, type EstadoNegocio, type Negocio } from "@/lib/admin/negocios";
 import type { ResultadoPlace } from "@/lib/admin/places";
+import type { Territorio } from "@/lib/admin/territorios";
 import { cn } from "@/lib/cn";
 import type { Seleccion } from "@/components/admin/prospeccion/TerritorioView";
 
@@ -32,9 +35,67 @@ const PIN_BASE =
   "h-4 w-4 rotate-45 border-[1.5px] border-black/80 shadow-[0_1px_4px_rgba(0,0,0,0.5)] transition-transform duration-150";
 const PIN_ACTIVO = "scale-[1.45] border-white";
 
+// Anillo de "sin web": el lead que queremos. Va en un canal distinto al
+// relleno (estado, COLOR_PIN) y al contorno naranja (resultado sin importar,
+// más abajo), para que las tres señales se puedan leer a la vez.
+const PIN_SIN_WEB = "ring-2 ring-offset-1 ring-acento ring-offset-transparent";
+
+// El naranja del panel (--color-acento). Un overlay de Google no lee tokens
+// CSS: hay que darle el literal (mismo valor que TrazoEnCurso.tsx).
+const ACENTO = "#DB5227";
+
 /** Padding de 9px = target táctil ~34px sobre el pin de 16px. */
 function PinHit({ children }: { children: React.ReactNode }) {
   return <div className="cursor-pointer p-[9px]">{children}</div>;
+}
+
+// Territorio sin dueño: identidad estable para que el efecto de
+// PoligonosTerritorio no se repita en cada render de un caller (MapaView, la
+// vista vieja que la Task 14 borra) que no le pasa territorios.
+const SIN_TERRITORIOS: Territorio[] = [];
+
+function noSeleccionarTerritorio() {}
+
+/**
+ * Los territorios guardados, pintados como polígonos. Mismo patrón que
+ * TrazoEnCurso: `@vis.gl/react-google-maps` no trae `<Polygon>`, así que el
+ * overlay se crea y se limpia a mano dentro de un componente hijo del mapa
+ * (necesita `useMap()`). El cleanup NO es opcional: sin él, cada render deja
+ * un polígono huérfano apilado sobre el anterior y se acumulan en silencio.
+ */
+function PoligonosTerritorio({
+  territorios,
+  activo,
+  onSeleccionar,
+}: {
+  territorios: Territorio[];
+  activo: string | null;
+  onSeleccionar: (id: string) => void;
+}) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (!map) return;
+    const overlays = territorios.map((t) => {
+      const esActivo = t.id === activo;
+      const poligono = new google.maps.Polygon({
+        map,
+        paths: t.poligono,
+        fillColor: ACENTO,
+        fillOpacity: esActivo ? 0.14 : 0.05,
+        strokeColor: ACENTO,
+        strokeOpacity: esActivo ? 0.9 : 0.35,
+        strokeWeight: esActivo ? 2 : 1,
+        // Bajo los pines: el territorio es el escenario, no el actor.
+        zIndex: 0,
+      });
+      poligono.addListener("click", () => onSeleccionar(t.id));
+      return poligono;
+    });
+    return () => overlays.forEach((o) => o.setMap(null));
+  }, [map, territorios, activo, onSeleccionar]);
+
+  return null;
 }
 
 type Props = {
@@ -44,8 +105,20 @@ type Props = {
   modoCaptura: boolean;
   onSeleccionar: (seleccion: Seleccion) => void;
   onClickMapa: (lat: number, lng: number) => void;
+  /** Territorios guardados, dibujados como polígonos bajo los pines. Opcional
+   * porque MapaView (la vista vieja, que la Task 14 borra) monta este
+   * componente sin territorios. */
+  territorios?: Territorio[];
+  /** El territorio que se pinta con más opacidad — hoy, el que el caller
+   * decida resaltar (p.ej. el que tiene el barrido abierto). */
+  territorioActivo?: string | null;
+  /** Clic sobre un polígono de territorio. Debe venir memoizado
+   * (`useCallback` en el padre): está en las dependencias del efecto de
+   * PoligonosTerritorio, y una función nueva en cada render redibuja todos
+   * los polígonos en cada tecla que se pulse. */
+  onSeleccionarTerritorio?: (id: string) => void;
   /** Overlays que necesitan el contexto del mapa (useMap/useMapsLibrary): el
-   * DrawingManager de los territorios vive aquí adentro. */
+   * trazo en curso de un territorio nuevo (TrazoEnCurso) vive aquí adentro. */
   children?: React.ReactNode;
 };
 
@@ -85,6 +158,14 @@ export function MapCanvas(props: Props) {
           if (punto) props.onClickMapa(punto.lat, punto.lng);
         }}
       >
+        {/* Bajo los pines (zIndex 0 en el overlay): el territorio es el
+            escenario, no el actor. */}
+        <PoligonosTerritorio
+          territorios={props.territorios ?? SIN_TERRITORIOS}
+          activo={props.territorioActivo ?? null}
+          onSeleccionar={props.onSeleccionarTerritorio ?? noSeleccionarTerritorio}
+        />
+
         {props.negocios.map((n) => {
           const activo =
             props.seleccion?.tipo === "negocio" && props.seleccion.id === n.id;
@@ -92,13 +173,20 @@ export function MapCanvas(props: Props) {
             <AdvancedMarker
               key={n.id}
               position={{ lat: n.lat, lng: n.lng }}
-              title={`${n.nombre} — ${LABEL_ESTADO.get(n.estado) ?? n.estado}`}
+              title={`${n.nombre} — ${LABEL_ESTADO.get(n.estado) ?? n.estado}${
+                n.sitio_web ? "" : " — sin sitio web"
+              }`}
               zIndex={activo ? 20 : 1}
               onClick={() => props.onSeleccionar({ tipo: "negocio", id: n.id })}
             >
               <PinHit>
                 <div
-                  className={cn(PIN_BASE, COLOR_PIN[n.estado], activo && PIN_ACTIVO)}
+                  className={cn(
+                    PIN_BASE,
+                    COLOR_PIN[n.estado],
+                    !n.sitio_web && PIN_SIN_WEB,
+                    activo && PIN_ACTIVO,
+                  )}
                 />
               </PinHit>
             </AdvancedMarker>
