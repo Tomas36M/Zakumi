@@ -58,11 +58,11 @@ describe("oportunidades", () => {
     expect(mant?.razon).toContain("web sin mantenimiento");
   });
 
-  it("tiene bot → la voz sale como candidato natural (aunque esté Próximamente)", () => {
+  it("tiene bot → la voz sale como candidato natural", () => {
     const ops = oportunidades([producto("bot")]);
     const voz = ops.find((o) => o.servicio.slug === "agente-voz");
     expect(voz).toBeDefined();
-    expect(voz?.servicio.disponible).toBe(false);
+    expect(voz?.servicio.disponible).toBe(true);
     expect(voz?.razon).toContain("candidato natural a voz");
   });
 
