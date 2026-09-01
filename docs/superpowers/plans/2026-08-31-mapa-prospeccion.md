@@ -863,6 +863,10 @@ create index if not exists negocios_territorio_idx on public.negocios (territori
 -- que public.ciudad SOLO lo usa negocios.ciudad.
 
 alter table public.negocios alter column ciudad drop default;
+-- La columna nació `not null default 'otra'` (schema.sql:35). Sin quitar el
+-- NOT NULL, el UPDATE de abajo revienta con 23502 — y lo haría DESPUÉS de
+-- reescribir el tipo, dejando la migración a medias.
+alter table public.negocios alter column ciudad drop not null;
 alter table public.negocios alter column ciudad type text using ciudad::text;
 update public.negocios set ciudad = null where ciudad = 'otra';
 drop type if exists public.ciudad;
@@ -873,9 +877,9 @@ alter table public.territorios enable row level security;
 
 drop policy if exists territorios_solo_admin on public.territorios;
 create policy territorios_solo_admin on public.territorios
-  for all
-  using (public.es_admin())
-  with check (public.es_admin());
+  for all to authenticated
+  using ((select public.es_admin()))
+  with check ((select public.es_admin()));
 
 revoke all on public.territorios from anon;
 ```
@@ -886,7 +890,9 @@ revoke all on public.territorios from anon;
 grep -n "set_updated_at\|es_admin" supabase/schema.sql supabase/perfiles.sql | head
 ```
 
-Esperado: aparecen la función del trigger `updated_at` y el helper de admin. **Si se llaman distinto** (p. ej. `public.set_updated_at()` o `public.is_admin()`), corregir `prospeccion.sql` para usar los nombres reales. Este paso existe porque un nombre inventado hace fallar el script a mitad de camino, dejando la migración a medias.
+Esperado y ya verificado por el controlador: el trigger usa **`public.set_updated_at()`** (`supabase/schema.sql:71`) y el helper de RLS es **`public.es_admin()`** (`supabase/perfiles.sql:97`). El SQL de arriba ya usa ambos, y copia el patrón exacto de política de `supabase/rls.sql:20-23` — `for all to authenticated` con `((select public.es_admin()))`. Ese `(select …)` no es adorno: sin él Postgres evalúa la función una vez POR FILA en cada escaneo de la tabla.
+
+Este paso queda como confirmación: si el grep no devuelve esas dos funciones, la rama base es la equivocada y hay que parar.
 
 - [ ] **Step 4: Correrlo en Supabase**
 
@@ -1006,7 +1012,15 @@ export function ciudadesDe(negocios: readonly Negocio[]): string[] {
 
 Luego seguir los errores de `npx tsc --noEmit` uno por uno:
 
-- `actions.ts` — `importarNegocios` inserta `ciudad`; ya es `string | null`, sin cambio de lógica. Añadir `territorio_id: null` si el insert enumera columnas.
+- `actions.ts` — **atención, aquí hay un cambio de comportamiento, no solo de tipos.** El archivo tiene un validador de enum que hay que MATAR:
+  - `CIUDADES_VALIDAS` (línea ~49) y `esCiudad()` (línea ~52) se eliminan.
+  - `importarNegocios` (línea ~115) hace hoy `ciudad: esCiudad(r.ciudad) ? r.ciudad : ("otra" as Ciudad)`. Desde la Task 4 la ciudad que llega es la localidad real de Google (`"Madrid"`, `"Ubaté"` — con mayúscula y tilde), que **nunca** pasa ese guard, así que ahora mismo TODO lo importado se guarda como `"otra"`. Sustituir por:
+    ```ts
+    ciudad: typeof r.ciudad === "string" && r.ciudad.trim() ? r.ciudad.trim() : null,
+    ```
+  - `crearNegocio` (línea ~159) rechaza con `if (!esCiudad(datos.ciudad)) return { error: "Ciudad no válida." };`. Con ciudad libre eso no tiene sentido: aceptar cualquier texto no vacío o `null`, y recortar a un largo razonable.
+  - Añadir `territorio_id: null` si el insert enumera columnas.
+  - **Escribir un test** en `src/lib/admin/__tests__/` que fije el comportamiento nuevo: una ciudad con tilde y mayúscula (`"Ubaté"`) sobrevive la importación en vez de degradarse a `"otra"`. Es justo el bug que este paso repara; sin test, vuelve.
 - `zak.ts` — `FichaNegocio.ciudad` está declarado como `Negocio["ciudad"]`, así que **sigue el tipo solo**; `COLUMNAS_FICHA` no cambia. Verificar que `fichaDeNegocio` y sus tests sigan verdes: si un test fija `ciudad: "madrid"` en minúscula, actualizarlo al nombre real que ahora manda Google (`"Madrid"`).
 - `search/route.ts` — quitar el import y el uso de `CIUDADES`. **El `locationBias` de la búsqueda de texto pasa a recibir el centro y el radio del viewport actual del mapa**, enviados por el cliente como `centro?: {lat,lng}` y `radio?: number` en el body (validar `radio` entre 1.000 y 50.000; si no vienen, no mandar `locationBias`).
 - `MapCanvas.tsx` — quitar `CIUDADES`, la constante `MADRID` y el componente `RecentrarCiudad`. `defaultCenter` pasa a ser una constante local `CENTRO_INICIAL = { lat: 4.7326, lng: -74.2642 }` con el comentario de que es solo el encuadre de arranque, no un preset de búsqueda.
@@ -1815,7 +1829,7 @@ El bucle vive en el navegador: 310-600 llamadas no caben cómodas en un request 
 - Produces:
   - `type Trabajo = { tesela: Tesela; vertical: string; profundidad: number; clave: string }`
   - `planDeBarrido(territorio: Territorio, verticales: readonly string[]): Trabajo[]` — excluye lo ya hecho
-  - `type ResumenBarrido = { encontrados: number; fueraDelArea: number; sinTelefono: number; insertados: number; saturadasAlFondo: number }`
+  - `type ResumenBarrido = { encontrados: number; fueraDelArea: number; sinTelefono: number; insertados: number; saturadasAlFondo: number; sinContabilizar: number }`
   - `type EstadoBarrido = { total: number; hechos: number; corriendo: boolean; resumen: ResumenBarrido; error: string | null }`
   - `useBarrido(territorio: Territorio): { estado: EstadoBarrido; arrancar(verticales: string[]): void; pausar(): void }`
 
@@ -1975,6 +1989,9 @@ export type ResumenBarrido = {
   sinTelefono: number;
   insertados: number;
   saturadasAlFondo: number;
+  /** Teselas que se cobraron y guardaron pero cuya anotación en el territorio
+   * falló. Callar un cobro no contabilizado es mentir sobre el gasto. */
+  sinContabilizar: number;
 };
 
 export type EstadoBarrido = {
@@ -1991,6 +2008,7 @@ const RESUMEN_CERO: ResumenBarrido = {
   sinTelefono: 0,
   insertados: 0,
   saturadasAlFondo: 0,
+  sinContabilizar: 0,
 };
 
 export function useBarrido(territorio: Territorio) {
@@ -2100,6 +2118,7 @@ export function useBarrido(territorio: Territorio) {
             saturadasAlFondo:
               e.resumen.saturadasAlFondo +
               (r.saturada && t.profundidad >= PROFUNDIDAD_MAX ? 1 : 0),
+            sinContabilizar: e.resumen.sinContabilizar + (r.contabilizada ? 0 : 1),
           },
         }));
       }
@@ -2225,6 +2244,11 @@ export default async function ProspeccionPage({
 
 - [ ] **Step 3: `ProspeccionView` — el shell**
 
+**Dos cosas que arrastra `useBarrido` y que se resuelven aquí:**
+
+1. **Monta el componente que usa `useBarrido` con `key={territorio.id}`.** El hook guarda en un ref (`hechasLocal`) las claves de las teselas que ya barrió, y esas claves son pura geometría (`lat,lng@radio#vertical`) — no llevan la identidad del territorio. Si el mismo hook sobrevive a un cambio de territorio, una clave del territorio A puede suprimir un trabajo legítimo del territorio B cuando sus rejillas coinciden. El `key` fuerza el remontaje y cierra el hueco sin tocar el hook.
+2. **La barra de progreso cuenta el barrido en curso, no el territorio entero.** Al reanudar, `hechos` vuelve a 0 y `total` es lo que queda en la cola. Etiquétala en consecuencia (“N de M en esta tanda”, no “N de M del territorio”): decir “0 de 120” después de haber barrido 300 teselas parece una pérdida de trabajo que no ocurrió.
+
 Shell puro: lee `caraDe(tab)`, dibuja `CarasProspeccion` arriba y monta `TerritorioView` o la cara de leads. **El `TerritorioView` se monta persistente con `hidden`, no se desmonta** al cambiar de cara: desmontarlo corta un barrido en vuelo. Es el mismo patrón que el Lab de voz.
 
 Todo dentro del `Cockpit` para que no haya scroll de página.
@@ -2234,6 +2258,15 @@ Todo dentro del `Cockpit` para que no haya scroll de página.
 Dos tarjetas: **🗺 Territorio** y **📇 Leads**. Cada una muestra un subtítulo con el dato vivo — Territorio: `"N territorios · M leads"`; Leads: `"M leads · K sin web"`. Al hacer clic, `router.push` con `?tab=` = `pestanaInicial(cara)`.
 
 - [ ] **Step 5: `DibujarTerritorio`**
+
+> ⚠️ **CORRECCIÓN (verificada 2026-09-01): el código de este paso NO SE PUEDE USAR.**
+> `google.maps.drawing.DrawingManager` se deprecó en agosto de 2025 y dejó de
+> estar disponible en la **v3.65** (mayo de 2026): el constructor lanza error, sin
+> degradación elegante, y en `@types/google.maps@3.66` la clase viene sin miembros
+> y `DrawingManagerOptions` ya no existe. Google endosa **Terra Draw** como
+> reemplazo, pero para colocar vértices con clics no compensa una dependencia
+> nueva: **se dibuja a mano con `google.maps.Polygon`**. El bloque de abajo se
+> conserva solo como registro de lo que el plan proponía.
 
 El cableado del `DrawingManager`, que es donde está la trampa: el overlay que dibuja el usuario **se borra** al terminar, porque el polígono guardado lo redibuja `MapCanvas` desde la base. Dejar los dos vivos es tener dos dibujos del mismo territorio desincronizándose.
 
@@ -2355,6 +2388,8 @@ Formatear el costo con `Intl.NumberFormat("es-CO", { style: "currency", currency
 Barra con `hechos/total`, botón **Pausar**/**Reanudar** y, al terminar, el resumen honesto:
 
 > 412 encontrados · 89 sin teléfono · 312 nuevos · 11 ya estaban
+
+Si `sinContabilizar > 0`, un `Banner variante="error"`: *"N teselas se cobraron pero no quedaron contabilizadas en el territorio. El gasto real es mayor que el que muestra el contador."* — un cobro que no se cuenta es plata que el usuario cree no haber gastado.
 
 Si `saturadasAlFondo > 0`, un `Banner`: *"N zonas quedaron muy densas para el detalle máximo: puede faltar gente ahí."* Un censo incompleto que se declara incompleto es útil; uno que se declara completo es mentira.
 
