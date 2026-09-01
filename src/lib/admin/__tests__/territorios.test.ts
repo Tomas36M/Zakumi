@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { filasDeTerritorio, poligonoValido, LADO_MAX_GRADOS, VERTICES_MAX } from "../territorios";
-import type { Punto } from "../barrido";
+import {
+  cuentasPorTerritorio,
+  filasDeTerritorio,
+  poligonoValido,
+  resumenDeTerritorio,
+  LADO_MAX_GRADOS,
+  VERTICES_MAX,
+} from "../territorios";
+import { PRECIO_POR_LLAMADA_USD, type Punto } from "../barrido";
+import { esSinWeb, type Negocio } from "../negocios";
 
 const CUADRADO: Punto[] = [
   { lat: 4.72, lng: -74.28 },
@@ -85,5 +93,91 @@ describe("filasDeTerritorio", () => {
 
   it("recorta el nombre a lo que aguanta la columna", () => {
     expect(filasDeTerritorio(CUADRADO, "x".repeat(200)).nombre).toHaveLength(120);
+  });
+});
+
+// Un censo pequeño con las tres situaciones que importan: un territorio con
+// leads, otro con leads y sin nada sin web, y negocios huérfanos.
+const CENSO: Pick<Negocio, "territorio_id" | "sitio_web">[] = [
+  { territorio_id: "t1", sitio_web: null },
+  { territorio_id: "t1", sitio_web: "https://uno.co" },
+  { territorio_id: "t1", sitio_web: "" },
+  { territorio_id: "t2", sitio_web: "https://dos.co" },
+  // Importados a mano o de un territorio ya borrado: no son de nadie.
+  { territorio_id: null, sitio_web: null },
+  { territorio_id: null, sitio_web: "https://tres.co" },
+];
+
+describe("cuentasPorTerritorio", () => {
+  it("cuenta leads y sin web por territorio", () => {
+    const cuentas = cuentasPorTerritorio(CENSO);
+    expect(cuentas.get("t1")).toEqual({ leads: 3, sinWeb: 2 });
+    expect(cuentas.get("t2")).toEqual({ leads: 1, sinWeb: 0 });
+  });
+
+  it("un territorio sin negocios no aparece en el mapa", () => {
+    expect(cuentasPorTerritorio(CENSO).has("t3")).toBe(false);
+    expect(cuentasPorTerritorio([]).size).toBe(0);
+  });
+
+  it("los negocios sin territorio no se le filtran a ninguno", () => {
+    const cuentas = cuentasPorTerritorio(CENSO);
+    const total = [...cuentas.values()].reduce((n, c) => n + c.leads, 0);
+    // Seis negocios, dos huérfanos: si se colaran, este total sería 6.
+    expect(total).toBe(4);
+    expect(cuentas.has("")).toBe(false);
+  });
+
+  it("«sin web» cuenta lo mismo que el filtro de la lista de leads", () => {
+    // La regresión que esta extracción existe para evitar: la lista filtra con
+    // `esSinWeb` y el territorio contaba por su cuenta. Para el MISMO conjunto
+    // los dos números tienen que coincidir, territorio por territorio.
+    const cuentas = cuentasPorTerritorio(CENSO);
+    for (const id of ["t1", "t2"]) {
+      const comoLaLista = CENSO.filter(
+        (n) => n.territorio_id === id && esSinWeb(n),
+      ).length;
+      expect(cuentas.get(id)?.sinWeb).toBe(comoLaLista);
+    }
+  });
+});
+
+describe("resumenDeTerritorio", () => {
+  const base = { id: "t1", llamadas: 200, ultimo_barrido: "2026-08-31T15:00:00Z" };
+
+  it("junta el censo del territorio con lo que costó barrerlo", () => {
+    expect(resumenDeTerritorio(base, cuentasPorTerritorio(CENSO))).toEqual({
+      leads: 3,
+      sinWeb: 2,
+      llamadas: 200,
+      costoUsd: 200 * PRECIO_POR_LLAMADA_USD,
+      barrido: true,
+    });
+  });
+
+  it("un territorio sin barrer no inventa números", () => {
+    const resumen = resumenDeTerritorio(
+      { id: "t3", llamadas: 0, ultimo_barrido: null },
+      cuentasPorTerritorio(CENSO),
+    );
+    expect(resumen).toEqual({
+      leads: 0,
+      sinWeb: 0,
+      llamadas: 0,
+      costoUsd: 0,
+      barrido: false,
+    });
+  });
+
+  it("la cuenta vacía es compartida y no se puede ensuciar", () => {
+    // Dos territorios vacíos leen el MISMO objeto congelado: si alguien le
+    // sumara un lead, se lo sumaría a todos los territorios vacíos del panel.
+    const cuentas = cuentasPorTerritorio(CENSO);
+    const a = resumenDeTerritorio({ id: "x", llamadas: 0, ultimo_barrido: null }, cuentas);
+    resumenDeTerritorio({ id: "y", llamadas: 0, ultimo_barrido: null }, cuentas);
+    expect(a.leads).toBe(0);
+    // Y el resumen es un objeto nuevo: mutarlo no toca el mapa de cuentas.
+    a.leads = 9;
+    expect(cuentas.get("t1")).toEqual({ leads: 3, sinWeb: 2 });
   });
 });

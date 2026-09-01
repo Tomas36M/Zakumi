@@ -3,10 +3,14 @@
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { PencilLine, Trash2 } from "lucide-react";
-import { poligonoSeCruza, PRECIO_POR_LLAMADA_USD } from "@/lib/admin/barrido";
+import { poligonoSeCruza } from "@/lib/admin/barrido";
 import { fechaCorta, formatoUsd } from "@/lib/admin/formato";
 import type { Negocio } from "@/lib/admin/negocios";
-import type { Territorio } from "@/lib/admin/territorios";
+import {
+  cuentasPorTerritorio,
+  resumenDeTerritorio,
+  type Territorio,
+} from "@/lib/admin/territorios";
 import { eliminarTerritorio, renombrarTerritorio } from "@/lib/admin/territorios-actions";
 import { Banner } from "@/components/admin/ui/Banner";
 import { Button } from "@/components/admin/ui/Button";
@@ -52,18 +56,10 @@ export function PanelTerritorios({
   const [ocupado, startAccion] = useTransition();
 
   // Un solo recorrido de los negocios para todos los territorios: la lista se
-  // repinta en cada refresh del barrido.
-  const cuentas = useMemo(() => {
-    const mapa = new Map<string, { leads: number; sinWeb: number }>();
-    for (const n of negocios) {
-      if (!n.territorio_id) continue;
-      const fila = mapa.get(n.territorio_id) ?? { leads: 0, sinWeb: 0 };
-      fila.leads++;
-      if (!n.sitio_web) fila.sinWeb++;
-      mapa.set(n.territorio_id, fila);
-    }
-    return mapa;
-  }, [negocios]);
+  // repinta en cada refresh del barrido. La cuenta la hace `territorios.ts`
+  // porque la tarjeta del mapa enseña estos MISMOS números: dos bucles serían
+  // dos sitios donde equivocarse.
+  const cuentas = useMemo(() => cuentasPorTerritorio(negocios), [negocios]);
 
   // ¿Cada territorio se dibujó con el contorno cruzado? `poligonoSeCruza` es
   // O(n²) sobre hasta `VERTICES_MAX` vértices; memoizado sobre el array
@@ -154,8 +150,7 @@ export function PanelTerritorios({
       ) : (
         <ul className="flex flex-col gap-1">
           {territorios.map((t) => {
-            const cuenta = cuentas.get(t.id) ?? { leads: 0, sinWeb: 0 };
-            const llamadas = t.llamadas ?? 0;
+            const resumen = resumenDeTerritorio(t, cuentas);
             return (
               <li key={t.id}>
                 <ListRow interactiva={false} className="flex flex-col gap-2">
@@ -163,14 +158,15 @@ export function PanelTerritorios({
                     <div className="min-w-0">
                       <p className="truncate text-sm font-medium text-tinta">{t.nombre}</p>
                       <p className="text-xs text-tinta-60">
-                        {cuenta.leads} leads · {cuenta.sinWeb} sin web
+                        {resumen.leads} leads · {resumen.sinWeb} sin web
                       </p>
                       <p className="text-xs text-tinta-40">
                         {t.ultimo_barrido
                           ? `barrido ${fechaCorta(t.ultimo_barrido)}`
                           : "sin barrer"}{" "}
-                        · {llamadas} {llamadas === 1 ? "llamada" : "llamadas"} ≈{" "}
-                        {formatoUsd(llamadas * PRECIO_POR_LLAMADA_USD)}
+                        · {resumen.llamadas}{" "}
+                        {resumen.llamadas === 1 ? "llamada" : "llamadas"} ≈{" "}
+                        {formatoUsd(resumen.costoUsd)}
                       </p>
                       {/* Visible AQUÍ, antes de apretar Barrer: es donde se
                           elige qué barrer y donde se gasta la plata. Un

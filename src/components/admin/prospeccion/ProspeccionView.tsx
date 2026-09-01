@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { caraDe, pestanaInicial, type CaraProspeccion } from "@/lib/admin/prospeccion-caras";
-import { estadoCenso, type Negocio } from "@/lib/admin/negocios";
+import { esSinWeb, estadoCenso, type Negocio } from "@/lib/admin/negocios";
 import type { Territorio } from "@/lib/admin/territorios";
 import { NegociosView } from "@/components/admin/negocios/NegociosView";
 import { Banner } from "@/components/admin/ui/Banner";
@@ -71,7 +71,7 @@ export function ProspeccionView({
   // consentimiento quedaba invisible justo cuando salta.
   const [aviso, setAviso] = useState<AvisoBarrido | null>(null);
 
-  const sinWeb = negocios.filter((n) => !n.sitio_web).length;
+  const sinWeb = negocios.filter(esSinWeb).length;
 
   // La lista de negocios viene topada por `page.tsx`. La comparación es contra
   // las filas que DE VERDAD llegaron, no contra el tope: si quien recortó fue

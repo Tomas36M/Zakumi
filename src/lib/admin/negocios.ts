@@ -52,6 +52,17 @@ export const ESTADOS: readonly { valor: EstadoNegocio; label: string }[] = [
   { valor: "descartado", label: "Descartado" },
 ] as const;
 
+/**
+ * ¿Este negocio no tiene sitio web? Es el lead que de verdad queremos, y se
+ * cuenta en cuatro sitios (el filtro de la lista, la cabecera, el anillo del
+ * pin y el resumen por territorio). Una sola definición: cuando «sin web»
+ * quiera decir otra cosa —un dominio de Facebook, por ejemplo— se cambia aquí
+ * y los cuatro dicen lo mismo. Ya pasó una vez que no lo decían.
+ */
+export function esSinWeb(negocio: Pick<Negocio, "sitio_web">): boolean {
+  return !negocio.sitio_web;
+}
+
 /** El label humano de un estado del pipeline (única fuente: ESTADOS). */
 export function labelEstado(estado: EstadoNegocio): string {
   return ESTADOS.find((e) => e.valor === estado)?.label ?? estado;

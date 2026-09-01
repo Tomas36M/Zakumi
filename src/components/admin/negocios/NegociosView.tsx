@@ -8,6 +8,7 @@ import { Bot, MessageSquare, Trash2 } from "lucide-react";
 import { actualizarNegocio, cambiarEstadoLote, eliminarNegocios } from "@/lib/admin/actions";
 import {
   ciudadesDe,
+  esSinWeb,
   ESTADOS,
   labelEstado,
   type EstadoNegocio,
@@ -102,8 +103,8 @@ export function NegociosView({
       if (categoria !== "todas" && n.categoria !== categoria) return false;
       if (telefono === "con" && n.telefono === null) return false;
       if (telefono === "sin" && n.telefono !== null) return false;
-      if (web === "sin" && n.sitio_web) return false;
-      if (web === "con" && !n.sitio_web) return false;
+      if (web === "sin" && !esSinWeb(n)) return false;
+      if (web === "con" && esSinWeb(n)) return false;
       if (territorio !== "todos" && n.territorio_id !== territorio) return false;
       if (texto && !n.nombre.toLowerCase().includes(texto)) return false;
       return true;
