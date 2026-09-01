@@ -23,8 +23,16 @@ export const NOMBRE_MAX = 120;
  * territorio de prospección, es una factura de Google. */
 export const LADO_MAX_GRADOS = 1.1;
 
+/** Tope de vértices de un territorio. `celdaTocaPoligono` recorre la lista de
+ * vértices ~10 veces POR TESELA, y un bbox del tamaño máximo son decenas de
+ * miles de teselas; además `teselar` corre en el navegador para estimar el
+ * costo. Un trazo de miles de puntos cuelga la pestaña antes de gastar un peso.
+ * Un territorio dibujado a mano no pasa de unas decenas de vértices. */
+export const VERTICES_MAX = 500;
+
 export function poligonoValido(poligono: readonly Punto[]): boolean {
   if (poligono.length < 3) return false;
+  if (poligono.length > VERTICES_MAX) return false;
   const enElPlaneta = poligono.every(
     (p) =>
       Number.isFinite(p.lat) &&

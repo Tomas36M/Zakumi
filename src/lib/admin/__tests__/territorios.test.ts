@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { filasDeTerritorio, poligonoValido } from "../territorios";
+import { filasDeTerritorio, poligonoValido, LADO_MAX_GRADOS, VERTICES_MAX } from "../territorios";
 import type { Punto } from "../barrido";
 
 const CUADRADO: Punto[] = [
@@ -32,6 +32,42 @@ describe("poligonoValido", () => {
         { lat: 12, lng: -80 },
       ]),
     ).toBe(false);
+  });
+
+  it("acepta un territorio justo por debajo del lado máximo", () => {
+    const casi = [
+      { lat: 4, lng: -74 },
+      { lat: 4, lng: -74 + LADO_MAX_GRADOS * 0.99 },
+      { lat: 4 + LADO_MAX_GRADOS * 0.99, lng: -74 + LADO_MAX_GRADOS * 0.99 },
+      { lat: 4 + LADO_MAX_GRADOS * 0.99, lng: -74 },
+    ];
+    expect(poligonoValido(casi)).toBe(true);
+  });
+
+  it("rechaza apenas pasado el lado máximo: el umbral es el que dice ser", () => {
+    const pasado = [
+      { lat: 4, lng: -74 },
+      { lat: 4, lng: -74 + LADO_MAX_GRADOS * 1.01 },
+      { lat: 4 + LADO_MAX_GRADOS * 1.01, lng: -74 + LADO_MAX_GRADOS * 1.01 },
+      { lat: 4 + LADO_MAX_GRADOS * 1.01, lng: -74 },
+    ];
+    expect(poligonoValido(pasado)).toBe(false);
+  });
+
+  it("rechaza un trazo con demasiados vértices: el barrido lo recorre una vez por tesela", () => {
+    const muchos = Array.from({ length: VERTICES_MAX + 1 }, (_, i) => ({
+      lat: 4.72 + (i % 100) * 0.0001,
+      lng: -74.28 + (i % 100) * 0.0001,
+    }));
+    expect(poligonoValido(muchos)).toBe(false);
+  });
+
+  it("acepta justo en el tope de vértices", () => {
+    const justos = Array.from({ length: VERTICES_MAX }, (_, i) => ({
+      lat: 4.72 + (i % 100) * 0.0001,
+      lng: -74.28 + (i % 100) * 0.0001,
+    }));
+    expect(poligonoValido(justos)).toBe(true);
   });
 });
 

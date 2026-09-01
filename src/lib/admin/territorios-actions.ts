@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { verifySession } from "./dal";
-import { filasDeTerritorio, poligonoValido, NOMBRE_MAX } from "./territorios";
+import { filasDeTerritorio, poligonoValido, NOMBRE_MAX, VERTICES_MAX } from "./territorios";
 import type { Punto } from "./barrido";
 
 export async function crearTerritorio(
@@ -14,7 +14,13 @@ export async function crearTerritorio(
   if (typeof nombre !== "string" || nombre.trim().length === 0) {
     return { error: "Ponle un nombre al territorio." };
   }
-  if (!Array.isArray(poligono) || !poligonoValido(poligono)) {
+  if (!Array.isArray(poligono)) {
+    return { error: "Dibuja un área válida y más chica que un departamento." };
+  }
+  if (poligono.length > VERTICES_MAX) {
+    return { error: "El trazo tiene demasiados puntos. Dibuja el área con menos vértices." };
+  }
+  if (!poligonoValido(poligono)) {
     return { error: "Dibuja un área válida y más chica que un departamento." };
   }
 
