@@ -114,7 +114,11 @@ export function ProspeccionView({
       />
 
       {cara === "leads" && (
-        <NegociosView negocios={negocios} className={COCKPIT_ANIDADO} />
+        <NegociosView
+          negocios={negocios}
+          territorios={territorios}
+          className={COCKPIT_ANIDADO}
+        />
       )}
     </Cockpit>
   );
