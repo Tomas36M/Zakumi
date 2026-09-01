@@ -201,7 +201,15 @@ export function useBarrido(territorio: Territorio) {
           }
         } finally {
           vivos--;
-          if (vivos === 0) {
+          // El último en morir cierra la corrida — pero SOLO si el ref sigue
+          // apuntando a ESTA. Un Pausar seguido de un Reanudar rápido deja al
+          // pool viejo drenando mientras el nuevo ya guardó su propio
+          // controlador: cerrar a ciegas nulificaba el controlador del barrido
+          // NUEVO (dejando a Pausar sin nada que abortar, un no-op silencioso
+          // mientras las llamadas seguían saliendo y cobrándose) y además lo
+          // marcaba como detenido. Tras un `pausar()` el ref ya es null, así
+          // que la guarda también evita repetir el cierre que pausar ya hizo.
+          if (vivos === 0 && aborto.current === control) {
             aborto.current = null;
             setEstado((e) => ({ ...e, corriendo: false }));
             // Los negocios nuevos bajan por props del server, como en el
