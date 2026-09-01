@@ -130,3 +130,16 @@ export function hijasDe(t: Trabajo): Trabajo[] {
     clave: claveTrabajo(tesela, t.vertical),
   }));
 }
+
+/** El plan recortado a lo que quepa en la cuota gratuita que queda.
+ *
+ * Corta por el final y respeta el orden, que importa: `planDeBarrido` pone
+ * primero las hijas pendientes de celdas saturadas, y ésas son las únicas que
+ * un plan futuro NO puede regenerar. Recortar por el principio las tiraría. */
+export function recortarACuota(
+  plan: readonly Trabajo[],
+  restantes: number,
+): Trabajo[] {
+  const cabe = Number.isFinite(restantes) && restantes > 0 ? Math.floor(restantes) : 0;
+  return plan.slice(0, cabe);
+}

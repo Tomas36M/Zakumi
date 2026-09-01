@@ -4,6 +4,7 @@ import {
   acumularResumen,
   hijasDe,
   planDeBarrido,
+  recortarACuota,
   type ResumenBarrido,
   type Trabajo,
 } from "../plan-barrido";
@@ -320,5 +321,37 @@ describe("hijasDe", () => {
     const hijas = hijasDe(trabajo(0));
     expect(hijas.every((h) => h.vertical === "ferreteria")).toBe(true);
     expect(hijas.every((h) => h.profundidad === 1)).toBe(true);
+  });
+});
+
+describe("recortarACuota", () => {
+  const plan = (n: number): Trabajo[] =>
+    Array.from({ length: n }, (_, i) => ({
+      tesela: { centro: { lat: 4.72, lng: -74.28 }, radio: 400, clave: `t${i}` },
+      vertical: "ferreteria",
+      profundidad: 0,
+      clave: `t${i}#ferreteria`,
+    }));
+
+  it("recorta a lo que queda de cuota", () => {
+    expect(recortarACuota(plan(10), 4)).toHaveLength(4);
+  });
+
+  it("si el plan entero cabe, no recorta nada", () => {
+    const p = plan(3);
+    expect(recortarACuota(p, 10)).toHaveLength(3);
+  });
+
+  it("sin cuota restante devuelve vacío: no hay nada gratis que barrer", () => {
+    expect(recortarACuota(plan(10), 0)).toEqual([]);
+  });
+
+  it("una cuota negativa se trata como cero", () => {
+    expect(recortarACuota(plan(10), -3)).toEqual([]);
+  });
+
+  it("conserva el orden: lo pendiente de una celda saturada va primero y no se pierde por el recorte", () => {
+    const p = plan(5);
+    expect(recortarACuota(p, 2).map((t) => t.clave)).toEqual([p[0].clave, p[1].clave]);
   });
 });
