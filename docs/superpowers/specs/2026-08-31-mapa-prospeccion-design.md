@@ -125,9 +125,11 @@ es seguro. `ciudad` pasa a **texto libre**.
 
 ### 1. Dibujar
 
-Polígono libre con la librería `drawing` de Google Maps
-(`useMapsLibrary('drawing')`, disponible vía `@vis.gl/react-google-maps`, que ya
-es dependencia). El territorio **se guarda con nombre antes de poder barrerse**:
+Polígono dibujado a mano, clic a clic, con `google.maps.Polygon`.
+**No se usa `DrawingManager`**: la Drawing Library de Google se deprecó en agosto
+de 2025 y dejó de estar disponible en la v3.65 (mayo de 2026) — su constructor
+lanza error, sin degradación. Google endosa Terra Draw como reemplazo, pero para
+colocar vértices con clics no compensa una dependencia nueva. El territorio **se guarda con nombre antes de poder barrerse**:
 barrer algo sin nombre es gastar plata en algo que no vas a poder volver a mirar.
 
 ### 2. Teselar
