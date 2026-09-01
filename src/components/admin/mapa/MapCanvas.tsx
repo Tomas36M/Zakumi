@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import {
   AdvancedMarker,
   APIProvider,
@@ -62,38 +62,67 @@ function noSeleccionarTerritorio() {}
  * overlay se crea y se limpia a mano dentro de un componente hijo del mapa
  * (necesita `useMap()`). El cleanup NO es opcional: sin él, cada render deja
  * un polígono huérfano apilado sobre el anterior y se acumulan en silencio.
+ *
+ * Los overlays se crean UNA vez por lista de territorios (igual que
+ * TrazoEnCurso crea el suyo una vez) y el resaltado se aplica después con
+ * `setOptions` sobre los ya existentes: recrearlos en cada cambio de `activo`
+ * o `modoCaptura` haría parpadear TODOS los polígonos cuando en realidad solo
+ * cambió cuál está resaltado.
  */
 function PoligonosTerritorio({
   territorios,
   activo,
+  modoCaptura,
   onSeleccionar,
 }: {
   territorios: Territorio[];
   activo: string | null;
+  /** Capturando un punto nuevo o dibujando un territorio: el clic es para el
+   * mapa, no para el relleno de un territorio ya guardado. */
+  modoCaptura: boolean;
   onSeleccionar: (id: string) => void;
 }) {
   const map = useMap();
+  const overlays = useRef(new Map<string, google.maps.Polygon>());
 
   useEffect(() => {
     if (!map) return;
-    const overlays = territorios.map((t) => {
-      const esActivo = t.id === activo;
+    const creados = new Map<string, google.maps.Polygon>();
+    for (const t of territorios) {
       const poligono = new google.maps.Polygon({
         map,
         paths: t.poligono,
         fillColor: ACENTO,
-        fillOpacity: esActivo ? 0.14 : 0.05,
         strokeColor: ACENTO,
-        strokeOpacity: esActivo ? 0.9 : 0.35,
-        strokeWeight: esActivo ? 2 : 1,
         // Bajo los pines: el territorio es el escenario, no el actor.
         zIndex: 0,
       });
       poligono.addListener("click", () => onSeleccionar(t.id));
-      return poligono;
-    });
-    return () => overlays.forEach((o) => o.setMap(null));
-  }, [map, territorios, activo, onSeleccionar]);
+      creados.set(t.id, poligono);
+    }
+    overlays.current = creados;
+    return () => {
+      creados.forEach((o) => o.setMap(null));
+      overlays.current = new Map();
+    };
+  }, [map, territorios, onSeleccionar]);
+
+  // El resaltado y la clicabilidad se mutan sobre los overlays YA creados —
+  // depende de `territorios` para alcanzar también a los que el efecto de
+  // arriba acaba de crear en este mismo commit, sin recrear nada.
+  useEffect(() => {
+    for (const [id, poligono] of overlays.current) {
+      const esActivo = id === activo;
+      poligono.setOptions({
+        fillOpacity: esActivo ? 0.14 : 0.05,
+        strokeOpacity: esActivo ? 0.9 : 0.35,
+        strokeWeight: esActivo ? 2 : 1,
+        // Igual que TrazoEnCurso: un relleno clicable se roba el clic que
+        // "Añadir manual" o dibujar un territorio nuevo esperan del mapa.
+        clickable: !modoCaptura,
+      });
+    }
+  }, [territorios, activo, modoCaptura]);
 
   return null;
 }
@@ -163,6 +192,7 @@ export function MapCanvas(props: Props) {
         <PoligonosTerritorio
           territorios={props.territorios ?? SIN_TERRITORIOS}
           activo={props.territorioActivo ?? null}
+          modoCaptura={props.modoCaptura}
           onSeleccionar={props.onSeleccionarTerritorio ?? noSeleccionarTerritorio}
         />
 
