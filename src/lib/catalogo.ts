@@ -69,7 +69,7 @@ export const CATALOGO_ZAKUMI: readonly Servicio[] = [
     canal: "voz",
     tarifaSugerida: 250_000,
     cicloSugerido: "mensual",
-    disponible: false, // Próximamente: ElevenLabs, etapa siguiente
+    disponible: true,
     pitch:
       "Un agente que contesta y hace llamadas (~US$0.08/min de conversación). " +
       "Por norma debe presentarse como IA al iniciar la llamada.",
