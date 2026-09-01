@@ -65,7 +65,7 @@ export function BandejaSolicitudes({ solicitudes, perfiles }: Props) {
           <p className="text-sm text-tinta-40">Sin solicitudes por atender.</p>
         ) : (
           abiertas.map((s) => (
-            <TarjetaSolicitud key={s.id} solicitud={s} perfil={perfiles[s.user_id]} />
+            <TarjetaSolicitud key={s.id} solicitud={s} perfil={perfiles[s.user_id ?? ""]} />
           ))
         )}
       </div>
@@ -77,7 +77,7 @@ export function BandejaSolicitudes({ solicitudes, perfiles }: Props) {
           </h2>
           <div className="flex flex-col gap-aire">
             {cerradas.map((s) => (
-              <TarjetaSolicitud key={s.id} solicitud={s} perfil={perfiles[s.user_id]} />
+              <TarjetaSolicitud key={s.id} solicitud={s} perfil={perfiles[s.user_id ?? ""]} />
             ))}
           </div>
         </>

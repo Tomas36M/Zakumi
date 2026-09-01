@@ -12,9 +12,13 @@ export type EstadoSolicitud =
   | "activa"
   | "rechazada";
 
+/** De dónde salió la solicitud. 'portal' = la tienda; el resto, Zak. */
+export type OrigenSolicitud = "portal" | "voz" | "whatsapp";
+
 export type Solicitud = {
   id: string;
-  user_id: string;
+  /** null cuando la solicitud NO viene del portal (llamada o WhatsApp). */
+  user_id: string | null;
   servicio_slug: string;
   mensaje: string | null;
   estado: EstadoSolicitud;
@@ -26,6 +30,21 @@ export type Solicitud = {
   producto_id: string | null;
   created_at: string;
   updated_at: string;
+
+  // ---- Solicitudes entrantes (voz / WhatsApp) ----
+  origen: OrigenSolicitud;
+  contacto_nombre: string | null;
+  contacto_telefono: string | null;
+  contacto_email: string | null;
+  llamada_id: string | null;
+  conversacion: string | null;
+  clave_origen: string | null;
+  cita_inicio: string | null;
+  cita_fin: string | null;
+  cita_meet_url: string | null;
+  cita_evento_id: string | null;
+  cita_link_google: string | null;
+  cita_texto_crudo: string | null;
 };
 
 /** Orden del ciclo de vida; labels pensados para el CLIENTE. */
