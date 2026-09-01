@@ -25,6 +25,12 @@ const CONCURRENCIA = 4;
 export type EstadoBarrido = {
   total: number;
   hechos: number;
+  /** Llamadas EMITIDAS contra Google en esta tanda. No es lo mismo que
+   * `hechos`: el handler le cobra a Google antes de responder, así que un
+   * fallo de red posterior al cobro se reintenta y factura DOS veces sumando
+   * un solo `hechos`; y al revés, un `!res.ok` suma un `hechos` que no costó
+   * nada. Quien cuente plata (el tope de gasto) tiene que contar esto. */
+  emitidas: number;
   corriendo: boolean;
   resumen: ResumenBarrido;
   error: string | null;
@@ -44,6 +50,7 @@ export function useBarrido(territorio: Territorio) {
   const [estado, setEstado] = useState<EstadoBarrido>({
     total: 0,
     hechos: 0,
+    emitidas: 0,
     corriendo: false,
     resumen: RESUMEN_CERO,
     error: null,
@@ -116,6 +123,7 @@ export function useBarrido(territorio: Territorio) {
       setEstado({
         total: cola.current.length,
         hechos: 0,
+        emitidas: 0,
         corriendo: true,
         resumen: RESUMEN_CERO,
         error: null,
@@ -123,7 +131,26 @@ export function useBarrido(territorio: Territorio) {
 
       let vivos = CONCURRENCIA;
 
+      /** Escribe en el estado salvo que OTRA corrida ya haya tomado el relevo.
+       * Un pool viejo drenando después de un Pausar→Reanudar rápido no puede
+       * pintar su 503 encima de un barrido sano ni sumar sus teselas en los
+       * contadores de la tanda nueva (donde además empujarían `hechos` por
+       * encima de `total`).
+       *
+       * Con el ref en null (pausado y sin relevo) SÍ se escribe: eso son
+       * remates de ESTA misma tanda, y descartarlos tiraría el
+       * `contabilizada: false` de una tesela que sí se cobró — justo el dato
+       * que la pantalla existe para no callar. */
+      function siVigente(actualiza: (e: EstadoBarrido) => EstadoBarrido) {
+        if (aborto.current !== null && aborto.current !== control) return;
+        setEstado(actualiza);
+      }
+
       async function procesar(t: Trabajo, reintento = false): Promise<void> {
+        // Sin guardar por vigencia y ANTES del fetch: lo que se emite se cobra,
+        // sea de la corrida que sea. Un contador de plata que descarta gasto
+        // real miente en la dirección peligrosa.
+        setEstado((e) => ({ ...e, emitidas: e.emitidas + 1 }));
         let res: Response;
         try {
           res = await fetch(`/admin/api/territorio/${territorio.id}/barrer`, {
@@ -141,14 +168,14 @@ export function useBarrido(territorio: Territorio) {
           // Un fallo de red se reintenta UNA vez; al segundo, esta tesela se
           // descarta y el barrido sigue. Una celda perdida no tumba un censo.
           if (!reintento) return procesar(t, true);
-          setEstado((e) => ({ ...e, hechos: e.hechos + 1 }));
+          siVigente((e) => ({ ...e, hechos: e.hechos + 1 }));
           return;
         }
 
         if (res.status === 503) {
           // Cuota de Google: PAUSA, no muerte. Lo barrido ya está en la base y
           // en teselas_hechas, así que reanudar no vuelve a pagarlo.
-          setEstado((e) => ({
+          siVigente((e) => ({
             ...e,
             error:
               "Google cortó por cuota. Lo barrido quedó guardado: reanuda en un rato.",
@@ -158,7 +185,7 @@ export function useBarrido(territorio: Territorio) {
         }
 
         if (!res.ok) {
-          setEstado((e) => ({ ...e, hechos: e.hechos + 1 }));
+          siVigente((e) => ({ ...e, hechos: e.hechos + 1 }));
           return;
         }
 
@@ -170,12 +197,16 @@ export function useBarrido(territorio: Territorio) {
         if (r.saturada && t.profundidad < PROFUNDIDAD_MAX) {
           // Volvieron 20 (el techo de Nearby Search): hay negocios que no
           // vimos. Se parte la celda y se reconsulta SOLO esta vertical.
+          // La cola y su `total` NO van guardados por vigencia: esas hijas son
+          // trabajo real que la corrida nueva va a drenar (su tesela madre ya
+          // quedó anotada como hecha, así que ningún plan futuro las
+          // regeneraría), y el total tiene que contarlas.
           const hijas = hijasDe(t);
           cola.current.push(...hijas);
           setEstado((e) => ({ ...e, total: e.total + hijas.length }));
         }
 
-        setEstado((e) => ({
+        siVigente((e) => ({
           ...e,
           hechos: e.hechos + 1,
           resumen: acumularResumen(e.resumen, r, t.profundidad),
@@ -196,7 +227,7 @@ export function useBarrido(territorio: Territorio) {
               // pegado en true y sin más recurso que recargar la página. Se
               // cuenta la tesela como hecha (se da por perdida) y se sigue.
               console.error("[barrido] tesela fallida:", error);
-              setEstado((e) => ({ ...e, hechos: e.hechos + 1 }));
+              siVigente((e) => ({ ...e, hechos: e.hechos + 1 }));
             }
           }
         } finally {
