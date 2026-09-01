@@ -18,6 +18,18 @@ export type ResumenTesela = {
 export const RADIO_MIN = 50;
 export const RADIO_MAX = 1_000;
 
+/** Lo único que mira la guarda de gasto: las cuatro columnas de la caja.
+ *
+ * Se pide así de estrecho para que el handler pueda seleccionar SOLO las
+ * columnas que usa. `territorios` lleva `teselas_hechas` y `teselas_saturadas`,
+ * dos arrays que CRECEN mientras el barrido avanza; traerse la fila entera en
+ * cada una de las miles de llamadas hace que el tráfico crezca con el cuadrado
+ * de la longitud del barrido. Un `Territorio` completo sigue encajando. */
+export type CajaTerritorio = Pick<
+  Territorio,
+  "bbox_sur" | "bbox_norte" | "bbox_oeste" | "bbox_este"
+>;
+
 /** El endpoint recibe el círculo del cliente, así que hay que atarlo al
  * territorio guardado: si no, es un proxy con el que barrer Colombia entera a
  * nombre de Zakumi. Se admite desbordarse del borde (las teselas se desbordan
@@ -25,7 +37,7 @@ export const RADIO_MAX = 1_000;
 export function circuloDentroDelTerritorio(
   centro: Punto,
   radio: number,
-  t: Territorio,
+  t: CajaTerritorio,
 ): boolean {
   if (!Number.isFinite(radio) || radio < RADIO_MIN || radio > RADIO_MAX) return false;
   if (!Number.isFinite(centro.lat) || !Number.isFinite(centro.lng)) return false;

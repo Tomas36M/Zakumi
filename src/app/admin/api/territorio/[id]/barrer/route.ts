@@ -15,6 +15,13 @@ import {
 import type { Territorio } from "@/lib/admin/territorios";
 import { tiposDeVertical } from "@/lib/admin/verticales-places";
 
+// El turno son tres viajes en serie: Google (hasta 8 s), el upsert de hasta 20
+// negocios y el RPC de contabilidad. Sin maxDuration, la plataforma corta la
+// función y devuelve un 504 que el cliente cuenta como `fallida` con
+// `cobrada: false` — una llamada YA facturada anotada como gratis, que es la
+// mentira que esta pantalla no puede permitirse.
+export const maxDuration = 30;
+
 // Mismo FieldMask que la búsqueda de texto: define el SKU que factura Google
 // (Enterprise, US$35/1.000). addressComponents es Pro y viaja gratis.
 // No añadir campos sin mirar el precio.
@@ -33,6 +40,13 @@ const FIELD_MASK = [
 ].join(",");
 
 type Payload = { centro?: unknown; radio?: unknown; vertical?: unknown };
+
+/** Lo que este handler necesita de un territorio, y nada más: la caja para la
+ * guarda de gasto y el polígono para recortar los resultados. */
+type TerritorioBarrido = Pick<
+  Territorio,
+  "id" | "poligono" | "bbox_sur" | "bbox_norte" | "bbox_oeste" | "bbox_este"
+>;
 
 function centroValido(valor: unknown): valor is Punto {
   if (typeof valor !== "object" || valor === null) return false;
@@ -93,16 +107,28 @@ export async function POST(
     return NextResponse.json({ error: "peticion_invalida" }, { status: 400 });
   }
 
+  const tesela = { centro, radio, clave: claveTesela(centro, radio) };
+  const clave = claveTrabajo(tesela, vertical);
+  // El contexto de TODO log de este handler. Un barrido son miles de peticiones
+  // idénticas en forma: sin territorio, tesela y vertical en cada línea, treinta
+  // fallos son treinta líneas anónimas que no se pueden correlacionar con nada
+  // ni contar por zona.
+  const ctx = { territorio: id, clave, vertical };
+
+  // SOLO las columnas que se usan. `select("*")` traía además `teselas_hechas` y
+  // `teselas_saturadas`, que crecen con el barrido: el costo de transferencia
+  // salía cuadrático en la longitud del barrido, en la única ruta que se llama
+  // miles de veces seguidas.
   const { data: fila, error: errorTerritorio } = await sesion.supabase
     .from("territorios")
-    .select("*")
+    .select("id, poligono, bbox_sur, bbox_norte, bbox_oeste, bbox_este")
     .eq("id", id)
     .single();
 
   if (errorTerritorio || !fila) {
     return NextResponse.json({ error: "territorio_no_encontrado" }, { status: 404 });
   }
-  const territorio = fila as Territorio;
+  const territorio = fila as TerritorioBarrido;
 
   // El guardarraíl que evita barrer Colombia entera con un círculo cualquiera
   // a nombre del territorio de otro — sus pruebas viven en
@@ -115,7 +141,12 @@ export async function POST(
   try {
     respuesta = await fetch("https://places.googleapis.com/v1/places:searchNearby", {
       method: "POST",
-      signal: AbortSignal.timeout(10_000),
+      // 8 s, por debajo de `maxDuration`: el reloj que tiene que saltar
+      // primero es el NUESTRO. Si corta la plataforma, el 504 llega sin
+      // cuerpo y el cliente lo cuenta como fallo gratis sobre una llamada que
+      // Google ya facturó; cortando nosotros, devolvemos un 502 propio y el
+      // resto del turno (upsert + RPC) todavía cabe.
+      signal: AbortSignal.timeout(8_000),
       headers: {
         "Content-Type": "application/json",
         "X-Goog-Api-Key": apiKey,
@@ -132,16 +163,17 @@ export async function POST(
       }),
     });
   } catch (error) {
-    console.error("[barrido] fallo de red hacia Google:", error);
+    console.error("[barrido] fallo de red hacia Google", { ...ctx, error });
     return NextResponse.json({ error: "places_error" }, { status: 502 });
   }
 
   if (!respuesta.ok) {
     // El detalle va al log del servidor; el body de Google nunca al browser.
-    console.error(
-      `[barrido] Google respondió ${respuesta.status}:`,
-      await respuesta.text().catch(() => "(sin body)"),
-    );
+    console.error("[barrido] Google respondió con error", {
+      ...ctx,
+      estado: respuesta.status,
+      cuerpo: await respuesta.text().catch(() => "(sin body)"),
+    });
     const esCuota = respuesta.status === 429;
     return NextResponse.json(
       { error: esCuota ? "cuota" : "places_error" },
@@ -156,7 +188,7 @@ export async function POST(
   try {
     data = (await respuesta.json()) as { places?: PlaceApi[] };
   } catch (error) {
-    console.error("[barrido] respuesta de Google ilegible:", error);
+    console.error("[barrido] respuesta de Google ilegible", { ...ctx, error });
     return NextResponse.json({ error: "places_error", cobrada: true }, { status: 502 });
   }
 
@@ -203,7 +235,7 @@ export async function POST(
       // llamada a Google YA se cobró y anotar_tesela nunca corrió: `cobrada`
       // se lo dice al cliente, que lo suma al mismo contador de "cobrado y no
       // contabilizado". Un gasto invisible es la única cosa peor que un error.
-      console.error("[barrido] error insertando negocios:", error.message);
+      console.error("[barrido] error insertando negocios", { ...ctx, error: error.message });
       return NextResponse.json({ error: "db_error", cobrada: true }, { status: 502 });
     }
     insertados = filas?.length ?? 0;
@@ -228,7 +260,6 @@ export async function POST(
   // ningún barrido futuro las regenera — las manzanas más densas del
   // territorio se pierden en silencio y la pantalla dice 100%.
   const saturada = esSaturada(crudos.length);
-  const clave = claveTrabajo({ centro, radio, clave: claveTesela(centro, radio) }, vertical);
   const { error: errorAnotar } = await sesion.supabase.rpc("anotar_tesela", {
     p_territorio: territorio.id,
     p_clave: clave,
@@ -241,7 +272,10 @@ export async function POST(
     // seguro (reintentar la duplicaría en la factura de Google). Se avisa vía
     // `contabilizada: false` — el cliente lo suma y avisa, ver Task 10 — en
     // vez de convertir esto en una respuesta de error.
-    console.error("[barrido] error anotando tesela:", errorAnotar.message);
+    console.error("[barrido] error anotando tesela", {
+      ...ctx,
+      error: errorAnotar.message,
+    });
   }
 
   const resumen: ResumenTesela = {
@@ -252,5 +286,20 @@ export async function POST(
     saturada,
     contabilizada: !errorAnotar,
   };
+
+  // EL LIBRO DE CUENTAS DEL BARRIDO. NO BORRAR: esto no es ruido de depuración.
+  //
+  // Una línea por llamada facturada, en JSON de una sola línea para que el
+  // drenaje de logs de Vercel la pueda consultar como datos. Es lo ÚNICO que
+  // puede responder "¿por qué me cobró Google US$40 el martes pasado?" — qué
+  // territorio, qué tesela, qué vertical, y si lo comprado llegó a la base —
+  // sin añadir una tabla nueva ni tocar el esquema. Los fallos van por
+  // console.error con este mismo `ctx`, así que las dos mitades del libro se
+  // cruzan por `clave`.
+  //
+  // (Si algún día se barre una ciudad entera, la respuesta correcta es una
+  // tabla hija `teselas_barridas` en Postgres; hasta entonces, esto.)
+  console.log(JSON.stringify({ evt: "tesela", ...ctx, ...resumen }));
+
   return NextResponse.json(resumen);
 }
