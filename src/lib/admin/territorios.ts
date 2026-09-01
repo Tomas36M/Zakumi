@@ -10,6 +10,11 @@ export type Territorio = {
   bbox_este: number;
   verticales: string[];
   teselas_hechas: string[];
+  /** Claves de trabajo cuyas teselas devolvieron el tope de 20 resultados. Es
+   * lo que hace DURABLE la subdivisión: sin esto las 4 hijas de una celda
+   * saturada solo viven en la cola del navegador y una recarga las pierde para
+   * siempre (la madre ya está en `teselas_hechas`, así que el plan la salta). */
+  teselas_saturadas: string[];
   llamadas: number;
   ultimo_barrido: string | null;
   creado_por: string | null;

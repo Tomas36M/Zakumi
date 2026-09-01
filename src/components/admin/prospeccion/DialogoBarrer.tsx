@@ -1,12 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import {
-  PRECIO_POR_LLAMADA_USD,
-  claveTrabajo,
-  estimarBarrido,
-  teselar,
-} from "@/lib/admin/barrido";
+import { PRECIO_POR_LLAMADA_USD, estimarBarrido, teselar } from "@/lib/admin/barrido";
+import { planDeBarrido } from "@/lib/admin/plan-barrido";
 import { formatoUsd } from "@/lib/admin/formato";
 import type { Territorio } from "@/lib/admin/territorios";
 import { VERTICALES_PROSPECCION } from "@/lib/admin/zak";
@@ -43,26 +39,23 @@ export function DialogoBarrer({ territorio, onCerrar, onConfirmar }: Props) {
   // La rejilla NO depende de las verticales: se calcula una vez y el resto son
   // multiplicaciones. `teselar` recorre la caja entera celda por celda.
   const teselas = useMemo(() => teselar(territorio.poligono), [territorio.poligono]);
-  const hechas = useMemo(
-    () => new Set(territorio.teselas_hechas ?? []),
-    [territorio.teselas_hechas],
-  );
 
   const slugs = useMemo(
     () => VERTICALES.filter((v) => marcadas.has(v.slug)).map((v) => v.slug),
     [marcadas],
   );
 
-  // Lo que esta tanda va a COMPRAR: lo ya barrido no se vuelve a pagar.
-  const pendientes = useMemo(() => {
-    let n = 0;
-    for (const t of teselas) {
-      for (const slug of slugs) {
-        if (!hechas.has(claveTrabajo(t, slug))) n++;
-      }
-    }
-    return n;
-  }, [teselas, slugs, hechas]);
+  // Lo que esta tanda va a COMPRAR, contado con el MISMO plan que va a correr:
+  // lo ya barrido no se vuelve a pagar, y las hijas de las celdas que saturaron
+  // en un barrido anterior sí entran. Contarlas aparte era el bug: con todas
+  // las teselas de nivel 0 hechas, el diálogo decía "no hay nada que comprar" y
+  // apagaba el botón, dejando esas zonas densas sin censar para siempre.
+  const plan = useMemo(
+    () => planDeBarrido(territorio, slugs, teselas),
+    [territorio, slugs, teselas],
+  );
+  const pendientes = plan.length;
+  const hijasPendientes = plan.filter((t) => t.profundidad > 0).length;
 
   const bruto = estimarBarrido(teselas.length, slugs.length);
   // Mismo cálculo sobre lo pendiente: llamadas = teselas × verticales, así que
@@ -138,6 +131,14 @@ export function DialogoBarrer({ territorio, onCerrar, onConfirmar }: Props) {
               <> — las otras {bruto.llamadas - pendientes} ya están barridas y no se pagan.</>
             )}
           </p>
+          {hijasPendientes > 0 && (
+            <p className="mt-1">
+              Incluye <strong className="text-tinta">{hijasPendientes}</strong>{" "}
+              {hijasPendientes === 1 ? "sub-tesela" : "sub-teselas"} de zonas densas
+              que quedaron a medias en un barrido anterior. Son teselas que nadie le
+              ha comprado a Google todavía: es gasto nuevo, no gasto repetido.
+            </p>
+          )}
           <p className="mt-1">
             {/* NO es un techo: FACTOR_DENSIDAD es un margen. Con
                 PROFUNDIDAD_MAX = 2 una sola celda saturada llega a costar

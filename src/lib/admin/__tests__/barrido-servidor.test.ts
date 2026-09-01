@@ -19,6 +19,7 @@ const TERRITORIO: Territorio = {
   bbox_este: -74.26,
   verticales: [],
   teselas_hechas: [],
+  teselas_saturadas: [],
   llamadas: 0,
   ultimo_barrido: null,
   creado_por: null,

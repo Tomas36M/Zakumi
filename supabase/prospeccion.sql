@@ -32,12 +32,25 @@ create table if not exists public.territorios (
   -- Claves "lat,lng@radio#vertical" ya barridas: permite reanudar sin volver a
   -- pagarle a Google lo ya comprado.
   teselas_hechas jsonb not null default '[]',
+  -- Claves de las teselas que devolvieron el tope de 20 resultados. Sin esto,
+  -- las 4 hijas de una celda saturada solo existen en la cola del navegador:
+  -- cerrar la pestaña a mitad de barrido las pierde PARA SIEMPRE (la madre ya
+  -- quedó en teselas_hechas, así que ningún plan futuro la vuelve a emitir) y
+  -- las manzanas más densas —las que más vale la pena vender— desaparecen del
+  -- censo sin que nada lo diga.
+  teselas_saturadas jsonb not null default '[]',
   llamadas       int not null default 0 check (llamadas >= 0),
   ultimo_barrido timestamptz,
   creado_por     uuid references auth.users (id) on delete set null default auth.uid(),
   created_at     timestamptz not null default now(),
   updated_at     timestamptz not null default now()
 );
+
+-- La columna va TAMBIÉN acá: en una base donde la tabla ya existe, el
+-- `create table if not exists` de arriba no añade columnas nuevas. Las dos
+-- formas son idempotentes, así que re-correr el archivo es seguro.
+alter table public.territorios
+  add column if not exists teselas_saturadas jsonb not null default '[]';
 
 create index if not exists territorios_creado_por_idx on public.territorios (creado_por);
 
@@ -75,10 +88,20 @@ create trigger territorios_updated_at
 -- es un elemento del array. p_clave es la clave de TRABAJO (tesela#vertical,
 -- claveTrabajo() en barrido.ts), no solo la de la tesela — una tesela se
 -- barre una vez POR VERTICAL.
+-- La firma cambió (entró p_saturada), y `create or replace` NO reemplaza una
+-- función de aridad distinta: crearía una SEGUNDA anotar_tesela y dejaría dos
+-- versiones vivas en las bases que ya corrieron este archivo. El drop explícito
+-- de la firma vieja garantiza que quede exactamente una.
+drop function if exists public.anotar_tesela(uuid, text, text);
+
+-- p_saturada tiene default: durante la ventana entre correr este SQL y
+-- desplegar el código nuevo, el código viejo sigue llamando con 3 argumentos y
+-- no se rompe.
 create or replace function public.anotar_tesela(
   p_territorio uuid,
   p_clave      text,
-  p_vertical   text
+  p_vertical   text,
+  p_saturada   boolean default false
 ) returns void
 language plpgsql
 security invoker
@@ -90,11 +113,28 @@ begin
          teselas_hechas = case when teselas_hechas ? p_clave
                                 then teselas_hechas
                                 else teselas_hechas || to_jsonb(p_clave) end,
+         -- Idéntico a teselas_hechas: append idempotente, y solo si saturó.
+         teselas_saturadas = case
+                               when not p_saturada then teselas_saturadas
+                               when teselas_saturadas ? p_clave then teselas_saturadas
+                               else teselas_saturadas || to_jsonb(p_clave) end,
          verticales     = case when p_vertical = any(verticales)
                                 then verticales
                                 else array_append(verticales, p_vertical) end,
          ultimo_barrido = now()
    where id = p_territorio;
+
+  -- Sin esto, un territorio borrado entre el SELECT del handler y esta llamada
+  -- hace que el UPDATE no toque ninguna fila, la función devuelva éxito y el
+  -- handler reporte `contabilizada: true` para una llamada que se cobró y NO
+  -- se contabilizó — exactamente lo que ese flag existe para no callar.
+  --
+  -- No filtra nada: con security invoker + RLS, un no-admin también ve 0 filas
+  -- y recibe EXACTAMENTE este mismo error, así que no puede distinguir "no
+  -- existe" de "existe y no es tuyo".
+  if not found then
+    raise exception 'territorio % no existe', p_territorio using errcode = 'no_data_found';
+  end if;
 end;
 $$;
 
@@ -135,7 +175,7 @@ revoke all on public.territorios from anon;
 -- la barrera real. El revoke/grant explícito es defensa en profundidad, no
 -- la única puerta — sigue el estilo explícito de voz.sql en vez de confiar
 -- en el grant a PUBLIC por defecto de Postgres en una función nueva.
-revoke all on function public.anotar_tesela(uuid, text, text) from public, anon;
-grant execute on function public.anotar_tesela(uuid, text, text) to authenticated;
+revoke all on function public.anotar_tesela(uuid, text, text, boolean) from public, anon;
+grant execute on function public.anotar_tesela(uuid, text, text, boolean) to authenticated;
 
 commit;

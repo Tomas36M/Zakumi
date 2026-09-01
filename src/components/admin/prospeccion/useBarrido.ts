@@ -4,6 +4,7 @@ import { useCallback, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { PROFUNDIDAD_MAX } from "@/lib/admin/barrido";
 import {
+  acumularFallida,
   acumularResumen,
   hijasDe,
   planDeBarrido,
@@ -43,6 +44,7 @@ const RESUMEN_CERO: ResumenBarrido = {
   insertados: 0,
   saturadasAlFondo: 0,
   sinContabilizar: 0,
+  fallidas: 0,
 };
 
 export function useBarrido(territorio: Territorio) {
@@ -168,7 +170,15 @@ export function useBarrido(territorio: Territorio) {
           // Un fallo de red se reintenta UNA vez; al segundo, esta tesela se
           // descarta y el barrido sigue. Una celda perdida no tumba un censo.
           if (!reintento) return procesar(t, true);
-          siVigente((e) => ({ ...e, hechos: e.hechos + 1 }));
+          // La tesela se da por perdida: se cuenta como hecha para que la barra
+          // avance, pero también como FALLIDA. Sin eso el barrido "termina" al
+          // 100% sobre un resumen en ceros, que se lee como "esta zona está
+          // vacía" en vez de "esta zona no se llegó a mirar".
+          siVigente((e) => ({
+            ...e,
+            hechos: e.hechos + 1,
+            resumen: acumularFallida(e.resumen),
+          }));
           return;
         }
 
@@ -185,7 +195,42 @@ export function useBarrido(territorio: Territorio) {
         }
 
         if (!res.ok) {
-          siVigente((e) => ({ ...e, hechos: e.hechos + 1 }));
+          // Sesión vencida, key mal configurada, insert reventado… Nada de eso
+          // se puede tragar: la tesela no se barrió y hay que decirlo.
+          // `cobrada` viene del handler cuando Google YA facturó y lo que falló
+          // fue nuestro lado (db_error, body ilegible): ahí además hay plata
+          // gastada que el contador del territorio no registró.
+          let cobrada = false;
+          let causa: string | null = null;
+          try {
+            const cuerpo = (await res.json()) as { cobrada?: unknown; error?: unknown };
+            cobrada = cuerpo?.cobrada === true;
+            causa = typeof cuerpo?.error === "string" ? cuerpo.error : null;
+          } catch {
+            // Un error sin body legible sigue siendo un error: no cobrada.
+          }
+
+          siVigente((e) => ({
+            ...e,
+            hechos: e.hechos + 1,
+            resumen: acumularFallida(e.resumen, cobrada),
+          }));
+
+          // Estas dos no mejoran con la tesela siguiente: fallarían las 310
+          // igual. Se para como con la cuota —la cola se conserva, lo barrido
+          // está guardado— y se dice el motivo, en vez de pintar un muro de
+          // fallidas que se lee como "aquí no hay negocios".
+          const MORTALES: Record<string, string> = {
+            sin_api_key:
+              "Falta la clave de Google Places en el servidor. Ninguna tesela se va a poder barrer hasta que se configure.",
+            no_autorizado:
+              "Se venció la sesión. Vuelve a entrar y reanuda: lo barrido quedó guardado.",
+          };
+          const mortal = causa && MORTALES[causa];
+          if (mortal) {
+            siVigente((e) => ({ ...e, error: mortal }));
+            control.abort();
+          }
           return;
         }
 
@@ -227,7 +272,11 @@ export function useBarrido(territorio: Territorio) {
               // pegado en true y sin más recurso que recargar la página. Se
               // cuenta la tesela como hecha (se da por perdida) y se sigue.
               console.error("[barrido] tesela fallida:", error);
-              siVigente((e) => ({ ...e, hechos: e.hechos + 1 }));
+              siVigente((e) => ({
+                ...e,
+                hechos: e.hechos + 1,
+                resumen: acumularFallida(e.resumen),
+              }));
             }
           }
         } finally {

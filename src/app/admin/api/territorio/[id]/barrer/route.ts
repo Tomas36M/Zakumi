@@ -6,7 +6,12 @@ import {
   recortarAlArea,
   type ResumenTesela,
 } from "@/lib/admin/barrido-servidor";
-import { placeANegocio, soloConTelefono, type PlaceApi } from "@/lib/admin/places";
+import {
+  placeANegocio,
+  soloConTelefono,
+  urlHttpONull,
+  type PlaceApi,
+} from "@/lib/admin/places";
 import type { Territorio } from "@/lib/admin/territorios";
 import { tiposDeVertical } from "@/lib/admin/verticales-places";
 
@@ -57,6 +62,15 @@ export async function POST(
   const sesion = await getSesionAdmin();
   if (!sesion) return NextResponse.json({ error: "no_autorizado" }, { status: 401 });
 
+  // Sin key, Google devuelve 403 en CADA tesela: 310 respuestas 502 que —antes
+  // de que el resumen contara las fallidas— se leían como "aquí no hay nadie".
+  // Un error de configuración se dice una vez y con nombre propio.
+  const apiKey = process.env.GOOGLE_PLACES_API_KEY;
+  if (!apiKey) {
+    console.error("[barrido] falta GOOGLE_PLACES_API_KEY");
+    return NextResponse.json({ error: "sin_api_key" }, { status: 500 });
+  }
+
   const { id } = await params; // Next 16: params es una Promise.
 
   let payload: Payload;
@@ -104,7 +118,7 @@ export async function POST(
       signal: AbortSignal.timeout(10_000),
       headers: {
         "Content-Type": "application/json",
-        "X-Goog-Api-Key": process.env.GOOGLE_PLACES_API_KEY!,
+        "X-Goog-Api-Key": apiKey,
         "X-Goog-FieldMask": FIELD_MASK,
       },
       body: JSON.stringify({
@@ -135,7 +149,17 @@ export async function POST(
     );
   }
 
-  const data = (await respuesta.json()) as { places?: PlaceApi[] };
+  // Un 200 con body malformado no puede reventar el handler: Next devolvería
+  // un 500 sobre una tesela que Google YA facturó, y el cliente lo vería como
+  // un fallo sin explicación. Se trata como lo que es: fallo de Google.
+  let data: { places?: PlaceApi[] };
+  try {
+    data = (await respuesta.json()) as { places?: PlaceApi[] };
+  } catch (error) {
+    console.error("[barrido] respuesta de Google ilegible:", error);
+    return NextResponse.json({ error: "places_error", cobrada: true }, { status: 502 });
+  }
+
   const crudos = (data.places ?? []).map((p) => placeANegocio(p));
   const enElArea = recortarAlArea(crudos, territorio.poligono);
   const contactables = soloConTelefono(enElArea);
@@ -147,15 +171,22 @@ export async function POST(
     const { data: filas, error } = await sesion.supabase
       .from("negocios")
       .upsert(
+        // Mismo saneo que importarNegocios, y por la misma razón elevada al
+        // cuadrado: este es hoy el escritor PRINCIPAL de `negocios`.
+        //   · `nombre` tiene check (length between 1 and 300) en la base: UN
+        //     nombre largo de Google tumbaba el upsert ENTERO — tesela cobrada
+        //     y los otros 19 negocios perdidos.
+        //   · `sitio_web` se pinta tal cual en un <a href> de NegociosView y
+        //     FichaNegocio: pasa por urlHttpONull o no pasa.
         contactables.map((r) => ({
-          nombre: r.nombre,
+          nombre: r.nombre.trim().slice(0, 300) || "(sin nombre)",
           direccion: r.direccion,
           ciudad: r.ciudad,
           lat: r.lat,
           lng: r.lng,
           categoria: r.categoria,
           rating: r.rating,
-          sitio_web: r.sitioWeb,
+          sitio_web: urlHttpONull(r.sitioWeb),
           telefono: r.telefono,
           tipo_telefono: r.tipoTelefono,
           google_place_id: r.placeId,
@@ -167,8 +198,13 @@ export async function POST(
       .select("id");
 
     if (error) {
+      // 502 a propósito (no un 200 con contabilizada:false): los negocios NO
+      // se guardaron, así que la tesela tiene que poder reintentarse. Pero la
+      // llamada a Google YA se cobró y anotar_tesela nunca corrió: `cobrada`
+      // se lo dice al cliente, que lo suma al mismo contador de "cobrado y no
+      // contabilizado". Un gasto invisible es la única cosa peor que un error.
       console.error("[barrido] error insertando negocios:", error.message);
-      return NextResponse.json({ error: "db_error" }, { status: 502 });
+      return NextResponse.json({ error: "db_error", cobrada: true }, { status: 502 });
     }
     insertados = filas?.length ?? 0;
   }
@@ -185,11 +221,19 @@ export async function POST(
   // territorio.llamadas/teselas_hechas y escribir de vuelta) perdía
   // anotaciones bajo esa carrera — y con ellas, plata: al reanudar el barrido
   // se le volvía a pagar a Google por teselas que ya se habían barrido.
+  //
+  // `p_saturada` hace DURABLE la subdivisión. Sin él, las 4 hijas de una celda
+  // saturada solo existen en la cola del navegador: una recarga, un clic en el
+  // sidebar o un crash las borra, y como la MADRE sí queda en teselas_hechas,
+  // ningún barrido futuro las regenera — las manzanas más densas del
+  // territorio se pierden en silencio y la pantalla dice 100%.
+  const saturada = esSaturada(crudos.length);
   const clave = claveTrabajo({ centro, radio, clave: claveTesela(centro, radio) }, vertical);
   const { error: errorAnotar } = await sesion.supabase.rpc("anotar_tesela", {
     p_territorio: territorio.id,
     p_clave: clave,
     p_vertical: vertical,
+    p_saturada: saturada,
   });
 
   if (errorAnotar) {
@@ -205,7 +249,7 @@ export async function POST(
     fueraDelArea: crudos.length - enElArea.length,
     sinTelefono: enElArea.length - contactables.length,
     insertados,
-    saturada: esSaturada(crudos.length),
+    saturada,
     contabilizada: !errorAnotar,
   };
   return NextResponse.json(resumen);

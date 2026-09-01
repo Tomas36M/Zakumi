@@ -31,6 +31,7 @@ const CERO: ResumenBarrido = {
   insertados: 0,
   saturadasAlFondo: 0,
   sinContabilizar: 0,
+  fallidas: 0,
 };
 
 function sumar(a: ResumenBarrido, b: ResumenBarrido): ResumenBarrido {
@@ -41,6 +42,7 @@ function sumar(a: ResumenBarrido, b: ResumenBarrido): ResumenBarrido {
     insertados: a.insertados + b.insertados,
     saturadasAlFondo: a.saturadasAlFondo + b.saturadasAlFondo,
     sinContabilizar: a.sinContabilizar + b.sinContabilizar,
+    fallidas: a.fallidas + b.fallidas,
   };
 }
 
@@ -51,7 +53,8 @@ function esCero(r: ResumenBarrido): boolean {
     r.sinTelefono === 0 &&
     r.insertados === 0 &&
     r.saturadasAlFondo === 0 &&
-    r.sinContabilizar === 0
+    r.sinContabilizar === 0 &&
+    r.fallidas === 0
   );
 }
 
@@ -119,6 +122,19 @@ export function BarridoProgreso({
   );
 
   const { total, hechos, emitidas, corriendo, resumen, error } = estado;
+
+  // Cerrar la pestaña a mitad de barrido tira la cola en memoria. Las teselas
+  // ya barridas están a salvo (teselas_hechas) y ahora las celdas saturadas
+  // también (teselas_saturadas, así que sus hijas se regeneran solas), pero las
+  // llamadas EN VUELO se pierden sin anotarse. Un aviso del navegador es lo
+  // único que se puede hacer contra un cierre; un clic en el sidebar no lo
+  // dispara, y para eso está la confirmación de la X.
+  useEffect(() => {
+    if (!corriendo) return;
+    const avisar = (e: BeforeUnloadEvent) => e.preventDefault();
+    window.addEventListener("beforeunload", avisar);
+    return () => window.removeEventListener("beforeunload", avisar);
+  }, [corriendo]);
 
   // ---- Contabilidad que sobrevive a Reanudar -------------------------------
   // `arrancar` resetea el resumen y los hechos a cero en cada tanda, así que
@@ -233,8 +249,16 @@ export function BarridoProgreso({
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold text-tinta">
-            {termino ? "Barrido terminado" : capado ? "Barrido en pausa" : "Barriendo"} ·{" "}
-            {territorio.nombre}
+            {/* "Terminado" a secas sobre teselas que fallaron es la mentira que
+                convierte un error de red en "esta zona está vacía". */}
+            {termino
+              ? resumenTotal.fallidas > 0
+                ? "Barrido terminado a medias"
+                : "Barrido terminado"
+              : capado
+                ? "Barrido en pausa"
+                : "Barriendo"}{" "}
+            · {territorio.nombre}
           </p>
           <p className="text-xs text-tinta-40">
             {/* La barra cuenta ESTA tanda, no el territorio: al reanudar,
@@ -325,6 +349,23 @@ export function BarridoProgreso({
           {resumenTotal.sinContabilizar === 1 ? "tesela se cobró" : "teselas se cobraron"}{" "}
           pero no quedaron contabilizadas en el territorio. El gasto real es mayor que
           el que muestra el contador, y volver a barrer las va a pagar de nuevo.
+        </Banner>
+      )}
+
+      {/* Una tesela que falló NO es una tesela vacía. Sin este aviso la barra
+          llegaba al 100% con "Barrido terminado" sobre un resumen en ceros y
+          el usuario leía "aquí no hay negocios" cuando lo que pasó fue que se
+          venció la sesión o se cayó la red. */}
+      {resumenTotal.fallidas > 0 && (
+        <Banner variante="error">
+          {resumenTotal.fallidas}{" "}
+          {resumenTotal.fallidas === 1
+            ? "tesela no se pudo barrer"
+            : "teselas no se pudieron barrer"}
+          : lo que hubiera ahí NO está en el resumen. No quedaron anotadas como
+          barridas, así que volver a barrer este territorio las reintenta y no
+          cuesta nada extra por lo que sí quedó guardado. Si son muchas, revisa
+          la sesión y la conexión antes de reintentar.
         </Banner>
       )}
 
