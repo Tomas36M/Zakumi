@@ -12,6 +12,14 @@
 -- tipo y reescribe una columna en su lugar — el único con un riesgo real de
 -- quedar a medias. El DDL de Postgres es transaccional: si cualquier statement
 -- falla, el BEGIN/COMMIT revierte TODO el archivo, no solo lo que falló.
+--
+-- ⚠️ RE-CORRER: es seguro, pero no porque cada statement lo sea por su cuenta.
+-- El bloque "muerte del enum ciudad" NO es idempotente por sí mismo (su UPDATE
+-- borraría ciudades escritas a mano y su ALTER TYPE reescribiría la tabla
+-- entera) y por eso va guardado por `if exists (… pg_type …)`: en una base que
+-- ya lo corrió, el enum ya no existe y el bloque entero se salta. Lo demás sí
+-- es idempotente hacia adelante en el sentido normal (if not exists /
+-- or replace / drop … if exists). Ver el detalle en ese bloque.
 -- ============================================================================
 
 begin;
@@ -22,8 +30,13 @@ create table if not exists public.territorios (
   -- [{lat,lng}, …]. Sin PostGIS a propósito: el recorte por polígono corre en
   -- TypeScript sobre los ≤20 resultados que Google acaba de devolver.
   poligono       jsonb not null,
-  -- Caja envolvente desnormalizada: "¿qué territorios tocan esta vista?" sin
-  -- abrir el jsonb.
+  -- Caja envolvente desnormalizada. NO es para pintar el mapa: es el
+  -- guardarraíl de gasto del servidor. El endpoint de barrido recibe el
+  -- círculo del navegador, así que antes de pagarle una llamada a Google
+  -- comprueba contra estos cuatro números que el círculo pedido cae dentro
+  -- del territorio (circuloDentroDelTerritorio en barrido-servidor.ts) — sin
+  -- parsear el jsonb del polígono, en el camino caliente que corre miles de
+  -- veces por barrido.
   bbox_sur       double precision not null check (bbox_sur between -90 and 90),
   bbox_norte     double precision not null check (bbox_norte between -90 and 90),
   bbox_oeste     double precision not null check (bbox_oeste between -180 and 180),
@@ -48,7 +61,9 @@ create table if not exists public.territorios (
 
 -- La columna va TAMBIÉN acá: en una base donde la tabla ya existe, el
 -- `create table if not exists` de arriba no añade columnas nuevas. Las dos
--- formas son idempotentes, así que re-correr el archivo es seguro.
+-- formas son idempotentes (la de arriba se salta si la tabla existe, esta si
+-- la columna existe), así que este par en concreto se puede re-correr sin
+-- consecuencias.
 alter table public.territorios
   add column if not exists teselas_saturadas jsonb not null default '[]';
 
@@ -146,18 +161,48 @@ alter table public.negocios
 
 create index if not exists negocios_territorio_idx on public.negocios (territorio_id);
 
+-- La pantalla de leads pide `negocios` ordenada por created_at desc en cada
+-- carga. Antes de los territorios la tabla crecía de a 25 filas importadas a
+-- mano y un sort en memoria no se notaba; un barrido mete miles de una tanda.
+create index if not exists negocios_created_at_idx on public.negocios (created_at desc);
+
 -- ---- muerte del enum ciudad ---------------------------------------------------
 -- Con territorios libres, un enum de tres municipios es una jaula. Verificado
 -- que public.ciudad SOLO lo usa negocios.ciudad.
-
-alter table public.negocios alter column ciudad drop default;
--- La columna nació `not null default 'otra'` (schema.sql:35). Sin quitar el
--- NOT NULL, el UPDATE de abajo revienta con 23502 — y lo haría DESPUÉS de
--- reescribir el tipo, dejando la migración a medias.
-alter table public.negocios alter column ciudad drop not null;
-alter table public.negocios alter column ciudad type text using ciudad::text;
-update public.negocios set ciudad = null where ciudad = 'otra';
-drop type if exists public.ciudad;
+--
+-- ⚠️ ESTE BLOQUE CORRE UNA SOLA VEZ EN LA VIDA DE LA BASE, y por eso va
+-- entero dentro de la guarda de existencia del enum. Suelto sería destructivo
+-- al re-correr el archivo:
+--   · `update … set ciudad = null where ciudad = 'otra'` es correcto EXACTAMENTE
+--     mientras 'otra' sea el valor del enum que la columna traía por default
+--     (schema.sql:35) y que por tanto no distinguía nada: colapsarlo a NULL no
+--     pierde información. Con la columna ya en texto libre, "otra" pasa a ser
+--     lo que un humano escribió a mano en la ficha — y el mismo UPDATE le
+--     borraría la ciudad a todos esos negocios.
+--   · `alter column ciudad type text` tampoco es gratis dos veces: reescribe la
+--     tabla ENTERA y reconstruye sus índices, justo la tabla que este feature
+--     existe para llenar de miles de filas.
+-- Con la guarda, en una base que ya migró el enum no existe, el bloque no se
+-- ejecuta, y re-correr el archivo es un no-op.
+do $$
+begin
+  if exists (
+    select 1
+      from pg_type
+     where typname = 'ciudad'
+       and typnamespace = 'public'::regnamespace
+  ) then
+    alter table public.negocios alter column ciudad drop default;
+    -- La columna nació `not null default 'otra'` (schema.sql:35). Sin quitar el
+    -- NOT NULL, el UPDATE de abajo revienta con 23502 — y lo haría DESPUÉS de
+    -- reescribir el tipo, dejando la migración a medias.
+    alter table public.negocios alter column ciudad drop not null;
+    alter table public.negocios alter column ciudad type text using ciudad::text;
+    update public.negocios set ciudad = null where ciudad = 'otra';
+    drop type public.ciudad;
+  end if;
+end;
+$$;
 
 -- ---- RLS: CRM interno, solo admin (mismo patrón que negocios) ------------------
 
