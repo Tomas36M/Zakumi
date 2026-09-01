@@ -1,11 +1,20 @@
 -- ============================================================================
 -- Territorios de prospección — el mapa deja de estar atado a tres municipios.
--- Ejecutar en el SQL Editor de Supabase DESPUÉS de rls.sql. Idempotente.
+-- Ejecutar en el SQL Editor de Supabase DESPUÉS de rls.sql.
 -- Spec: docs/superpowers/specs/2026-08-31-mapa-prospeccion-design.md
 --
 -- ⚠️ ORDEN: este archivo corre ANTES de desplegar el código nuevo. Quita el
 -- enum public.ciudad; si el código nuevo sube primero, la lista de leads se cae.
+--
+-- A diferencia de los demás supabase/*.sql (setup idempotente hacia adelante:
+-- create table/function if not exists / or replace, seguro de re-correr), este
+-- archivo va envuelto en una transacción explícita. Es el único que dropea un
+-- tipo y reescribe una columna en su lugar — el único con un riesgo real de
+-- quedar a medias. El DDL de Postgres es transaccional: si cualquier statement
+-- falla, el BEGIN/COMMIT revierte TODO el archivo, no solo lo que falló.
 -- ============================================================================
+
+begin;
 
 create table if not exists public.territorios (
   id             uuid primary key default gen_random_uuid(),
@@ -50,6 +59,10 @@ create index if not exists negocios_territorio_idx on public.negocios (territori
 -- que public.ciudad SOLO lo usa negocios.ciudad.
 
 alter table public.negocios alter column ciudad drop default;
+-- La columna nació `not null default 'otra'` (schema.sql:35). Sin quitar el
+-- NOT NULL, el UPDATE de abajo revienta con 23502 — y lo haría DESPUÉS de
+-- reescribir el tipo, dejando la migración a medias.
+alter table public.negocios alter column ciudad drop not null;
 alter table public.negocios alter column ciudad type text using ciudad::text;
 update public.negocios set ciudad = null where ciudad = 'otra';
 drop type if exists public.ciudad;
@@ -65,3 +78,5 @@ create policy territorios_solo_admin on public.territorios
   with check ((select public.es_admin()));
 
 revoke all on public.territorios from anon;
+
+commit;
