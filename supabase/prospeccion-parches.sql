@@ -182,4 +182,4 @@ commit;
 --   select p.oid::regprocedure
 --     from pg_proc p join pg_namespace n on n.oid = p.pronamespace
 --    where n.nspname = 'public' and p.proname = 'anotar_tesela';
---   -- esperado: anotar_tesela(uuid,text,text,boolean)
+--   -- esperado: anotar_tesela(uuid,text,text,boolean,integer,integer)

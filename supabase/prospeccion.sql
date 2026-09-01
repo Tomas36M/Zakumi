@@ -130,6 +130,7 @@ begin
          teselas_hechas = case when teselas_hechas ? p_clave
                                 then teselas_hechas
                                 else teselas_hechas || to_jsonb(p_clave) end,
+         -- Idéntico a teselas_hechas: append idempotente, y solo si saturó.
          teselas_saturadas = case
                                when not p_saturada then teselas_saturadas
                                when teselas_saturadas ? p_clave then teselas_saturadas
@@ -140,6 +141,14 @@ begin
          ultimo_barrido = now()
    where id = p_territorio;
 
+  -- Sin esto, un territorio borrado entre el SELECT del handler y esta llamada
+  -- hace que el UPDATE no toque ninguna fila, la función devuelva éxito y el
+  -- handler reporte `contabilizada: true` para una llamada que se cobró y NO
+  -- se contabilizó — exactamente lo que ese flag existe para no callar.
+  --
+  -- No filtra nada: con security invoker + RLS, un no-admin también ve 0 filas
+  -- y recibe EXACTAMENTE este mismo error, así que no puede distinguir "no
+  -- existe" de "existe y no es tuyo".
   if not found then
     raise exception 'territorio % no existe', p_territorio
       using errcode = 'no_data_found';
