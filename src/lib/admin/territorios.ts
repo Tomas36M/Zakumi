@@ -1,3 +1,4 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { cajaDe, PRECIO_POR_LLAMADA_USD, type Punto } from "./barrido";
 import { esSinWeb, type Negocio } from "./negocios";
 
@@ -133,4 +134,30 @@ export function resumenDeTerritorio(
     costoUsd: llamadas * PRECIO_POR_LLAMADA_USD,
     barrido: Boolean(territorio.ultimo_barrido),
   };
+}
+
+/** Consultas facturadas en el mes calendario en curso.
+ *
+ * OJO con lo que este número NO es: cuenta lo que ESTE panel registró desde que
+ * existe la tabla. No ve consumo anterior a la migración, ni el de nada más que
+ * use la misma key de Google. Hoy este panel es el único consumidor de Places
+ * del proyecto, así que es exacto — deja de serlo el día que eso cambie, y
+ * nadie recibe un aviso cuando pasa. La pantalla debe decir de dónde sale. */
+export async function consultasDelMes(
+  supabase: SupabaseClient,
+): Promise<number | null> {
+  const desde = new Date();
+  desde.setDate(1);
+  desde.setHours(0, 0, 0, 0);
+
+  const { count, error } = await supabase
+    .from("consultas_places")
+    .select("*", { count: "exact", head: true })
+    .gte("creado_en", desde.toISOString());
+
+  if (error) {
+    console.error("[cuota] error contando consultas del mes:", error.message);
+    return null; // null = "no sé", que la vista debe distinguir de 0
+  }
+  return count ?? 0;
 }

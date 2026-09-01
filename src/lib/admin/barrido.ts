@@ -26,6 +26,31 @@ export const PROFUNDIDAD_MAX = 2;
 /** Nearby Search Enterprise = US$35/1.000 llamadas (verificado 2026-08-31). */
 export const PRECIO_POR_LLAMADA_USD = 0.035;
 
+/** Consultas que Google no cobra cada mes en este SKU. Verificado el
+ * 2026-09-01 en la tabla de precios de Maps Platform: SKU "Places API Nearby
+ * Search Enterprise" (772E-9975-BE34), Free Usage Cap 1.000. Si Google la
+ * cambia, se cambia acá. */
+export const CUOTA_GRATIS_MENSUAL = 1_000;
+
+export type EstadoCuota = {
+  consumidas: number;
+  restantes: number;
+  agotada: boolean;
+};
+
+/** Lo que queda de cuota. Nunca negativo: pasarse no genera deuda, solo
+ * significa que a partir de ahí todo se paga. */
+export function restanteDeCuota(consumidas: number): number {
+  const usadas = Number.isFinite(consumidas) && consumidas > 0 ? consumidas : 0;
+  return Math.max(0, CUOTA_GRATIS_MENSUAL - usadas);
+}
+
+export function estadoDeCuota(consumidas: number): EstadoCuota {
+  const usadas = Number.isFinite(consumidas) && consumidas > 0 ? consumidas : 0;
+  const restantes = restanteDeCuota(usadas);
+  return { consumidas: usadas, restantes, agotada: restantes === 0 };
+}
+
 /** Margen sobre la estimación base por la subdivisión adaptativa. */
 export const FACTOR_DENSIDAD = 1.4;
 
