@@ -61,12 +61,17 @@ const calendarioOk: Calendario = {
 // `vi.fn<...>` fija el tipo del mock explícitamente (en vez de dejar que TS
 // infiera `[]` de un `async () => {}` sin argumentos) — los asserts de abajo
 // leen el texto del aviso por índice `.mock.calls[0][0]`.
+//
+// `calendario: null` explícito en los casos que no prueban agenda: desde que
+// `entrada.ts` usa `calendarioGoogle()` como default cuando no se pasa nada,
+// omitirlo aquí saldría a internet en cualquier máquina con las envs de
+// Google puestas.
 describe("registrarSolicitudEntrante", () => {
   it("inserta la solicitud con el slug del catálogo y avisa", async () => {
     const { cliente, insertado } = supabaseFalso();
     const avisar = vi.fn<(texto: string) => Promise<void>>(async () => {});
 
-    const r = await registrarSolicitudEntrante(cliente, BASE, { avisar, ahora: AHORA });
+    const r = await registrarSolicitudEntrante(cliente, BASE, { avisar, calendario: null, ahora: AHORA });
 
     expect(r).toEqual({ estado: "creada", solicitudId: "sol-1", agendada: false });
     expect(insertado[0]).toMatchObject({
@@ -157,7 +162,7 @@ describe("registrarSolicitudEntrante", () => {
     const { cliente } = supabaseFalso({ errorInsert: { code: "23505" } });
     const avisar = vi.fn<(texto: string) => Promise<void>>(async () => {});
 
-    const r = await registrarSolicitudEntrante(cliente, BASE, { avisar, ahora: AHORA });
+    const r = await registrarSolicitudEntrante(cliente, BASE, { avisar, calendario: null, ahora: AHORA });
 
     expect(r).toEqual({ estado: "duplicada" });
     expect(avisar).not.toHaveBeenCalled();
@@ -170,7 +175,7 @@ describe("registrarSolicitudEntrante", () => {
     const r = await registrarSolicitudEntrante(
       cliente,
       { ...BASE, contacto: { nombre: "María", telefono: null, email: null } },
-      { avisar, ahora: AHORA },
+      { avisar, calendario: null, ahora: AHORA },
     );
 
     expect(r).toMatchObject({ estado: "error" });
@@ -237,7 +242,7 @@ describe("registrarSolicitudEntrante", () => {
       throw new Error("el bot de WhatsApp está caído");
     });
 
-    const r = await registrarSolicitudEntrante(cliente, BASE, { avisar, ahora: AHORA });
+    const r = await registrarSolicitudEntrante(cliente, BASE, { avisar, calendario: null, ahora: AHORA });
 
     expect(r).toEqual({ estado: "creada", solicitudId: "sol-1", agendada: false });
   });

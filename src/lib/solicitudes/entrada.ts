@@ -11,6 +11,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { servicioDelSlug, slugDeInteres } from "@/lib/catalogo";
 import { avisarAdmin } from "@/lib/portal/avisos";
+import { calendarioGoogle } from "@/lib/agenda/google";
 import type { Calendario } from "@/lib/agenda/tipos";
 import { parsearCita, type Cita } from "./fecha";
 import { construirAviso } from "./mensaje";
@@ -57,7 +58,9 @@ export async function registrarSolicitudEntrante(
   deps: DepsEntrada = {},
 ): Promise<ResultadoEntrada> {
   const avisar = deps.avisar ?? avisarAdmin;
-  const calendario = deps.calendario ?? null;
+  // `deps.calendario` puede ser null a propósito (los tests, y la fase 1 antes
+  // de que existiera google.ts): solo cuando NO se pasa nada se usa el real.
+  const calendario = deps.calendario === undefined ? calendarioGoogle() : deps.calendario;
 
   const telefono = limpio(entrada.contacto.telefono);
   const nombre = limpio(entrada.contacto.nombre);
