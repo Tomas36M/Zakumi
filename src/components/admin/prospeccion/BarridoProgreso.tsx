@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { X } from "lucide-react";
-import { PRECIO_POR_LLAMADA_USD } from "@/lib/admin/barrido";
+import { poligonoSeCruza, PRECIO_POR_LLAMADA_USD } from "@/lib/admin/barrido";
 import { formatoUsd } from "@/lib/admin/formato";
 import type { ResumenBarrido } from "@/lib/admin/plan-barrido";
 import type { Territorio } from "@/lib/admin/territorios";
@@ -107,6 +107,12 @@ export function BarridoProgreso({
 }: Props) {
   const { estado, arrancar, pausar } = useBarrido(territorio);
   const { confirmar, dialogo } = useConfirmar();
+  // Un territorio guardado con el override de `DibujarTerritorio` se ve
+  // idéntico a uno sano en esta banda: sin esto, un barrido cruzado termina en
+  // "Barrido terminado" al 100 % igual que uno que sí censó todo. Memoizado
+  // sobre `territorio.poligono`: es fijo desde que se crea (no hay edición de
+  // vértices) y `router.refresh()` no corre por cada tesela, solo por pausa.
+  const cruza = useMemo(() => poligonoSeCruza(territorio.poligono), [territorio.poligono]);
   // El ref evita el doble arranque; el estado es lo que la vista puede leer en
   // render (un ref no re-renderiza, y con la cola vacía `arrancar` no toca el
   // estado del hook — sin esto la vista se quedaría en "Barriendo 0 de 0").
@@ -391,6 +397,17 @@ export function BarridoProgreso({
           faltan {faltan}: esos trabajos ya habían salido de la cola cuando se
           pausó. Cierra el barrido y vuelve a estimarlo — lo ya barrido no se
           vuelve a pagar.
+        </Banner>
+      )}
+
+      {/* El 100 % de una barra no dice nada del área que de verdad se censó
+          si el contorno se cruzó consigo mismo: la zona cubierta dos veces se
+          leyó como «fuera» durante TODO el barrido. */}
+      {termino && cruza && (
+        <Banner variante="error">
+          Este territorio se dibujó con el contorno cruzado: la zona que el
+          trazo cubre dos veces se leyó como «fuera» todo el barrido, así que
+          este 100 % no cubre el área completa que se dibujó.
         </Banner>
       )}
 

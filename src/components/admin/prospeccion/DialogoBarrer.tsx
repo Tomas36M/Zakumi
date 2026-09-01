@@ -1,7 +1,12 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { PRECIO_POR_LLAMADA_USD, estimarBarrido, teselar } from "@/lib/admin/barrido";
+import {
+  poligonoSeCruza,
+  PRECIO_POR_LLAMADA_USD,
+  estimarBarrido,
+  teselar,
+} from "@/lib/admin/barrido";
 import { planDeBarrido } from "@/lib/admin/plan-barrido";
 import { formatoUsd } from "@/lib/admin/formato";
 import type { Territorio } from "@/lib/admin/territorios";
@@ -39,6 +44,11 @@ export function DialogoBarrer({ territorio, onCerrar, onConfirmar }: Props) {
   // La rejilla NO depende de las verticales: se calcula una vez y el resto son
   // multiplicaciones. `teselar` recorre la caja entera celda por celda.
   const teselas = useMemo(() => teselar(territorio.poligono), [territorio.poligono]);
+
+  // Este diálogo es la última pantalla antes de gastar: si el territorio se
+  // guardó con el override de `DibujarTerritorio`, es acá donde el aviso
+  // tiene que reaparecer, no solo en la lista de la que se vino.
+  const cruza = useMemo(() => poligonoSeCruza(territorio.poligono), [territorio.poligono]);
 
   const slugs = useMemo(
     () => VERTICALES.filter((v) => marcadas.has(v.slug)).map((v) => v.slug),
@@ -162,6 +172,15 @@ export function DialogoBarrer({ territorio, onCerrar, onConfirmar }: Props) {
           </p>
         </div>
 
+        {cruza && (
+          <Banner variante="error">
+            Este territorio se dibujó con el contorno cruzado: la zona que el
+            trazo cubre dos veces cuenta como «fuera», así que esas teselas se
+            le compran a Google igual pero sus resultados se descartan al
+            guardarlos. El barrido puede terminar diciendo 100 % sobre un área
+            que no censó entera.
+          </Banner>
+        )}
         {slugs.length === 0 && (
           <Banner>Marca al menos una vertical: sin verticales no hay nada que barrer.</Banner>
         )}

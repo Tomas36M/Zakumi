@@ -3,7 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { PencilLine, Trash2 } from "lucide-react";
-import { PRECIO_POR_LLAMADA_USD } from "@/lib/admin/barrido";
+import { poligonoSeCruza, PRECIO_POR_LLAMADA_USD } from "@/lib/admin/barrido";
 import { fechaCorta, formatoUsd } from "@/lib/admin/formato";
 import type { Negocio } from "@/lib/admin/negocios";
 import type { Territorio } from "@/lib/admin/territorios";
@@ -64,6 +64,19 @@ export function PanelTerritorios({
     }
     return mapa;
   }, [negocios]);
+
+  // ¿Cada territorio se dibujó con el contorno cruzado? `poligonoSeCruza` es
+  // O(n²) sobre hasta `VERTICES_MAX` vértices; memoizado sobre el array
+  // `territorios` (mismo patrón que `cuentas` arriba) para no repetir el
+  // cálculo de TODOS los territorios en cada render de esta lista — solo se
+  // recalcula cuando la lista misma cambia (router.refresh(), no cada tesela:
+  // el progreso de un barrido vive dentro de BarridoProgreso, que no obliga a
+  // re-renderizar este panel).
+  const cruces = useMemo(() => {
+    const mapa = new Map<string, boolean>();
+    for (const t of territorios) mapa.set(t.id, poligonoSeCruza(t.poligono));
+    return mapa;
+  }, [territorios]);
 
   function guardarNombre() {
     const territorio = renombrando;
@@ -159,6 +172,18 @@ export function PanelTerritorios({
                         · {llamadas} {llamadas === 1 ? "llamada" : "llamadas"} ≈{" "}
                         {formatoUsd(llamadas * PRECIO_POR_LLAMADA_USD)}
                       </p>
+                      {/* Visible AQUÍ, antes de apretar Barrer: es donde se
+                          elige qué barrer y donde se gasta la plata. Un
+                          territorio guardado con el override de
+                          DibujarTerritorio se veía después idéntico a uno
+                          sano, para siempre. */}
+                      {cruces.get(t.id) && (
+                        <p className="text-xs text-peligro">
+                          Contorno cruzado: la zona cubierta dos veces cuenta
+                          como «fuera» — puede faltar censo aunque el barrido
+                          termine en 100 %.
+                        </p>
+                      )}
                     </div>
                     <div className="flex shrink-0 items-center">
                       <IconButton
