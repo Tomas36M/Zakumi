@@ -148,6 +148,18 @@ Ledger de decisiones (37 rulings, leerlo antes de "arreglar" algo que parece rar
      de la key.
   4. Revisar el gasto real en los logs de Vercel: el handler emite una línea
      `{"evt":"tesela",…}` por llamada facturada (territorio, tesela, vertical).
+- **Ajustes de Supabase que esta pantalla asume** (consola, no repo):
+  - *Settings → API → Max rows* = **1000** (el default). PostgREST recorta ahí
+    toda consulta, en silencio y sin error. Por eso el tope de la lista de leads
+    es 900: para que el límite que manda sea el que está escrito en el código.
+    Subir el 900 sin subir antes Max rows no hace nada.
+  - *Automatically expose new tables* está **activado**, y Supabase recomienda
+    lo contrario ("control access manually"). O sea: `territorios` —y cualquier
+    tabla futura— nace publicada en la Data API. Hoy no es un hueco (la policy
+    `territorios_solo_admin` de `prospeccion.sql` la protege de verdad; un
+    `cliente` del portal no saca nada), pero **una tabla nueva SIN política
+    nace expuesta**. Regla: toda tabla que se añada trae su `enable row level
+    security` + policy en el mismo archivo .sql que la crea.
 - Notas: `barrer/route.ts` lleva `maxDuration = 30` y su timeout hacia Google
   es de 8 s a propósito (que corte el nuestro antes que la plataforma: un 504
   se contaría como fallo gratis sobre una llamada ya facturada). El límite de

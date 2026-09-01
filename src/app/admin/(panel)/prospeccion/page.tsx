@@ -13,19 +13,20 @@ export const metadata = { title: "Encontrar clientes" };
  * en el mapa. Antes de los territorios la tabla crecía de a 25 filas importadas
  * a mano; un barrido de un territorio mete miles de una sola tanda.
  *
- * 1.000 es a propósito el valor por defecto del ajuste **Max rows** de
- * PostgREST en Supabase: así el tope visible del código y el tope invisible de
- * la plataforma son el mismo número, en vez de que uno tape al otro.
+ * **900 y no 1.000 ni 5.000, y el número importa.** El proyecto de Supabase
+ * tiene *Max rows* (Settings → API) en su valor por defecto de **1.000**:
+ * PostgREST recorta ahí CUALQUIER consulta, y lo hace en silencio —devuelve
+ * 1.000 filas con `error === null`—. Un `.limit()` por encima de ese techo no
+ * hace nada: quien recortaría sería el servidor, sin decirlo. Con 900, el que
+ * manda es este número, que es el que está escrito acá. Subirlo sin subir
+ * antes *Max rows* en la consola de Supabase no cambia nada.
  *
  * Y el tope se DICE. La cuenta real viene por separado (`count: "exact"` con
- * `head: true`, que no trae filas) y la vista compara contra las filas que de
- * verdad llegaron, NO contra esta constante — así el aviso sale igual si quien
- * recorta es PostgREST y no nosotros. Ese es justo el caso silencioso: con Max
- * rows en 1.000, un `select("*")` sin límite devuelve exactamente 1.000 filas
- * con `error === null`, y la cabecera imprimiría "1.000 negocios" con toda
- * confianza sobre un censo que no tiene.
+ * `head: true`, que no trae filas y NO le afecta el techo del proyecto) y la
+ * vista compara contra las filas que de verdad llegaron, NO contra esta
+ * constante — así el aviso sale igual si algún día quien recorta es PostgREST.
  */
-const TOPE_LEADS = 1000;
+const TOPE_LEADS = 900;
 
 export default async function ProspeccionPage({
   searchParams,
