@@ -212,6 +212,7 @@ export function TerritorioView({
             territorio={territorioBarrido}
             verticales={barrido.verticales}
             llamadasAprobadas={barrido.llamadasAprobadas}
+            fallaTerritorios={fallaTerritorios}
             onCerrar={() => onBarrido(null)}
           />
         </div>

@@ -80,6 +80,9 @@ export function CarasProspeccion({
                 {label}
                 {id === "territorio" && barriendo && (
                   <span
+                    // Sin rol, un <span> es genérico y la tecnología asistiva
+                    // le descarta el aria-label.
+                    role="img"
                     aria-label="barrido en curso"
                     title="Hay un barrido en curso"
                     className="h-1.5 w-1.5 animate-pulse rounded-full bg-acento"

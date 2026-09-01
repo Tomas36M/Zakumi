@@ -18,6 +18,9 @@ type Props = {
   verticales: string[];
   /** Las llamadas que el usuario aceptó gastar al confirmar. */
   llamadasAprobadas: number;
+  /** La consulta de territorios falló: el contador de gasto que trae el prop
+   * `territorio` es viejo y no se puede presentar como si estuviera al día. */
+  fallaTerritorios: boolean;
   onCerrar: () => void;
 };
 
@@ -69,6 +72,7 @@ export function BarridoProgreso({
   territorio,
   verticales,
   llamadasAprobadas,
+  fallaTerritorios,
   onCerrar,
 }: Props) {
   const { estado, arrancar, pausar } = useBarrido(territorio);
@@ -100,9 +104,21 @@ export function BarridoProgreso({
   useEffect(() => {
     pausarRef.current = pausar;
   }, [pausar]);
-  useEffect(() => () => pausarRef.current(), []);
+  useEffect(
+    () => () => {
+      pausarRef.current();
+      // Y se re-arma el arranque. En dev, Strict Mode monta con
+      // setup → cleanup → setup y los refs sobreviven al remontaje simulado:
+      // sin esta línea la limpieza abortaría el barrido que el setup acababa
+      // de arrancar y el segundo setup saldría por la guarda, dejando la banda
+      // clavada en "0 de N" con un botón de Reanudar. En un desmontaje de
+      // verdad no cambia nada: el componente ya no existe.
+      yaArranco.current = false;
+    },
+    [],
+  );
 
-  const { total, hechos, corriendo, resumen, error } = estado;
+  const { total, hechos, emitidas, corriendo, resumen, error } = estado;
 
   // ---- Contabilidad que sobrevive a Reanudar -------------------------------
   // `arrancar` resetea el resumen y los hechos a cero en cada tanda, así que
@@ -111,22 +127,33 @@ export function BarridoProgreso({
   // anterior EN RENDER (el patrón de React para estado derivado) usando ese
   // cero como señal: un efecto también archivaría en un `arrancar` que no
   // arrancó nada, y contaría dos veces lo mismo.
-  const [cerrado, setCerrado] = useState({ resumen: CERO, hechos: 0, tandas: 0 });
-  const [ultimo, setUltimo] = useState({ resumen: CERO, hechos: 0 });
+  const [cerrado, setCerrado] = useState({ resumen: CERO, emitidas: 0, tandas: 0 });
+  const [ultimo, setUltimo] = useState({ resumen: CERO, hechos: 0, emitidas: 0 });
 
-  if (resumen !== ultimo.resumen || hechos !== ultimo.hechos) {
-    if (hechos === 0 && esCero(resumen) && ultimo.hechos > 0) {
+  if (
+    resumen !== ultimo.resumen ||
+    hechos !== ultimo.hechos ||
+    emitidas !== ultimo.emitidas
+  ) {
+    // Señal de tanda nueva: `arrancar` deja hechos y resumen en cero. `emitidas`
+    // NO sirve de señal — los cuatro workers arrancan sincrónicamente y ya
+    // pusieron su primer fetch en el mismo lote de renderizado.
+    if (hechos === 0 && esCero(resumen) && ultimo.emitidas > 0) {
       setCerrado({
         resumen: sumar(cerrado.resumen, ultimo.resumen),
-        hechos: cerrado.hechos + ultimo.hechos,
+        emitidas: cerrado.emitidas + ultimo.emitidas,
         tandas: cerrado.tandas + 1,
       });
     }
-    setUltimo({ resumen, hechos });
+    setUltimo({ resumen, hechos, emitidas });
   }
 
   const resumenTotal = sumar(cerrado.resumen, resumen);
-  const gastadas = cerrado.hechos + hechos;
+  // El tope se mide en llamadas EMITIDAS, que es lo que Google factura. Contar
+  // teselas completadas se quedaba corto (un fallo de red posterior al cobro
+  // se reintenta: dos llamadas facturadas, un solo `hechos`) y frenaba de más
+  // en el caso opuesto (un `!res.ok` suma sin costar).
+  const gastadas = cerrado.emitidas + emitidas;
   const tandas = cerrado.tandas + 1;
 
   // ---- El tope de gasto ----------------------------------------------------
@@ -212,9 +239,25 @@ export function BarridoProgreso({
           <p className="text-xs text-tinta-40">
             {/* La barra cuenta ESTA tanda, no el territorio: al reanudar,
                 `hechos` vuelve a 0 y `total` es lo que queda en la cola. */}
-            {hechos} de {total} en esta tanda · el territorio lleva {barridasEnTotal}{" "}
-            teselas barridas · {territorio.llamadas ?? 0} llamadas ≈{" "}
-            {formatoUsd((territorio.llamadas ?? 0) * PRECIO_POR_LLAMADA_USD)}
+            {hechos} de {total} en esta tanda ·{" "}
+            {fallaTerritorios ? (
+              // El acumulado del territorio viene de una lectura que falló y el
+              // barrido sigue gastando encima. Un número que el usuario no
+              // puede saber que está viejo es peor que ninguno: se dice, y se
+              // deja lo único que sí sabemos de primera mano — lo emitido en
+              // esta sesión.
+              <span className="text-peligro">
+                el contador del territorio no se pudo refrescar; en esta sesión
+                van {gastadas} llamadas ≈{" "}
+                {formatoUsd(gastadas * PRECIO_POR_LLAMADA_USD)}
+              </span>
+            ) : (
+              <>
+                el territorio lleva {barridasEnTotal} teselas barridas ·{" "}
+                {territorio.llamadas ?? 0} llamadas ≈{" "}
+                {formatoUsd((territorio.llamadas ?? 0) * PRECIO_POR_LLAMADA_USD)}
+              </>
+            )}
           </p>
         </div>
         {!corriendo && (
