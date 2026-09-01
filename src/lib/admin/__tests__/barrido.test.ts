@@ -8,6 +8,7 @@ import {
   estimarBarrido,
   poligonoSeCruza,
   puntoEnPoligono,
+  rectanguloAPuntos,
   subdividir,
   teselar,
   METROS_POR_GRADO_LAT,
@@ -15,6 +16,7 @@ import {
   RADIO_BASE,
   type Punto,
 } from "../barrido";
+import { poligonoValido } from "../territorios";
 
 // Cuadrado de ~2.2 km de lado sobre Madrid, Cundinamarca.
 const CUADRADO: Punto[] = [
@@ -344,5 +346,105 @@ describe("poligonoSeCruza", () => {
         { lat: 1, lng: 1 },
       ]),
     ).toBe(false);
+  });
+});
+
+describe("rectanguloAPuntos", () => {
+  it("una caja normal sale como cuatro esquinas SO → SE → NE → NO", () => {
+    expect(
+      rectanguloAPuntos({ lat: 4.72, lng: -74.28 }, { lat: 4.74, lng: -74.26 }),
+    ).toEqual([
+      { lat: 4.72, lng: -74.28 },
+      { lat: 4.72, lng: -74.26 },
+      { lat: 4.74, lng: -74.26 },
+      { lat: 4.74, lng: -74.28 },
+    ]);
+  });
+
+  it("las esquinas llegan en cualquier orden y el resultado es el mismo", () => {
+    // Arrastrar de derecha a izquierda y de abajo hacia arriba es tan normal
+    // como al revés; el ancla del arrastre puede ser cualquiera de las cuatro
+    // esquinas.
+    const esperado = rectanguloAPuntos(
+      { lat: 4.72, lng: -74.28 },
+      { lat: 4.74, lng: -74.26 },
+    );
+    // NE → SO (arrastre hacia abajo y a la izquierda).
+    expect(
+      rectanguloAPuntos({ lat: 4.74, lng: -74.26 }, { lat: 4.72, lng: -74.28 }),
+    ).toEqual(esperado);
+    // SE → NO (arrastre hacia arriba y a la izquierda).
+    expect(
+      rectanguloAPuntos({ lat: 4.72, lng: -74.26 }, { lat: 4.74, lng: -74.28 }),
+    ).toEqual(esperado);
+    // NO → SE (arrastre hacia abajo y a la derecha).
+    expect(
+      rectanguloAPuntos({ lat: 4.74, lng: -74.28 }, { lat: 4.72, lng: -74.26 }),
+    ).toEqual(esperado);
+  });
+
+  it("un arrastre sin área devuelve null", () => {
+    // Un clic sin mover: un territorio de área cero pasaría poligonoValido y
+    // quedaría guardado como un área invisible.
+    expect(
+      rectanguloAPuntos({ lat: 4.72, lng: -74.28 }, { lat: 4.72, lng: -74.28 }),
+    ).toBeNull();
+    // Una línea horizontal (misma latitud) y una vertical (misma longitud)
+    // tampoco encierran nada.
+    expect(
+      rectanguloAPuntos({ lat: 4.72, lng: -74.28 }, { lat: 4.72, lng: -74.26 }),
+    ).toBeNull();
+    expect(
+      rectanguloAPuntos({ lat: 4.72, lng: -74.28 }, { lat: 4.74, lng: -74.28 }),
+    ).toBeNull();
+  });
+
+  it("un NaN no se cuela como territorio", () => {
+    expect(
+      rectanguloAPuntos({ lat: Number.NaN, lng: -74.28 }, { lat: 4.74, lng: -74.26 }),
+    ).toBeNull();
+  });
+
+  it("el rectángulo que produce NO dispara la advertencia de contorno cruzado", () => {
+    // El falso positivo más caro que podría tener el modo por defecto: cada
+    // área dibujada de un arrastre saldría marcada como mal dibujada, en la
+    // barra, en el diálogo de guardado y en la lista de territorios.
+    for (const [a, b] of [
+      [
+        { lat: 4.72, lng: -74.28 },
+        { lat: 4.74, lng: -74.26 },
+      ],
+      [
+        { lat: 4.74, lng: -74.26 },
+        { lat: 4.72, lng: -74.28 },
+      ],
+      [
+        { lat: 4.72, lng: -74.26 },
+        { lat: 4.74, lng: -74.28 },
+      ],
+    ] as const) {
+      const puntos = rectanguloAPuntos(a, b);
+      expect(puntos).not.toBeNull();
+      expect(poligonoSeCruza(puntos!)).toBe(false);
+    }
+  });
+
+  it("lo que sale sirve río abajo: es un territorio válido y se puede teselar", () => {
+    // La conversión existe para que nada río abajo aprenda una forma nueva.
+    const puntos = rectanguloAPuntos(
+      { lat: 4.74, lng: -74.26 },
+      { lat: 4.72, lng: -74.28 },
+    )!;
+    expect(poligonoValido(puntos)).toBe(true);
+    expect(cajaDe(puntos)).toEqual({
+      sur: 4.72,
+      norte: 4.74,
+      oeste: -74.28,
+      este: -74.26,
+    });
+    // El centro de la caja cae dentro (el par-impar coincide con lo que se ve).
+    expect(puntoEnPoligono({ lat: 4.73, lng: -74.27 }, puntos)).toBe(true);
+    expect(puntoEnPoligono({ lat: 4.75, lng: -74.27 }, puntos)).toBe(false);
+    expect(teselar(puntos).length).toBeGreaterThan(0);
   });
 });

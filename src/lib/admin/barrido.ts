@@ -60,6 +60,40 @@ export function cajaDe(poligono: readonly Punto[]): Caja {
   };
 }
 
+/** Las cuatro esquinas de una caja arrastrada sobre el mapa, como polígono.
+ *
+ * El modo rectángulo del dibujo es un arrastre: el usuario suelta el ratón y el
+ * área queda cerrada. Pero el modelo de datos sigue siendo `Punto[]` — nada
+ * río abajo (validación, teselado, servidor, Supabase) aprende una forma nueva.
+ * Esta es la única traducción, y por eso es pura y está probada.
+ *
+ * Las esquinas llegan en CUALQUIER orden (se arrastra de derecha a izquierda y
+ * de abajo hacia arriba tanto como al revés): se normalizan a min/max y se
+ * devuelven recorriendo el rectángulo SO → SE → NE → NO. Ese recorrido importa:
+ * un orden que zigzagueara entre esquinas opuestas haría saltar
+ * `poligonoSeCruza` sobre un rectángulo perfecto — un falso positivo en el modo
+ * por defecto.
+ *
+ * Devuelve `null` si el arrastre no encerró área (un clic sin mover, o una
+ * línea): un territorio de área cero pasaría `poligonoValido` y quedaría
+ * guardado como un área invisible que no se puede ni ver ni barrer.
+ *
+ * No contempla el antimeridiano, igual que `cajaDe`: el mercado es Colombia. */
+export function rectanguloAPuntos(a: Punto, b: Punto): Punto[] | null {
+  const sur = Math.min(a.lat, b.lat);
+  const norte = Math.max(a.lat, b.lat);
+  const oeste = Math.min(a.lng, b.lng);
+  const este = Math.max(a.lng, b.lng);
+  // Con `>` (y no `!==`) un NaN también cae aquí: Math.min/max lo propagan.
+  if (!(norte > sur) || !(este > oeste)) return null;
+  return [
+    { lat: sur, lng: oeste },
+    { lat: sur, lng: este },
+    { lat: norte, lng: este },
+    { lat: norte, lng: oeste },
+  ];
+}
+
 function orientacion(a: Punto, b: Punto, c: Punto): number {
   return (b.lng - a.lng) * (c.lat - a.lat) - (b.lat - a.lat) * (c.lng - a.lng);
 }
