@@ -107,16 +107,18 @@ create trigger territorios_updated_at
 -- función de aridad distinta: crearía una SEGUNDA anotar_tesela y dejaría dos
 -- versiones vivas en las bases que ya corrieron este archivo. El drop explícito
 -- de la firma vieja garantiza que quede exactamente una.
-drop function if exists public.anotar_tesela(uuid, text, text);
+drop function if exists public.anotar_tesela(uuid, text, text, boolean);
 
--- p_saturada tiene default: durante la ventana entre correr este SQL y
--- desplegar el código nuevo, el código viejo sigue llamando con 3 argumentos y
--- no se rompe.
+-- Sube de 4 a 6 argumentos: ahora también registra la fila en consultas_places.
+-- Va DENTRO de la misma función para que contar y registrar no puedan
+-- divergir — si el UPDATE del contador ocurre, la fila del registro ocurre.
 create or replace function public.anotar_tesela(
-  p_territorio uuid,
-  p_clave      text,
-  p_vertical   text,
-  p_saturada   boolean default false
+  p_territorio  uuid,
+  p_clave       text,
+  p_vertical    text,
+  p_saturada    boolean default false,
+  p_resultados  int default null,
+  p_insertados  int default null
 ) returns void
 language plpgsql
 security invoker
@@ -128,7 +130,6 @@ begin
          teselas_hechas = case when teselas_hechas ? p_clave
                                 then teselas_hechas
                                 else teselas_hechas || to_jsonb(p_clave) end,
-         -- Idéntico a teselas_hechas: append idempotente, y solo si saturó.
          teselas_saturadas = case
                                when not p_saturada then teselas_saturadas
                                when teselas_saturadas ? p_clave then teselas_saturadas
@@ -139,17 +140,15 @@ begin
          ultimo_barrido = now()
    where id = p_territorio;
 
-  -- Sin esto, un territorio borrado entre el SELECT del handler y esta llamada
-  -- hace que el UPDATE no toque ninguna fila, la función devuelva éxito y el
-  -- handler reporte `contabilizada: true` para una llamada que se cobró y NO
-  -- se contabilizó — exactamente lo que ese flag existe para no callar.
-  --
-  -- No filtra nada: con security invoker + RLS, un no-admin también ve 0 filas
-  -- y recibe EXACTAMENTE este mismo error, así que no puede distinguir "no
-  -- existe" de "existe y no es tuyo".
   if not found then
-    raise exception 'territorio % no existe', p_territorio using errcode = 'no_data_found';
+    raise exception 'territorio % no existe', p_territorio
+      using errcode = 'no_data_found';
   end if;
+
+  insert into public.consultas_places
+    (territorio_id, clave, vertical, resultados, insertados, origen)
+  values
+    (p_territorio, p_clave, p_vertical, p_resultados, p_insertados, 'barrido');
 end;
 $$;
 
@@ -165,6 +164,41 @@ create index if not exists negocios_territorio_idx on public.negocios (territori
 -- carga. Antes de los territorios la tabla crecía de a 25 filas importadas a
 -- mano y un sort en memoria no se notaba; un barrido mete miles de una tanda.
 create index if not exists negocios_created_at_idx on public.negocios (created_at desc);
+
+-- ---- consultas_places: una fila por consulta facturada a Google ------------
+-- `territorios.llamadas` es un contador acumulado sin fecha: sirve para decir
+-- cuánto costó UN territorio, no para responder "¿cuánto va del mes?" ni "¿por
+-- qué gasté US$40 el martes?". Esta tabla es ese registro.
+--
+-- Sin columna de costo a propósito: el precio es PRECIO_POR_LLAMADA_USD en el
+-- código. Guardarlo aquí duplicaría una verdad que ya existe y se
+-- desincronizaría el día que Google cambie la tarifa.
+create table if not exists public.consultas_places (
+  id            bigint generated always as identity primary key,
+  -- on delete set null: borrar un territorio no puede borrar el registro de lo
+  -- que se pagó por él. El gasto ocurrió.
+  territorio_id uuid references public.territorios (id) on delete set null,
+  clave         text,   -- clave de trabajo "lat,lng@radio#vertical"; null si es búsqueda
+  vertical      text,   -- null si es búsqueda
+  resultados    int,
+  insertados    int,
+  origen        text not null default 'barrido'
+                  check (origen in ('barrido', 'busqueda')),
+  creado_en     timestamptz not null default now()
+);
+
+create index if not exists consultas_places_creado_en_idx
+  on public.consultas_places (creado_en desc);
+
+alter table public.consultas_places enable row level security;
+
+drop policy if exists consultas_places_solo_admin on public.consultas_places;
+create policy consultas_places_solo_admin on public.consultas_places
+  for all to authenticated
+  using ((select public.es_admin()))
+  with check ((select public.es_admin()));
+
+revoke all on public.consultas_places from public, anon;
 
 -- ---- muerte del enum ciudad ---------------------------------------------------
 -- Con territorios libres, un enum de tres municipios es una jaula. Verificado
@@ -220,7 +254,7 @@ revoke all on public.territorios from anon;
 -- la barrera real. El revoke/grant explícito es defensa en profundidad, no
 -- la única puerta — sigue el estilo explícito de voz.sql en vez de confiar
 -- en el grant a PUBLIC por defecto de Postgres en una función nueva.
-revoke all on function public.anotar_tesela(uuid, text, text, boolean) from public, anon;
-grant execute on function public.anotar_tesela(uuid, text, text, boolean) to authenticated;
+revoke all on function public.anotar_tesela(uuid, text, text, boolean, int, int) from public, anon;
+grant execute on function public.anotar_tesela(uuid, text, text, boolean, int, int) to authenticated;
 
 commit;

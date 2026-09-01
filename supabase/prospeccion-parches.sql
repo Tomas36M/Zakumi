@@ -91,6 +91,91 @@ grant execute on function public.anotar_tesela(uuid, text, text, boolean) to aut
 -- mano y el sort en memoria no se notaba; un barrido mete miles de una tanda.
 create index if not exists negocios_created_at_idx on public.negocios (created_at desc);
 
+-- ---- Parche 3 · 2026-09-01, cuota: tabla consultas_places y RPC de 6 args --
+-- `territorios.llamadas` es un contador acumulado sin fecha: sirve para decir
+-- cuánto costó UN territorio, no para responder "¿cuánto va del mes?" ni "¿por
+-- qué gasté US$40 el martes?". La tabla consultas_places es ese registro.
+--
+-- En una base que ya corrió el parche anterior, los statements de DDL (create
+-- table, create index, alter table, create policy) son no-op porque la tabla
+-- ya existe o está configurada. Los drop/create/revoke/grant de la función NO
+-- son no-op (si no los ejecuta, quedan dos versiones de anotar_tesela vivas:
+-- una de 4 args y una de 6, y el código viejo sigue llamando a la de 4,
+-- registrando 0 filas en consultas_places).
+
+create table if not exists public.consultas_places (
+  id            bigint generated always as identity primary key,
+  territorio_id uuid references public.territorios (id) on delete set null,
+  clave         text,
+  vertical      text,
+  resultados    int,
+  insertados    int,
+  origen        text not null default 'barrido'
+                  check (origen in ('barrido', 'busqueda')),
+  creado_en     timestamptz not null default now()
+);
+
+create index if not exists consultas_places_creado_en_idx
+  on public.consultas_places (creado_en desc);
+
+alter table public.consultas_places enable row level security;
+
+drop policy if exists consultas_places_solo_admin on public.consultas_places;
+create policy consultas_places_solo_admin on public.consultas_places
+  for all to authenticated
+  using ((select public.es_admin()))
+  with check ((select public.es_admin()));
+
+revoke all on public.consultas_places from public, anon;
+
+-- El drop de la firma vieja garantiza que la versión de 6 args sea la única
+-- que existe. Sin esto, ambas conviven y el código viejo (que aún llama con 4
+-- args) sigue activando la función que NO escribe en consultas_places.
+drop function if exists public.anotar_tesela(uuid, text, text, boolean);
+
+create or replace function public.anotar_tesela(
+  p_territorio  uuid,
+  p_clave       text,
+  p_vertical    text,
+  p_saturada    boolean default false,
+  p_resultados  int default null,
+  p_insertados  int default null
+) returns void
+language plpgsql
+security invoker
+set search_path = public
+as $$
+begin
+  update territorios
+     set llamadas       = llamadas + 1,
+         teselas_hechas = case when teselas_hechas ? p_clave
+                                then teselas_hechas
+                                else teselas_hechas || to_jsonb(p_clave) end,
+         teselas_saturadas = case
+                               when not p_saturada then teselas_saturadas
+                               when teselas_saturadas ? p_clave then teselas_saturadas
+                               else teselas_saturadas || to_jsonb(p_clave) end,
+         verticales     = case when p_vertical = any(verticales)
+                                then verticales
+                                else array_append(verticales, p_vertical) end,
+         ultimo_barrido = now()
+   where id = p_territorio;
+
+  if not found then
+    raise exception 'territorio % no existe', p_territorio
+      using errcode = 'no_data_found';
+  end if;
+
+  insert into public.consultas_places
+    (territorio_id, clave, vertical, resultados, insertados, origen)
+  values
+    (p_territorio, p_clave, p_vertical, p_resultados, p_insertados, 'barrido');
+end;
+$$;
+
+revoke all on function public.anotar_tesela(uuid, text, text, boolean, int, int) from public, anon;
+grant execute on function public.anotar_tesela(uuid, text, text, boolean, int, int) to authenticated;
+
 commit;
 
 -- Comprobación posterior: debe quedar UNA sola versión de la función.
