@@ -14,12 +14,11 @@ import { FichaNegocio } from "./FichaNegocio";
 import { MapCanvas } from "./MapCanvas";
 import { NuevoNegocioForm } from "./NuevoNegocioForm";
 import { SearchPanel } from "./SearchPanel";
+import type { Seleccion } from "@/components/admin/prospeccion/TerritorioView";
 
-export type Seleccion =
-  | { tipo: "negocio"; id: string }
-  | { tipo: "resultado"; placeId: string }
-  | { tipo: "nuevo"; lat: number; lng: number }
-  | null;
+// El tipo se mudó a la pantalla nueva (esta vista la borra la Task 14); se
+// re-exporta para no romper a quien todavía lo importe de aquí.
+export type { Seleccion };
 
 const ERRORES_BUSQUEDA: Record<string, string> = {
   cuota:

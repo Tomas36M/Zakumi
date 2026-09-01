@@ -1,7 +1,19 @@
 /**
- * Formateo de fechas del panel: SIEMPRE es-CO y America/Bogota.
+ * Formateo del panel: SIEMPRE es-CO (y America/Bogota para fechas).
  * Única fuente — antes había 6 copias locales de estas funciones.
  */
+
+// Google factura el barrido en dólares. El costo se muestra SIEMPRE formateado:
+// una cifra suelta ("10.85") se lee como pesos y son dos órdenes de magnitud.
+const FORMATO_USD = new Intl.NumberFormat("es-CO", {
+  style: "currency",
+  currency: "USD",
+});
+
+/** Un monto en dólares, como lo lee alguien en Colombia. */
+export function formatoUsd(monto: number): string {
+  return FORMATO_USD.format(monto);
+}
 
 const FORMATO_CORTO = new Intl.DateTimeFormat("es-CO", {
   day: "numeric",

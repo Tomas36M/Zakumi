@@ -38,7 +38,18 @@ const GRID_FILA =
 
 type FiltroTelefono = "todos" | "con" | "sin";
 
-export function NegociosView({ negocios }: { negocios: Negocio[] }) {
+/** `className` viaja al <Cockpit>: la cara Leads de /admin/prospeccion monta
+ * esta vista DENTRO de otro cockpit, y dos cockpits anidados con la altura
+ * fija de viewport se desbordan (vuelve el scroll de página). Ahí se le pasa
+ * `min-[900px]:h-auto min-[900px]:min-h-0 min-[900px]:flex-1` para que ocupe
+ * el hueco del padre en vez de una pantalla entera. */
+export function NegociosView({
+  negocios,
+  className,
+}: {
+  negocios: Negocio[];
+  className?: string;
+}) {
   const router = useRouter();
   const [guardando, startGuardar] = useTransition();
   const [q, setQ] = useState("");
@@ -172,7 +183,7 @@ export function NegociosView({ negocios }: { negocios: Negocio[] }) {
   }
 
   return (
-    <Cockpit>
+    <Cockpit className={className}>
       {dialogo}
       {/* El buscador se queda fijo arriba; los resultados scrollean debajo. */}
       <div className="shrink-0 px-5 pt-4">

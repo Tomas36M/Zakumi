@@ -9,7 +9,7 @@ import {
 import { ESTADOS, type EstadoNegocio, type Negocio } from "@/lib/admin/negocios";
 import type { ResultadoPlace } from "@/lib/admin/places";
 import { cn } from "@/lib/cn";
-import type { Seleccion } from "./MapaView";
+import type { Seleccion } from "@/components/admin/prospeccion/TerritorioView";
 
 // Solo el encuadre de arranque del mapa (Madrid, Cundinamarca) — ya NO es un
 // preset de búsqueda: con territorios libres el sesgo de la búsqueda sale del
@@ -44,6 +44,9 @@ type Props = {
   modoCaptura: boolean;
   onSeleccionar: (seleccion: Seleccion) => void;
   onClickMapa: (lat: number, lng: number) => void;
+  /** Overlays que necesitan el contexto del mapa (useMap/useMapsLibrary): el
+   * DrawingManager de los territorios vive aquí adentro. */
+  children?: React.ReactNode;
 };
 
 export function MapCanvas(props: Props) {
@@ -142,6 +145,8 @@ export function MapCanvas(props: Props) {
             </PinHit>
           </AdvancedMarker>
         ) : null}
+
+        {props.children}
       </GoogleMap>
     </APIProvider>
   );
