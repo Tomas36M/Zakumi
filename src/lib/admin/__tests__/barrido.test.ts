@@ -9,6 +9,7 @@ import {
   puntoEnPoligono,
   subdividir,
   teselar,
+  METROS_POR_GRADO_LAT,
   PRECIO_POR_LLAMADA_USD,
   RADIO_BASE,
   type Punto,
@@ -116,6 +117,40 @@ describe("teselar", () => {
 
   it("usa el radio base por defecto", () => {
     expect(teselar(CUADRADO)[0].radio).toBe(RADIO_BASE);
+  });
+
+  it("el paso de longitud se ajusta por fila: ninguna celda sale más ancha que su círculo", () => {
+    // Un grado de longitud mide menos cuanto más lejos del ecuador. Con un
+    // paso único para todo el polígono, las filas del lado del ecuador quedan
+    // más anchas que el círculo que debe cubrirlas — huecos silenciosos.
+    const alto: Punto[] = [
+      { lat: 30, lng: 0 },
+      { lat: 30, lng: 2 },
+      { lat: 60, lng: 2 },
+      { lat: 60, lng: 0 },
+    ];
+    const radio = 20_000;
+    const teselas = teselar(alto, radio);
+    const pasoLat = (radio * Math.SQRT2) / METROS_POR_GRADO_LAT;
+
+    const porFila = new Map<number, number[]>();
+    for (const t of teselas) {
+      porFila.set(t.centro.lat, [...(porFila.get(t.centro.lat) ?? []), t.centro.lng]);
+    }
+
+    for (const [lat, lngs] of porFila) {
+      if (lngs.length < 2) continue;
+      lngs.sort((a, b) => a - b);
+      const pasoLng = lngs[1] - lngs[0];
+      const borde = Math.min(Math.abs(lat - pasoLat / 2), Math.abs(lat + pasoLat / 2));
+      const anchoM = pasoLng * METROS_POR_GRADO_LAT * Math.cos((borde * Math.PI) / 180);
+      // Media diagonal de la celda: si supera el radio, las esquinas quedan
+      // fuera del círculo que debe cubrirlas.
+      const mediaDiagonal = Math.hypot(anchoM, radio * Math.SQRT2) / 2;
+      expect(mediaDiagonal, `fila ${lat} se sale del círculo`).toBeLessThanOrEqual(
+        radio * 1.0001,
+      );
+    }
   });
 });
 

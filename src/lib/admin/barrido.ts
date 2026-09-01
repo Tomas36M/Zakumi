@@ -127,8 +127,10 @@ export function claveTrabajo(tesela: Tesela, vertical: string): string {
 
 /** Rejilla de círculos que cubre el polígono. Separación r·√2: es la que
  * garantiza que el cuadrado inscrito de cada círculo tesele el plano sin
- * huecos. Las celdas que no tocan el polígono se botan — dibujar una franja
- * cuesta lo que mide la franja, no lo que mide su caja. */
+ * huecos. El paso de longitud se ajusta POR FILA (un grado mide menos metros
+ * cuanto más lejos del ecuador, así que las filas ecuatoriales son más anchas
+ * en metros si usan un paso único). Las celdas que no tocan el polígono se
+ * botan — dibujar una franja cuesta lo que mide la franja, no lo que mide su caja. */
 export function teselar(
   poligono: readonly Punto[],
   radio: number = RADIO_BASE,
@@ -136,15 +138,22 @@ export function teselar(
   const caja = cajaDe(poligono);
   const paso = radio * Math.SQRT2;
   const pasoLat = paso / METROS_POR_GRADO_LAT;
-  const latMedia = (caja.sur + caja.norte) / 2;
-  const pasoLng = paso / metrosPorGradoLng(latMedia);
-
   const filas = Math.max(1, Math.ceil((caja.norte - caja.sur) / pasoLat));
-  const columnas = Math.max(1, Math.ceil((caja.este - caja.oeste) / pasoLng));
 
   const teselas: Tesela[] = [];
   for (let f = 0; f < filas; f++) {
     const lat = caja.sur + (f + 0.5) * pasoLat;
+    // El paso de longitud se calcula POR FILA, y desde el borde de la fila más
+    // cercano al ecuador — que es donde un grado mide más metros y la celda
+    // sale más ancha. Con un paso único para todo el polígono, las filas del
+    // lado del ecuador quedan más anchas que el círculo que debe cubrirlas y
+    // dejan huecos: un censo que miente sin avisar.
+    const bordeEcuatorial = Math.min(
+      Math.abs(lat - pasoLat / 2),
+      Math.abs(lat + pasoLat / 2),
+    );
+    const pasoLng = paso / metrosPorGradoLng(bordeEcuatorial);
+    const columnas = Math.max(1, Math.ceil((caja.este - caja.oeste) / pasoLng));
     for (let c = 0; c < columnas; c++) {
       const lng = caja.oeste + (c + 0.5) * pasoLng;
       const centro = { lat, lng };
