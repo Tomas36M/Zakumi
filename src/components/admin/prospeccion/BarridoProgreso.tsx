@@ -343,13 +343,13 @@ export function BarridoProgreso({
               // esta sesión.
               <span className="text-peligro">
                 el contador del territorio no se pudo refrescar; en esta sesión
-                van {gastadas} llamadas ≈{" "}
+                van {gastadas} consultas ≈{" "}
                 {formatoUsd(gastadas * PRECIO_POR_LLAMADA_USD)}
               </span>
             ) : (
               <>
                 el territorio lleva {trabajosHechos} teselas×vertical barridas ·{" "}
-                {territorio.llamadas ?? 0} llamadas ≈{" "}
+                {territorio.llamadas ?? 0} consultas ≈{" "}
                 {formatoUsd((territorio.llamadas ?? 0) * PRECIO_POR_LLAMADA_USD)}
               </>
             )}
@@ -382,7 +382,7 @@ export function BarridoProgreso({
           preguntar es gastar plata que no autorizó. */}
       {capado && (
         <Banner variante="error">
-          Aprobaste {llamadasAprobadas} llamadas ≈{" "}
+          Aprobaste {llamadasAprobadas} consultas ≈{" "}
           {formatoUsd(llamadasAprobadas * PRECIO_POR_LLAMADA_USD)} y ya van{" "}
           <strong>{gastadas}</strong> ≈{" "}
           <strong>{formatoUsd(gastadas * PRECIO_POR_LLAMADA_USD)}</strong>: hubo más
@@ -482,7 +482,7 @@ export function BarridoProgreso({
             los dos, el botón de siempre saltaría el permiso recién pedido. */}
         {!corriendo && !termino && capado && (
           <Button variante="primaria" onClick={() => reanudar(true)}>
-            Continuar por otras {otorga} llamadas ≈{" "}
+            Continuar por otras {otorga} consultas ≈{" "}
             {formatoUsd(otorga * PRECIO_POR_LLAMADA_USD)}
           </Button>
         )}
