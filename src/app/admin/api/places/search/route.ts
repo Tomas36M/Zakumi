@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSesionAdmin } from "@/lib/admin/dal";
-import { CIUDADES, type Ciudad } from "@/lib/admin/negocios";
+import { CIUDADES } from "@/lib/admin/negocios";
 import {
   marcarImportados,
   placeANegocio,
@@ -22,6 +22,9 @@ const FIELD_MASK = [
   "places.websiteUri",
   "places.types",
   "places.businessStatus",
+  // addressComponents es tier Pro y ya pagamos Enterprise por el teléfono:
+  // entra sin subir la factura (verificado 2026-08-31).
+  "places.addressComponents",
 ].join(",");
 
 type Payload = { query?: unknown; ciudad?: unknown };
@@ -97,10 +100,9 @@ export async function POST(request: Request) {
   }
 
   const data = (await respuesta.json()) as { places?: PlaceApi[] };
-  const sesgo = ciudad?.valor as Exclude<Ciudad, "otra"> | undefined;
   // Al mapa solo llegan negocios contactables: sin teléfono no hay venta.
   const resultados: ResultadoPlace[] = soloConTelefono(
-    (data.places ?? []).map((p) => placeANegocio(p, sesgo)),
+    (data.places ?? []).map((p) => placeANegocio(p)),
   );
 
   // Dedupe visual: marcar los que ya están en la base.

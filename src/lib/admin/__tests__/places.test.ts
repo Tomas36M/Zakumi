@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  inferirCiudad,
+  localidadDe,
   marcarImportados,
   placeANegocio,
   soloConTelefono,
@@ -18,6 +18,11 @@ const FERRETERIA_UBATE: PlaceApi = {
   websiteUri: "https://eltornillo.co",
   types: ["hardware_store", "point_of_interest", "establishment"],
   businessStatus: "OPERATIONAL",
+  addressComponents: [
+    { longText: "Ubaté", shortText: "Ubaté", types: ["locality", "political"] },
+    { longText: "Cundinamarca", types: ["administrative_area_level_1"] },
+    { longText: "Colombia", types: ["country"] },
+  ],
 };
 
 describe("placeANegocio", () => {
@@ -33,7 +38,7 @@ describe("placeANegocio", () => {
       sitioWeb: "https://eltornillo.co",
       telefono: "+576017430000",
       tipoTelefono: "fijo",
-      ciudad: "ubate",
+      ciudad: "Ubaté",
       operativo: true,
       yaImportado: false,
     });
@@ -81,24 +86,35 @@ describe("placeANegocio", () => {
   });
 });
 
-describe("inferirCiudad", () => {
-  it("detecta Ubaté en la dirección, con y sin tilde", () => {
-    expect(inferirCiudad("Cra 5 #3-21, Ubaté, Cundinamarca")).toBe("ubate");
-    expect(inferirCiudad("Cra 5 #3-21, Ubate, Cundinamarca")).toBe("ubate");
+describe("localidadDe", () => {
+  it("saca el municipio del componente locality", () => {
+    expect(
+      localidadDe([
+        { longText: "Madrid", types: ["locality", "political"] },
+        { longText: "Cundinamarca", types: ["administrative_area_level_1"] },
+      ]),
+    ).toBe("Madrid");
   });
 
-  it("detecta Madrid y Bogotá", () => {
-    expect(inferirCiudad("Cl. 7 #4-12, Madrid, Cundinamarca")).toBe("madrid");
-    expect(inferirCiudad("Av. Caracas #45-10, Bogotá, Colombia")).toBe("bogota");
+  it("cae a administrative_area_level_2 cuando no hay locality", () => {
+    expect(
+      localidadDe([
+        { longText: "Ubaté", types: ["administrative_area_level_2"] },
+        { longText: "Colombia", types: ["country"] },
+      ]),
+    ).toBe("Ubaté");
   });
 
-  it("sin match usa el sesgo de la búsqueda", () => {
-    expect(inferirCiudad("Vereda El Rincón, Colombia", "madrid")).toBe("madrid");
+  it("devuelve null cuando Google no manda localidad", () => {
+    expect(localidadDe([{ longText: "Colombia", types: ["country"] }])).toBeNull();
+    expect(localidadDe(undefined)).toBeNull();
+    expect(localidadDe([])).toBeNull();
   });
 
-  it("sin match y sin sesgo → otra", () => {
-    expect(inferirCiudad("Vereda El Rincón, Colombia")).toBe("otra");
-    expect(inferirCiudad(null)).toBe("otra");
+  it("no confunde 'Madrid, España' con Madrid Cundinamarca: la localidad es literal", () => {
+    // regionCode=CO en el handler evita el caso; aquí solo se exige que la
+    // función NO normalice ni adivine nada.
+    expect(localidadDe([{ longText: "Madrid", types: ["locality"] }])).toBe("Madrid");
   });
 });
 

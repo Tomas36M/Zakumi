@@ -1,5 +1,11 @@
-import type { Ciudad, TipoTelefono } from "./negocios";
+import type { TipoTelefono } from "./negocios";
 import { normalizarTelefonoCO } from "./telefono";
+
+export type ComponenteDireccion = {
+  longText?: string;
+  shortText?: string;
+  types?: string[];
+};
 
 // Shape del place de la Places API (New) — solo los campos del FieldMask
 // que pide el route handler.
@@ -14,6 +20,7 @@ export type PlaceApi = {
   websiteUri?: string;
   types?: string[];
   businessStatus?: string;
+  addressComponents?: ComponenteDireccion[];
 };
 
 // Lo que ve el panel por cada resultado de búsqueda.
@@ -28,7 +35,7 @@ export type ResultadoPlace = {
   sitioWeb: string | null;
   telefono: string | null;
   tipoTelefono: TipoTelefono;
-  ciudad: Ciudad;
+  ciudad: string | null;
   operativo: boolean;
   yaImportado: boolean;
 };
@@ -36,10 +43,7 @@ export type ResultadoPlace = {
 // Types de Google que no dicen nada del negocio.
 const TYPES_GENERICOS = new Set(["point_of_interest", "establishment"]);
 
-export function placeANegocio(
-  place: PlaceApi,
-  sesgo?: Exclude<Ciudad, "otra">,
-): ResultadoPlace {
+export function placeANegocio(place: PlaceApi): ResultadoPlace {
   const { telefono, tipo } = normalizarTelefonoCO(
     place.internationalPhoneNumber ?? place.nationalPhoneNumber,
   );
@@ -56,31 +60,22 @@ export function placeANegocio(
     sitioWeb: place.websiteUri ?? null,
     telefono,
     tipoTelefono: tipo,
-    ciudad: inferirCiudad(place.formattedAddress ?? null, sesgo),
+    ciudad: localidadDe(place.addressComponents),
     operativo: (place.businessStatus ?? "OPERATIONAL") === "OPERATIONAL",
     yaImportado: false,
   };
 }
 
-/**
- * Ciudad a partir de la dirección; si no aparece ninguna, cae al sesgo de la
- * búsqueda y por último a "otra". regionCode=CO en el handler ya evita el
- * "Madrid, España".
- */
-export function inferirCiudad(
-  direccion: string | null,
-  sesgo?: Exclude<Ciudad, "otra">,
-): Ciudad {
-  if (direccion) {
-    const plana = direccion
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "");
-    if (plana.includes("ubate")) return "ubate";
-    if (plana.includes("madrid")) return "madrid";
-    if (plana.includes("bogota")) return "bogota";
-  }
-  return sesgo ?? "otra";
+/** El municipio tal como lo manda Google. En Colombia `locality` es el
+ * municipio; algunos rurales solo traen `administrative_area_level_2`.
+ * Sin adivinanzas por substring: si Google no lo dice, es null. */
+export function localidadDe(
+  componentes: ComponenteDireccion[] | undefined,
+): string | null {
+  if (!componentes || componentes.length === 0) return null;
+  const porTipo = (t: string) =>
+    componentes.find((c) => c.types?.includes(t))?.longText ?? null;
+  return porTipo("locality") ?? porTipo("administrative_area_level_2") ?? null;
 }
 
 /** Sin teléfono no hay venta: el mapa solo muestra negocios contactables. */
