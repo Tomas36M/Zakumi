@@ -4,13 +4,12 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
 import { importarNegocios } from "@/lib/admin/actions";
-import { CIUDADES, type Ciudad, type Negocio } from "@/lib/admin/negocios";
+import type { Negocio } from "@/lib/admin/negocios";
 import type { ResultadoPlace } from "@/lib/admin/places";
 import { cn } from "@/lib/cn";
 import { Button } from "@/components/admin/ui/Button";
 import { EmptyState } from "@/components/admin/ui/EmptyState";
 import { IconButton } from "@/components/admin/ui/IconButton";
-import { Tabs } from "@/components/admin/ui/Tabs";
 import { FichaNegocio } from "./FichaNegocio";
 import { MapCanvas } from "./MapCanvas";
 import { NuevoNegocioForm } from "./NuevoNegocioForm";
@@ -29,8 +28,6 @@ const ERRORES_BUSQUEDA: Record<string, string> = {
   no_autorizado: "La sesión expiró. Recarga la página y entra de nuevo.",
 };
 
-const PESTANAS_CIUDAD = CIUDADES.map((c) => ({ id: c.valor, label: c.label }));
-
 // ≥1000px los paneles flotan como islas sobre el mapa (profundidad por capas).
 const ISLA_FLOTANTE =
   "min-[1000px]:absolute min-[1000px]:top-8 min-[1000px]:z-10 min-[1000px]:max-h-[calc(100%-5rem)] min-[1000px]:rounded-isla min-[1000px]:border min-[1000px]:border-hairline min-[1000px]:bg-isla/95 min-[1000px]:p-4 min-[1000px]:backdrop-blur-sm";
@@ -39,9 +36,6 @@ export function MapaView({ negocios }: { negocios: Negocio[] }) {
   const router = useRouter();
   const [resultados, setResultados] = useState<ResultadoPlace[]>([]);
   const [seleccion, setSeleccion] = useState<Seleccion>(null);
-  const [ciudadActiva, setCiudadActiva] = useState<Exclude<Ciudad, "otra"> | null>(
-    "madrid",
-  );
   const [modoCaptura, setModoCaptura] = useState(false);
   const [buscando, setBuscando] = useState(false);
   const [importando, setImportando] = useState(false);
@@ -64,7 +58,9 @@ export function MapaView({ negocios }: { negocios: Negocio[] }) {
       const res = await fetch("/admin/api/places/search", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query, ciudad: ciudadActiva ?? undefined }),
+        // centro/radio del viewport llegan en una tarea posterior; sin ellos
+        // el servidor busca sin locationBias.
+        body: JSON.stringify({ query }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -110,13 +106,6 @@ export function MapaView({ negocios }: { negocios: Negocio[] }) {
   return (
     <div className="flex h-full min-h-0 flex-col">
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-hairline px-5 py-4">
-        <div role="group" aria-label="Ciudad activa">
-          <Tabs
-            pestanas={PESTANAS_CIUDAD}
-            activa={ciudadActiva ?? "madrid"}
-            onCambiar={setCiudadActiva}
-          />
-        </div>
         <span className="text-xs text-tinta-40">
           <strong className="text-tinta-85">{negocios.length}</strong> negocios en la
           base
@@ -162,7 +151,6 @@ export function MapaView({ negocios }: { negocios: Negocio[] }) {
             negocios={negocios}
             resultados={resultados}
             seleccion={seleccion}
-            ciudadActiva={ciudadActiva}
             modoCaptura={modoCaptura}
             onSeleccionar={setSeleccion}
             onClickMapa={(lat, lng) => {
@@ -225,7 +213,6 @@ export function MapaView({ negocios }: { negocios: Negocio[] }) {
             <NuevoNegocioForm
               lat={seleccion.lat}
               lng={seleccion.lng}
-              ciudadSugerida={ciudadActiva}
               onCreado={(id) => {
                 setSeleccion({ tipo: "negocio", id });
                 router.refresh();

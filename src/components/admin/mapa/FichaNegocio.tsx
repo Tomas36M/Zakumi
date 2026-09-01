@@ -6,7 +6,6 @@ import { X } from "lucide-react";
 import { actualizarNegocio, agregarNota } from "@/lib/admin/actions";
 import { convertirNegocioEnCliente } from "@/lib/admin/cartera-actions";
 import {
-  CIUDADES,
   ESTADOS,
   type EstadoNegocio,
   type Negocio,
@@ -22,11 +21,6 @@ import { IconButton } from "@/components/admin/ui/IconButton";
 import { Island } from "@/components/admin/ui/Island";
 import { ListRow } from "@/components/admin/ui/ListRow";
 import { Skeleton } from "@/components/admin/ui/Skeleton";
-
-const LABEL_CIUDAD = new Map<string, string>(
-  CIUDADES.map((c) => [c.valor, c.label]),
-);
-LABEL_CIUDAD.set("otra", "Otra");
 
 async function fetchNotas(negocioId: string): Promise<Nota[]> {
   const supabase = createSupabaseBrowser();
@@ -91,7 +85,7 @@ export function FichaNegocio({ negocio, onCambio, onCerrar }: Props) {
           <p className="text-xs text-tinta-40">
             {[
               negocio.categoria?.replaceAll("_", " "),
-              LABEL_CIUDAD.get(negocio.ciudad),
+              negocio.ciudad,
               negocio.rating !== null ? `${negocio.rating.toFixed(1)}★` : null,
             ]
               .filter(Boolean)

@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { verifySession } from "./dal";
-import { ESTADOS, type Ciudad, type EstadoNegocio } from "./negocios";
+import { ESTADOS, type EstadoNegocio } from "./negocios";
 import { normalizarTelefonoCO } from "./telefono";
 import type { ResultadoPlace } from "./places";
 
@@ -46,11 +46,15 @@ export async function logout(): Promise<void> {
    públicos) y re-normaliza en servidor lo que venga del cliente.
    ———————————————————————————————————————————————————————————————————— */
 
-const CIUDADES_VALIDAS = new Set<Ciudad>(["madrid", "ubate", "bogota", "otra"]);
 const ESTADOS_VALIDOS = new Set(ESTADOS.map((e) => e.valor));
 
-function esCiudad(valor: unknown): valor is Ciudad {
-  return typeof valor === "string" && CIUDADES_VALIDAS.has(valor as Ciudad);
+/** Ciudad libre: cualquier texto no vacío, o null. Con territorios ya no hay
+ * un enum de municipios que validar — el dato honesto es el que trae Google
+ * (o el que escribe el humano), recortado a un largo razonable. */
+function ciudadLimpia(valor: unknown): string | null {
+  if (typeof valor !== "string") return null;
+  const limpio = valor.trim();
+  return limpio ? limpio.slice(0, 120) : null;
 }
 
 function esEstado(valor: unknown): valor is EstadoNegocio {
@@ -112,7 +116,7 @@ export async function importarNegocios(
     filas.push({
       nombre: r.nombre.trim().slice(0, 300),
       direccion: typeof r.direccion === "string" ? r.direccion : null,
-      ciudad: esCiudad(r.ciudad) ? r.ciudad : ("otra" as Ciudad),
+      ciudad: typeof r.ciudad === "string" && r.ciudad.trim() ? r.ciudad.trim() : null,
       lat: r.lat,
       lng: r.lng,
       categoria: typeof r.categoria === "string" ? r.categoria : null,
@@ -121,6 +125,7 @@ export async function importarNegocios(
       telefono,
       tipo_telefono: tipo,
       google_place_id: r.placeId,
+      territorio_id: null,
       fuente: "places" as const,
     });
   }
@@ -144,7 +149,7 @@ export async function crearNegocioManual(datos: {
   nombre: string;
   lat: number;
   lng: number;
-  ciudad: Ciudad;
+  ciudad: string | null;
   direccion?: string;
   categoria?: string;
   telefono?: string;
@@ -156,7 +161,6 @@ export async function crearNegocioManual(datos: {
   if (!coordenadasValidas(datos.lat, datos.lng)) {
     return { error: "Las coordenadas no son válidas." };
   }
-  if (!esCiudad(datos.ciudad)) return { error: "Ciudad no válida." };
 
   const bruto = datos.telefono?.trim() ?? "";
   const { telefono, tipo } = normalizarTelefonoCO(bruto);
@@ -169,12 +173,13 @@ export async function crearNegocioManual(datos: {
     .insert({
       nombre: nombre.slice(0, 300),
       direccion: datos.direccion?.trim() || null,
-      ciudad: datos.ciudad,
+      ciudad: ciudadLimpia(datos.ciudad),
       lat: datos.lat,
       lng: datos.lng,
       categoria: datos.categoria?.trim() || null,
       telefono,
       tipo_telefono: tipo,
+      territorio_id: null,
       fuente: "manual" as const,
     })
     .select("id")
@@ -196,7 +201,7 @@ export async function actualizarNegocio(
     telefono?: string;
     nombre?: string;
     categoria?: string;
-    ciudad?: Ciudad;
+    ciudad?: string | null;
     sitio_web?: string;
     direccion?: string;
   },
@@ -226,10 +231,7 @@ export async function actualizarNegocio(
     fila.nombre = nombre.slice(0, 300);
   }
   if ("categoria" in cambios) fila.categoria = cambios.categoria?.trim() || null;
-  if ("ciudad" in cambios) {
-    if (!esCiudad(cambios.ciudad)) return { error: "Ciudad no válida." };
-    fila.ciudad = cambios.ciudad;
-  }
+  if ("ciudad" in cambios) fila.ciudad = ciudadLimpia(cambios.ciudad);
   if ("sitio_web" in cambios) fila.sitio_web = urlHttpONull(cambios.sitio_web);
   if ("direccion" in cambios) fila.direccion = cambios.direccion?.trim() || null;
 

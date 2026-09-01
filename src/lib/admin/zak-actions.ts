@@ -82,7 +82,7 @@ export async function enviarTandaZak(negocioIds: string[]): Promise<
         contexto: {
           nombre: n.nombre,
           categoria: n.categoria ?? undefined,
-          ciudad: n.ciudad,
+          ciudad: n.ciudad ?? undefined,
           angulo: vertical.angulo,
           // La burbuja inicial del chat: el bot la guarda al enviar la
           // plantilla (y con el texto EXACTO del catálogo, el folleto se

@@ -1,25 +1,21 @@
 "use client";
 
-import { useEffect } from "react";
 import {
   AdvancedMarker,
   APIProvider,
   ControlPosition,
   Map as GoogleMap,
-  useMap,
 } from "@vis.gl/react-google-maps";
-import {
-  CIUDADES,
-  ESTADOS,
-  type Ciudad,
-  type EstadoNegocio,
-  type Negocio,
-} from "@/lib/admin/negocios";
+import { ESTADOS, type EstadoNegocio, type Negocio } from "@/lib/admin/negocios";
 import type { ResultadoPlace } from "@/lib/admin/places";
 import { cn } from "@/lib/cn";
 import type { Seleccion } from "./MapaView";
 
-const MADRID = CIUDADES[0];
+// Solo el encuadre de arranque del mapa (Madrid, Cundinamarca) — ya NO es un
+// preset de búsqueda: con territorios libres el sesgo de la búsqueda sale del
+// viewport actual, no de una ciudad fija.
+const CENTRO_INICIAL = { lat: 4.7326, lng: -74.2642 };
+
 const LABEL_ESTADO = new Map(ESTADOS.map((e) => [e.valor, e.label]));
 
 // Rombos por estado — mismo lenguaje que chips y badges (clases literales).
@@ -45,7 +41,6 @@ type Props = {
   negocios: Negocio[];
   resultados: ResultadoPlace[];
   seleccion: Seleccion;
-  ciudadActiva: Exclude<Ciudad, "otra"> | null;
   modoCaptura: boolean;
   onSeleccionar: (seleccion: Seleccion) => void;
   onClickMapa: (lat: number, lng: number) => void;
@@ -74,7 +69,7 @@ export function MapCanvas(props: Props) {
       <GoogleMap
         className={cn("h-full w-full", props.modoCaptura && "cursor-crosshair")}
         mapId={mapId}
-        defaultCenter={MADRID.centro}
+        defaultCenter={CENTRO_INICIAL}
         defaultZoom={14}
         gestureHandling="greedy"
         disableDefaultUI
@@ -87,8 +82,6 @@ export function MapCanvas(props: Props) {
           if (punto) props.onClickMapa(punto.lat, punto.lng);
         }}
       >
-        <RecentrarCiudad ciudad={props.ciudadActiva} />
-
         {props.negocios.map((n) => {
           const activo =
             props.seleccion?.tipo === "negocio" && props.seleccion.id === n.id;
@@ -152,19 +145,4 @@ export function MapCanvas(props: Props) {
       </GoogleMap>
     </APIProvider>
   );
-}
-
-/** Recentra el mapa cuando cambia el chip de ciudad. */
-function RecentrarCiudad({ ciudad }: { ciudad: Exclude<Ciudad, "otra"> | null }) {
-  const map = useMap();
-
-  useEffect(() => {
-    if (!map || !ciudad) return;
-    const destino = CIUDADES.find((c) => c.valor === ciudad);
-    if (!destino) return;
-    map.panTo(destino.centro);
-    map.setZoom(destino.valor === "bogota" ? 12 : 14);
-  }, [map, ciudad]);
-
-  return null;
 }

@@ -1,8 +1,6 @@
 // Tipos y constantes del CRM de prospección. Espejo de los enums de
 // supabase/schema.sql — si cambia uno, cambia el otro.
 
-export type Ciudad = "madrid" | "ubate" | "bogota" | "otra";
-
 export type EstadoNegocio =
   | "nuevo"
   | "contactado"
@@ -19,7 +17,7 @@ export type Negocio = {
   id: string;
   nombre: string;
   direccion: string | null;
-  ciudad: Ciudad;
+  ciudad: string | null;
   lat: number;
   lng: number;
   categoria: string | null;
@@ -28,6 +26,7 @@ export type Negocio = {
   telefono: string | null;
   tipo_telefono: TipoTelefono;
   google_place_id: string | null;
+  territorio_id: string | null;
   fuente: FuenteNegocio;
   estado: EstadoNegocio;
   creado_por: string | null;
@@ -58,14 +57,13 @@ export function labelEstado(estado: EstadoNegocio): string {
   return ESTADOS.find((e) => e.valor === estado)?.label ?? estado;
 }
 
-// Centros y radios de sesgo para la búsqueda de Places y los chips del mapa.
-export const CIUDADES: readonly {
-  valor: Exclude<Ciudad, "otra">;
-  label: string;
-  centro: { lat: number; lng: number };
-  radio: number;
-}[] = [
-  { valor: "madrid", label: "Madrid", centro: { lat: 4.7326, lng: -74.2642 }, radio: 8000 },
-  { valor: "ubate", label: "Ubaté", centro: { lat: 5.3097, lng: -73.8156 }, radio: 8000 },
-  { valor: "bogota", label: "Bogotá", centro: { lat: 4.711, lng: -74.0721 }, radio: 20000 },
-] as const;
+/** Las ciudades que existen en la base, para armar el filtro de la lista de
+ * leads. Antes era una constante de tres municipios; con territorios libres la
+ * única fuente honesta son los datos. */
+export function ciudadesDe(negocios: readonly Negocio[]): string[] {
+  const vistas = new Set<string>();
+  for (const n of negocios) {
+    if (n.ciudad) vistas.add(n.ciudad);
+  }
+  return [...vistas].sort((a, b) => a.localeCompare(b, "es"));
+}

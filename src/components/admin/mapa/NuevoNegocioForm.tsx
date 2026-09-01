@@ -3,16 +3,14 @@
 import { useState, useTransition } from "react";
 import { X } from "lucide-react";
 import { crearNegocioManual } from "@/lib/admin/actions";
-import { CIUDADES, type Ciudad } from "@/lib/admin/negocios";
 import { Banner } from "@/components/admin/ui/Banner";
 import { Button } from "@/components/admin/ui/Button";
-import { Field, Input, Select } from "@/components/admin/ui/Field";
+import { Field, Input } from "@/components/admin/ui/Field";
 import { IconButton } from "@/components/admin/ui/IconButton";
 
 type Props = {
   lat: number;
   lng: number;
-  ciudadSugerida: Exclude<Ciudad, "otra"> | null;
   onCreado: (id: string) => void;
   onCancelar: () => void;
 };
@@ -21,7 +19,7 @@ export function NuevoNegocioForm(props: Props) {
   const [guardando, startGuardar] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [nombre, setNombre] = useState("");
-  const [ciudad, setCiudad] = useState<Ciudad>(props.ciudadSugerida ?? "otra");
+  const [ciudad, setCiudad] = useState("");
   const [categoria, setCategoria] = useState("");
   const [telefono, setTelefono] = useState("");
   const [direccion, setDireccion] = useState("");
@@ -37,7 +35,7 @@ export function NuevoNegocioForm(props: Props) {
             nombre,
             lat: props.lat,
             lng: props.lng,
-            ciudad,
+            ciudad: ciudad.trim() || null,
             categoria: categoria || undefined,
             telefono: telefono || undefined,
             direccion: direccion || undefined,
@@ -73,14 +71,12 @@ export function NuevoNegocioForm(props: Props) {
       </Field>
 
       <Field label="Ciudad">
-        <Select value={ciudad} onChange={(e) => setCiudad(e.target.value as Ciudad)}>
-          {CIUDADES.map((c) => (
-            <option key={c.valor} value={c.valor}>
-              {c.label}
-            </option>
-          ))}
-          <option value="otra">Otra</option>
-        </Select>
+        <Input
+          value={ciudad}
+          onChange={(e) => setCiudad(e.target.value)}
+          placeholder="Madrid, Ubaté…"
+          maxLength={120}
+        />
       </Field>
 
       <Field label="Teléfono">

@@ -7,10 +7,9 @@ import { useRouter } from "next/navigation";
 import { Bot, MessageSquare, Trash2 } from "lucide-react";
 import { actualizarNegocio, cambiarEstadoLote, eliminarNegocios } from "@/lib/admin/actions";
 import {
-  CIUDADES,
+  ciudadesDe,
   ESTADOS,
   labelEstado,
-  type Ciudad,
   type EstadoNegocio,
   type Negocio,
 } from "@/lib/admin/negocios";
@@ -23,11 +22,6 @@ import { EmptyState } from "@/components/admin/ui/EmptyState";
 import { Field, Input, Select } from "@/components/admin/ui/Field";
 import { Island } from "@/components/admin/ui/Island";
 import { ListRow } from "@/components/admin/ui/ListRow";
-
-const LABEL_CIUDAD = new Map<string, string>(
-  CIUDADES.map((c) => [c.valor, c.label]),
-);
-LABEL_CIUDAD.set("otra", "Otra");
 
 // Punto de color del pipeline (clases literales: Tailwind no ve plantillas).
 const COLOR_ESTADO: Record<EstadoNegocio, string> = {
@@ -48,7 +42,7 @@ export function NegociosView({ negocios }: { negocios: Negocio[] }) {
   const router = useRouter();
   const [guardando, startGuardar] = useTransition();
   const [q, setQ] = useState("");
-  const [ciudad, setCiudad] = useState<Ciudad | "todas">("todas");
+  const [ciudad, setCiudad] = useState<string | "todas">("todas");
   const [estado, setEstado] = useState<EstadoNegocio | "todos">("todos");
   const [categoria, setCategoria] = useState<string>("todas");
   const [telefono, setTelefono] = useState<FiltroTelefono>("todos");
@@ -64,6 +58,8 @@ export function NegociosView({ negocios }: { negocios: Negocio[] }) {
     for (const n of negocios) if (n.categoria) set.add(n.categoria);
     return [...set].sort();
   }, [negocios]);
+
+  const ciudades = useMemo(() => ciudadesDe(negocios), [negocios]);
 
   const filtrados = useMemo(() => {
     const texto = q.trim().toLowerCase();
@@ -200,17 +196,13 @@ export function NegociosView({ negocios }: { negocios: Negocio[] }) {
             </div>
             <div className="grid grid-cols-2 gap-3 min-[900px]:grid-cols-4">
               <Field label="Ciudad">
-                <Select
-                  value={ciudad}
-                  onChange={(e) => setCiudad(e.target.value as Ciudad | "todas")}
-                >
+                <Select value={ciudad} onChange={(e) => setCiudad(e.target.value)}>
                   <option value="todas">Todas</option>
-                  {CIUDADES.map((c) => (
-                    <option key={c.valor} value={c.valor}>
-                      {c.label}
+                  {ciudades.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
                     </option>
                   ))}
-                  <option value="otra">Otra</option>
                 </Select>
               </Field>
               <Field label="Estado">
@@ -371,7 +363,7 @@ export function NegociosView({ negocios }: { negocios: Negocio[] }) {
                       ) : null}
                     </span>
                     <span className="truncate text-sm text-tinta-60">
-                      {LABEL_CIUDAD.get(n.ciudad)}
+                      {n.ciudad ?? <span className="text-tinta-40">—</span>}
                     </span>
                     <span className="text-sm tabular-nums text-tinta-60">
                       {n.telefono ?? <span className="text-tinta-40">—</span>}
