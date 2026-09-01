@@ -59,6 +59,7 @@ export async function POST(request: Request) {
 
   const r = (data ?? {}) as {
     status?: string;
+    llamada_id?: string;
     lead?: boolean;
     agente_nombre?: string;
     sin_cliente?: boolean;
@@ -88,14 +89,8 @@ export async function POST(request: Request) {
     const telLead = texto(d.lead_telefono) ?? evento.params.p_telefono;
 
     if (r.sin_cliente === true && hayDatosLead && (dir === "saliente" || dir === "entrante")) {
-      // La RPC no devuelve el id de la llamada: se busca por conversation_id
-      // (tiene índice único) en vez de tocar una RPC que ya está en producción.
-      const { data: llamada } = await supabase
-        .from("llamadas_voz")
-        .select("id")
-        .eq("conversation_id", evento.params.p_conversation_id)
-        .maybeSingle();
-
+      // La propia RPC devuelve el id de la fila que acaba de insertar en
+      // llamadas_voz (v_llamada_id) — no hace falta ir a buscarlo aparte.
       await registrarSolicitudEntrante(supabase, {
         origen: "voz",
         claveOrigen: `voz:${evento.params.p_conversation_id}`,
@@ -104,7 +99,7 @@ export async function POST(request: Request) {
         detalle: texto(d.lead_detalle) ?? evento.params.p_resumen,
         mejorHorario: texto(d.mejor_horario),
         citaCruda: d.cita_fecha_hora,
-        llamadaId: (llamada as { id?: string } | null)?.id ?? null,
+        llamadaId: r.llamada_id ?? null,
       });
     } else if (r.lead === true) {
       const quien = [d.lead_nombre, telLead]
