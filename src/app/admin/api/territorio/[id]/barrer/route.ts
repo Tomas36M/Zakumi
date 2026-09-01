@@ -248,6 +248,8 @@ export async function POST(
     p_territorio: territorio.id,
     p_clave: clave,
     p_vertical: vertical,
+    p_resultados: crudos.length,
+    p_insertados: insertados,
     p_saturada: saturada,
   });
 
