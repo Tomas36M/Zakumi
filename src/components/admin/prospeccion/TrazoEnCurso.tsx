@@ -15,6 +15,20 @@ import { ACENTO } from "@/components/admin/mapa/colores";
  */
 export type ModoDibujo = "rectangulo" | "poligono";
 
+/** Con qué modo se entra a dibujar.
+ *
+ * El arrastre del rectángulo es un gesto de RATÓN: Google se queda con los
+ * gestos táctiles (les hace `preventDefault`) y no llega ningún `mousedown`
+ * sintético, así que en una tablet el modo por defecto no haría NADA. Ahí se
+ * entra por el contorno, que se dibuja tocando. Se llama desde un manejador de
+ * evento, nunca durante el render: no hay desajuste de hidratación. */
+export function modoInicial(): ModoDibujo {
+  return typeof window !== "undefined" &&
+    window.matchMedia("(pointer: coarse)").matches
+    ? "poligono"
+    : "rectangulo";
+}
+
 const ESTILO = {
   fillColor: ACENTO,
   fillOpacity: 0.12,
@@ -178,6 +192,14 @@ function ContornoEnCurso({
     if (!ruta) return;
     const comunes = comunesDesdeElPrincipio(ruta, trazo);
     if (comunes === ruta.getLength() && comunes === trazo.length) return;
+    // Mismo número de vértices pero distintos: es un `trazo` ATRASADO, no una
+    // forma nueva. React programa desde la escucha nativa de Google a
+    // prioridad normal, así que a mitad de un arrastre rápido este efecto
+    // puede correr un `set_at` por detrás — y reconstruir aquí destruiría el
+    // tirador que el usuario tiene agarrado. Todo lo que cambia el trazo desde
+    // fuera cambia su LARGO (poner, deshacer, limpiar); lo demás sale del
+    // propio camino.
+    if (ruta.getLength() === trazo.length) return;
     aplicando.current = true;
     // Se quitan los que sobran por el final y se añaden los que faltan: en el
     // caso común —un clic más— no se toca ni un tirador de los ya puestos.
@@ -316,8 +338,13 @@ function CajaEnCurso({ trazo, onTrazo }: PropsForma) {
       if (!ancla) return;
       ancla = null;
       dibujando.current = false;
-      // Lo PRIMERO, pase lo que pase después.
-      map.setOptions({ draggable: true });
+      // Lo PRIMERO, pase lo que pase después. `gestureHandling` acompaña a
+      // `draggable` en los tres sitios (aquí, al empezar y en la limpieza):
+      // `draggable` está deprecado desde 2017 en favor de `gestureHandling`, y
+      // este mapa es "greedy" explícito — si el navegador ignorara `draggable`,
+      // panearía mientras se dibuja. El valor de vuelta tiene que ser el mismo
+      // que pone MapCanvas.
+      map.setOptions({ draggable: true, gestureHandling: "greedy" });
       const limites = rect.getBounds();
       const puntos = limites ? puntosDeLimites(limites) : null;
       if (!puntos) {
@@ -346,7 +373,7 @@ function CajaEnCurso({ trazo, onTrazo }: PropsForma) {
       ancla = inicio;
       dibujando.current = true;
       // Sin esto el navegador PANEA el mapa en vez de dibujar la caja.
-      map.setOptions({ draggable: false });
+      map.setOptions({ draggable: false, gestureHandling: "none" });
       // Y sin esto el navegador intenta "arrastrar" las teselas como imágenes.
       ev.preventDefault();
       rect.setOptions({ clickable: false, editable: false, draggable: false });
@@ -358,6 +385,15 @@ function CajaEnCurso({ trazo, onTrazo }: PropsForma) {
     // creciendo hasta donde va el ratón en vez de congelarse en el borde.
     const mover = (ev: MouseEvent) => {
       if (!ancla) return;
+      // El `mouseup` se pierde más de lo que parece: un alt-tab, el sistema
+      // robando el foco, un menú contextual nativo. Sin esto la caja seguiría
+      // persiguiendo un cursor SIN botón apretado sobre un mapa que no se
+      // puede mover — que es, calcado, el bug que vinimos a arreglar (y cambiar
+      // de cara a Leads no desmonta esto: la cara se esconde, no se va).
+      if (ev.buttons === 0) {
+        terminar();
+        return;
+      }
       const p = posicion(ev);
       if (p) rect.setBounds(limitesDe(ancla, p));
     };
@@ -369,7 +405,11 @@ function CajaEnCurso({ trazo, onTrazo }: PropsForma) {
         if (aplicando.current || dibujando.current) return;
         const limites = rect.getBounds();
         const puntos = limites ? puntosDeLimites(limites) : null;
-        if (puntos) onTrazo(puntos);
+        // Si el usuario colapsa la caja arrastrando una esquina sobre la otra,
+        // `puntos` es null: ignorarlo dejaría el trazo anterior guardado
+        // mientras en pantalla no hay nada — y "Nombrar y guardar" guardaría un
+        // área que ya no se ve. Se limpia y se vuelve al arrastre.
+        onTrazo(puntos ?? []);
       }),
     ];
 
@@ -381,19 +421,27 @@ function CajaEnCurso({ trazo, onTrazo }: PropsForma) {
     // del mapa tan a menudo como dentro, y ahí el arrastre quedaría abierto
     // con el mapa clavado sin poder moverse.
     window.addEventListener("mouseup", terminar);
+    // Y si el puntero no vuelve nunca, la ventana perdiendo el foco cierra el
+    // arrastre igual.
+    window.addEventListener("blur", terminar);
     map.setOptions({ draggableCursor: "crosshair" });
 
     return () => {
       div.removeEventListener("mousedown", empezar, true);
       window.removeEventListener("mousemove", mover);
       window.removeEventListener("mouseup", terminar);
+      window.removeEventListener("blur", terminar);
       escuchas.forEach((l) => l.remove());
       proyector.setMap(null);
       rect.setMap(null);
       caja.current = null;
       // Incondicional: salir del dibujo, cambiar de modo o desmontar la
       // pantalla a media caja no puede dejar el mapa sin poder moverse.
-      map.setOptions({ draggable: true, draggableCursor: null });
+      map.setOptions({
+        draggable: true,
+        gestureHandling: "greedy",
+        draggableCursor: null,
+      });
     };
   }, [map, onTrazo]);
 
@@ -402,8 +450,10 @@ function CajaEnCurso({ trazo, onTrazo }: PropsForma) {
     const rect = caja.current;
     if (!map || !rect || dibujando.current) return;
     if (trazo.length === 0) {
-      rect.setOptions({ clickable: false, editable: false, draggable: false });
-      rect.setMap(null);
+      if (rect.getEditable()) {
+        rect.setOptions({ clickable: false, editable: false, draggable: false });
+      }
+      if (rect.getMap() !== null) rect.setMap(null);
       return;
     }
     const { sur, norte, oeste, este } = cajaDe(trazo);
@@ -413,8 +463,17 @@ function CajaEnCurso({ trazo, onTrazo }: PropsForma) {
       rect.setBounds(limites);
       aplicando.current = false;
     }
-    rect.setMap(map);
-    rect.setOptions({ clickable: true, editable: true, draggable: true });
+    // Condicionales a propósito: ajustar la caja dispara `bounds_changed` en
+    // cada frame y este efecto corre con ella. `MVCObject.set` avisa sin
+    // comparar antes, así que un `setMap`/`setOptions` incondicional emitiría
+    // `map_changed`/`editable_changed` sesenta veces por segundo y la API
+    // reconstruiría los tiradores — incluido el que el usuario está
+    // arrastrando. Es el mismo cuidado que `comunesDesdeElPrincipio` tiene del
+    // lado del contorno.
+    if (rect.getMap() !== map) rect.setMap(map);
+    if (!rect.getEditable()) {
+      rect.setOptions({ clickable: true, editable: true, draggable: true });
+    }
   }, [map, trazo]);
 
   return null;

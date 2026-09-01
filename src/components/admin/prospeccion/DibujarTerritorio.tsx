@@ -117,7 +117,9 @@ export function DibujarTerritorio({
       <span className="text-sm text-tinta-85">
         {modo === "rectangulo" ? (
           trazo.length === 0 ? (
-            "Arrastra sobre el mapa para encerrar el área."
+            // El arrastre es de ratón: en táctil no pasa nada al arrastrar y
+            // el que dibuja tiene que saber por dónde sí.
+            "Arrastra sobre el mapa para encerrar el área. Con el dedo no hay arrastre: en tablet o móvil, dibuja con «Contorno libre»."
           ) : (
             "Área lista. Arrastra las esquinas o los lados para ajustarla, o muévela entera."
           )

@@ -17,7 +17,7 @@ import { DialogoBarrer } from "./DialogoBarrer";
 import { DibujarTerritorio } from "./DibujarTerritorio";
 import { FichaLateral } from "./FichaLateral";
 import { PanelTerritorios } from "./PanelTerritorios";
-import { TrazoEnCurso, type ModoDibujo } from "./TrazoEnCurso";
+import { modoInicial, TrazoEnCurso, type ModoDibujo } from "./TrazoEnCurso";
 
 /** Qué está abierto en la isla derecha. Vive aquí porque MapCanvas lo
  * importa. */
@@ -81,9 +81,10 @@ export function TerritorioView({
   const [resultados, setResultados] = useState<ResultadoPlace[]>([]);
   const [seleccion, setSeleccion] = useState<Seleccion>(null);
   const [modoCaptura, setModoCaptura] = useState(false);
-  // Null = no se está dibujando. El rectángulo es el modo por defecto: casi
-  // todo lo que se barre es "este barrio", y eso es un arrastre, no veinte
-  // clics.
+  // Null = no se está dibujando. El rectángulo es el modo por defecto con
+  // ratón: casi todo lo que se barre es "este barrio", y eso es un arrastre,
+  // no veinte clics. En pantalla táctil manda `modoInicial()`, porque ahí el
+  // arrastre no existe.
   const [modo, setModo] = useState<ModoDibujo | null>(null);
   const [trazo, setTrazo] = useState<Punto[]>([]);
   // El diálogo del nombre vive AQUÍ porque se abre desde dos sitios: el botón
@@ -303,7 +304,7 @@ export function TerritorioView({
               setModoCaptura(false);
               setTrazo([]);
               setNombrando(false);
-              setModo((m) => (m === null ? "rectangulo" : null));
+              setModo((m) => (m === null ? modoInicial() : null));
             }}
             barriendoId={barrido?.territorioId ?? null}
             onBarrer={(t) => setAEstimarId(t.id)}
