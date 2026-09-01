@@ -46,8 +46,8 @@ export function restanteDeCuota(consumidas: number): number {
 }
 
 export function estadoDeCuota(consumidas: number): EstadoCuota {
+  const restantes = restanteDeCuota(consumidas);
   const usadas = Number.isFinite(consumidas) && consumidas > 0 ? consumidas : 0;
-  const restantes = restanteDeCuota(usadas);
   return { consumidas: usadas, restantes, agotada: restantes === 0 };
 }
 

@@ -136,19 +136,27 @@ export function resumenDeTerritorio(
   };
 }
 
-/** Consultas facturadas en el mes calendario en curso.
+/** Consultas facturadas en el mes calendario en curso, según la hora de Bogotá
+ * (UTC-5 fijo, sin horario de verano).
  *
- * OJO con lo que este número NO es: cuenta lo que ESTE panel registró desde que
- * existe la tabla. No ve consumo anterior a la migración, ni el de nada más que
- * use la misma key de Google. Hoy este panel es el único consumidor de Places
- * del proyecto, así que es exacto — deja de serlo el día que eso cambie, y
- * nadie recibe un aviso cuando pasa. La pantalla debe decir de dónde sale. */
+ * OJO con lo que este número NO es:
+ * - Cuenta lo que ESTE panel registró desde que existe la tabla. No ve consumo
+ *   anterior a la migración, ni el de nada más que use la misma key de Google.
+ *   Hoy este panel es el único consumidor de Places del proyecto, así que es
+ *   exacto — deja de serlo el día que eso cambie, y nadie recibe un aviso
+ *   cuando pasa. La pantalla debe decir de dónde sale.
+ * - El mes de Bogotá no es el mes de Google: la fecha de reset de la cuota
+ *   gratis de Google está en UTC sin cambios estacionales, así que pasa a horas
+ *   distintas según la zona. El recuento es una aproximación, especialmente en
+ *   los bordes del mes. */
 export async function consultasDelMes(
   supabase: SupabaseClient,
 ): Promise<number | null> {
-  const desde = new Date();
-  desde.setDate(1);
-  desde.setHours(0, 0, 0, 0);
+  const ahora = new Date();
+  const bogota = new Date(ahora.getTime() - 5 * 3_600_000);
+  const desde = new Date(Date.UTC(
+    bogota.getUTCFullYear(), bogota.getUTCMonth(), 1, 5, 0, 0,
+  ));
 
   const { count, error } = await supabase
     .from("consultas_places")
@@ -156,7 +164,7 @@ export async function consultasDelMes(
     .gte("creado_en", desde.toISOString());
 
   if (error) {
-    console.error("[cuota] error contando consultas del mes:", error.message);
+    console.error("[territorios] error contando consultas del mes:", error.message);
     return null; // null = "no sé", que la vista debe distinguir de 0
   }
   return count ?? 0;
