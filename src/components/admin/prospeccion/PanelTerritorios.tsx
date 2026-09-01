@@ -165,7 +165,7 @@ export function PanelTerritorios({
                           ? `barrido ${fechaCorta(t.ultimo_barrido)}`
                           : "sin barrer"}{" "}
                         · {resumen.llamadas}{" "}
-                        {resumen.llamadas === 1 ? "llamada" : "llamadas"} ≈{" "}
+                        {resumen.llamadas === 1 ? "consulta" : "consultas"} ≈{" "}
                         {formatoUsd(resumen.costoUsd)}
                       </p>
                       {/* Visible AQUÍ, antes de apretar Barrer: es donde se

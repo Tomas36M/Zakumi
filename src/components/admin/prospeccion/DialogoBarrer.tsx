@@ -131,11 +131,11 @@ export function DialogoBarrer({ territorio, onCerrar, onConfirmar }: Props) {
             <strong className="text-tinta">{teselas.length}</strong> teselas ×{" "}
             <strong className="text-tinta">{slugs.length}</strong>{" "}
             {slugs.length === 1 ? "vertical" : "verticales"} ={" "}
-            <strong className="text-tinta">{bruto.llamadas}</strong> llamadas.
+            <strong className="text-tinta">{bruto.llamadas}</strong> consultas a Google.
           </p>
           <p className="mt-1">
             Esta tanda compra{" "}
-            <strong className="text-acento">{tanda.llamadas} llamadas</strong> ≈{" "}
+            <strong className="text-acento">{tanda.llamadas} consultas</strong> ≈{" "}
             <strong className="text-acento">{formatoUsd(tanda.costoUsd)}</strong>
             {pendientes < bruto.llamadas && (
               <> — las otras {bruto.llamadas - pendientes} ya están barridas y no se pagan.</>
@@ -165,9 +165,13 @@ export function DialogoBarrer({ territorio, onCerrar, onConfirmar }: Props) {
             más. El barrido se frena solo al doblar lo aprobado y te vuelve a
             preguntar.
           </p>
-          <p className="mt-2 border-t border-hairline pt-2">
+          <p className="mt-2 border-t border-hairline pt-2 text-tinta-40">
+            Barrer solo le pregunta a Google qué negocios hay y los guarda acá.
+            No contacta a nadie: escribirles o llamarlos es aparte, desde Zak.
+          </p>
+          <p className="mt-1">
             Este territorio lleva <strong className="text-tinta">{gastado}</strong>{" "}
-            {gastado === 1 ? "llamada gastada" : "llamadas gastadas"} ≈{" "}
+            {gastado === 1 ? "consulta gastada" : "consultas gastadas"} ≈{" "}
             {formatoUsd(gastado * PRECIO_POR_LLAMADA_USD)}.
           </p>
         </div>

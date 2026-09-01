@@ -35,7 +35,7 @@ export function TarjetaTerritorio({ territorio, resumen }: Props) {
             Barrido {fechaCorta(territorio.ultimo_barrido)}
           </p>
           <p className="text-xs text-tinta-40">
-            {resumen.llamadas} {resumen.llamadas === 1 ? "llamada" : "llamadas"}{" "}
+            {resumen.llamadas} {resumen.llamadas === 1 ? "consulta" : "consultas"}{" "}
             ≈ {formatoUsd(resumen.costoUsd)}
           </p>
         </>
