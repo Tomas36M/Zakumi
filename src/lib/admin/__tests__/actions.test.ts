@@ -77,4 +77,24 @@ describe("importarNegocios", () => {
     const filasEnviadas = upsertMock.mock.calls[0]![0] as { ciudad: string | null }[];
     expect(filasEnviadas[0]!.ciudad).toBeNull();
   });
+
+  it("la ciudad pasa por ciudadLimpia: se recorta a 120 caracteres", async () => {
+    verifySessionMock.mockResolvedValue({ supabase: supabaseFalso([{}]) });
+    const { importarNegocios } = await import("../actions");
+
+    await importarNegocios([resultadoPlace({ ciudad: "  " + "Ú".repeat(200) + "  " })]);
+
+    const filasEnviadas = upsertMock.mock.calls[0]![0] as { ciudad: string | null }[];
+    expect(filasEnviadas[0]!.ciudad).toBe("Ú".repeat(120));
+  });
+
+  it("el sitio web pasa por urlHttpONull: nada de javascript: en un href", async () => {
+    verifySessionMock.mockResolvedValue({ supabase: supabaseFalso([{}]) });
+    const { importarNegocios } = await import("../actions");
+
+    await importarNegocios([resultadoPlace({ sitioWeb: "javascript:alert(1)" })]);
+
+    const filasEnviadas = upsertMock.mock.calls[0]![0] as { sitio_web: string | null }[];
+    expect(filasEnviadas[0]!.sitio_web).toBeNull();
+  });
 });

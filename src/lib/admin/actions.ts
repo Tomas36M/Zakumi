@@ -6,7 +6,7 @@ import { createSupabaseServer } from "@/lib/supabase/server";
 import { verifySession } from "./dal";
 import { ESTADOS, type EstadoNegocio } from "./negocios";
 import { normalizarTelefonoCO } from "./telefono";
-import type { ResultadoPlace } from "./places";
+import { urlHttpONull, type ResultadoPlace } from "./places";
 
 export type EstadoLogin = { error: string | null };
 
@@ -31,7 +31,7 @@ export async function login(
     return { error: "Credenciales inválidas." };
   }
 
-  redirect("/admin/mapa");
+  redirect("/admin/prospeccion?tab=territorio");
 }
 
 export async function logout(): Promise<void> {
@@ -72,16 +72,10 @@ function coordenadasValidas(lat: unknown, lng: unknown): boolean {
   );
 }
 
-/** Solo URLs navegables: nada de javascript: ni esquemas raros en los href. */
-function urlHttpONull(valor: unknown): string | null {
-  if (typeof valor !== "string") return null;
-  const limpio = valor.trim();
-  return /^https?:\/\/\S+$/i.test(limpio) ? limpio : null;
-}
-
 function revalidarPanel() {
-  revalidatePath("/admin/mapa");
-  revalidatePath("/admin/negocios");
+  // `/admin/mapa` y `/admin/negocios` son stubs de redirect desde la T14:
+  // revalidarlos no invalida nada que alguien mire. La pantalla real es una.
+  revalidatePath("/admin/prospeccion");
 }
 
 /**
@@ -116,7 +110,7 @@ export async function importarNegocios(
     filas.push({
       nombre: r.nombre.trim().slice(0, 300),
       direccion: typeof r.direccion === "string" ? r.direccion : null,
-      ciudad: typeof r.ciudad === "string" && r.ciudad.trim() ? r.ciudad.trim() : null,
+      ciudad: ciudadLimpia(r.ciudad),
       lat: r.lat,
       lng: r.lng,
       categoria: typeof r.categoria === "string" ? r.categoria : null,

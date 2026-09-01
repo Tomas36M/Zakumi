@@ -78,6 +78,20 @@ export function localidadDe(
   return porTipo("locality") ?? porTipo("administrative_area_level_2") ?? null;
 }
 
+/** Solo URLs navegables: nada de javascript: ni esquemas raros en los href.
+ *
+ * Vive acá y no en actions.ts porque los DOS escritores de `negocios.sitio_web`
+ * lo necesitan —la importación manual y el barrido de territorios, que hoy
+ * mete muchísimas más filas— y una copia por escritor es exactamente cómo se
+ * pierde el invariante: el valor se pinta tal cual en un `<a href>` de
+ * NegociosView y FichaNegocio. Una sola definición, un solo invariante.
+ * (Además actions.ts es "use server": no puede exportar funciones síncronas.) */
+export function urlHttpONull(valor: unknown): string | null {
+  if (typeof valor !== "string") return null;
+  const limpio = valor.trim();
+  return /^https?:\/\/\S+$/i.test(limpio) ? limpio : null;
+}
+
 /** Sin teléfono no hay venta: el mapa solo muestra negocios contactables. */
 export function soloConTelefono(resultados: ResultadoPlace[]): ResultadoPlace[] {
   return resultados.filter((r) => r.telefono !== null);

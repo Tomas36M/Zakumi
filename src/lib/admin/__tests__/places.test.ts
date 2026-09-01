@@ -4,6 +4,7 @@ import {
   marcarImportados,
   placeANegocio,
   soloConTelefono,
+  urlHttpONull,
 } from "../places";
 import type { PlaceApi } from "../places";
 
@@ -143,5 +144,36 @@ describe("marcarImportados", () => {
     ];
     const marcados = marcarImportados(resultados, new Set(["ChIJotro456"]));
     expect(marcados.map((r) => r.yaImportado)).toEqual([false, true]);
+  });
+});
+
+// Único escritor de `negocios.sitio_web`, y el valor se pinta tal cual en un
+// <a href>. Vive en places.ts justo para que el barrido —que mete muchísimas
+// más filas que la importación manual— no lo esquive.
+describe("urlHttpONull", () => {
+  it("deja pasar http y https", () => {
+    expect(urlHttpONull("https://zakumistudio.com")).toBe("https://zakumistudio.com");
+    expect(urlHttpONull("http://ferreteria-ubate.co/tienda")).toBe(
+      "http://ferreteria-ubate.co/tienda",
+    );
+  });
+
+  it("recorta espacios alrededor", () => {
+    expect(urlHttpONull("  https://zakumistudio.com  ")).toBe("https://zakumistudio.com");
+  });
+
+  it("mata los esquemas que no son navegables", () => {
+    expect(urlHttpONull("javascript:alert(1)")).toBeNull();
+    expect(urlHttpONull("data:text/html,<script>alert(1)</script>")).toBeNull();
+    expect(urlHttpONull("//evil.example")).toBeNull();
+    expect(urlHttpONull("zakumistudio.com")).toBeNull();
+  });
+
+  it("null para lo vacío y lo que no es texto", () => {
+    expect(urlHttpONull("")).toBeNull();
+    expect(urlHttpONull("   ")).toBeNull();
+    expect(urlHttpONull(null)).toBeNull();
+    expect(urlHttpONull(undefined)).toBeNull();
+    expect(urlHttpONull(42)).toBeNull();
   });
 });
