@@ -15,6 +15,10 @@ type Props = {
   tab: string | null;
   negocios: Negocio[];
   territorios: Territorio[];
+  /** Cuántos negocios hay DE VERDAD en la base (count exacto del servidor), o
+   * null si esa cuenta también falló. `negocios` viene topado: este número es
+   * lo único que sabe si la lista está completa. */
+  negociosTotal: number | null;
   /** La consulta falló: la lista vacía NO significa que no haya nada. */
   fallaNegocios: boolean;
   fallaTerritorios: boolean;
@@ -37,6 +41,7 @@ export function ProspeccionView({
   tab,
   negocios,
   territorios,
+  negociosTotal,
   fallaNegocios,
   fallaTerritorios,
 }: Props) {
@@ -60,6 +65,13 @@ export function ProspeccionView({
 
   const sinWeb = negocios.filter((n) => !n.sitio_web).length;
 
+  // La lista de negocios viene topada por `page.tsx`. La comparación es contra
+  // las filas que DE VERDAD llegaron, no contra el tope: si quien recortó fue
+  // el ajuste "Max rows" de Supabase, la consulta vuelve capada y sin error, y
+  // esta es la única señal de que la cabecera está contando un tope y no un
+  // censo.
+  const truncada = negociosTotal !== null && negociosTotal > negocios.length;
+
   function cambiarCara(nueva: CaraProspeccion) {
     if (nueva === cara) return;
     setCara(nueva);
@@ -76,7 +88,10 @@ export function ProspeccionView({
           </span>
         </h1>
         <span className="text-xs text-tinta-40">
-          <strong className="text-tinta-85">{negocios.length}</strong> negocios ·{" "}
+          <strong className="text-tinta-85">{negocios.length}</strong>
+          {/* Con la lista topada, "N negocios" a secas sería la cifra de la
+              pantalla presentada como la cifra de la base. */}
+          {truncada && <> de {negociosTotal}</>} negocios ·{" "}
           <strong className="text-tinta-85">{sinWeb}</strong> sin web ·{" "}
           <strong className="text-tinta-85">{territorios.length}</strong> territorios
         </span>
@@ -97,6 +112,17 @@ export function ProspeccionView({
             No se pudieron cargar los negocios. Los contadores de leads y de «sin
             web» están incompletos: no tomes decisiones con estos números hasta
             recargar.
+          </Banner>
+        )}
+
+        {/* Un censo que no dice que está recortado no es un censo. */}
+        {truncada && (
+          <Banner variante="error">
+            La base tiene <strong>{negociosTotal}</strong> negocios y esta
+            pantalla cargó los <strong>{negocios.length}</strong> más recientes.
+            Todo lo de aquí cuenta SOLO esos {negocios.length}: los contadores de
+            arriba, los filtros de la lista, los pines del mapa y los negocios
+            por territorio. Los más antiguos existen y no están en pantalla.
           </Banner>
         )}
       </div>
