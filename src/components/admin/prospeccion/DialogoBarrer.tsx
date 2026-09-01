@@ -141,6 +141,23 @@ export function DialogoBarrer({ territorio, onCerrar, onConfirmar }: Props) {
               <> — las otras {bruto.llamadas - pendientes} ya están barridas y no se pagan.</>
             )}
           </p>
+          {/* La cifra de arriba es el precio de lista. Google regala las primeras
+              1.000 consultas de cada mes, y desde acá no hay forma de saber
+              cuántas llevas gastadas — así que el diálogo dice el bruto y avisa
+              del descuento, en vez de prometer un neto que no puede calcular. */}
+          <p className="mt-1 text-tinta-40">
+            Es el precio de lista: Google no cobra las primeras 1.000 consultas
+            de cada mes. Tu consumo real está en{" "}
+            <a
+              href="https://console.cloud.google.com/google/maps-apis/metrics"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline underline-offset-2 hover:text-tinta-60"
+            >
+              las métricas de Google Cloud
+            </a>
+            .
+          </p>
           {hijasPendientes > 0 && (
             <p className="mt-1">
               Incluye <strong className="text-tinta">{hijasPendientes}</strong>{" "}
