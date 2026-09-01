@@ -17,7 +17,7 @@ import { DialogoBarrer } from "./DialogoBarrer";
 import { DibujarTerritorio } from "./DibujarTerritorio";
 import { FichaLateral } from "./FichaLateral";
 import { PanelTerritorios } from "./PanelTerritorios";
-import { TrazoEnCurso } from "./TrazoEnCurso";
+import { TrazoEnCurso, type ModoDibujo } from "./TrazoEnCurso";
 
 /** Qué está abierto en la isla derecha. Vive aquí porque MapCanvas lo
  * importa. */
@@ -81,8 +81,14 @@ export function TerritorioView({
   const [resultados, setResultados] = useState<ResultadoPlace[]>([]);
   const [seleccion, setSeleccion] = useState<Seleccion>(null);
   const [modoCaptura, setModoCaptura] = useState(false);
-  const [dibujando, setDibujando] = useState(false);
+  // Null = no se está dibujando. El rectángulo es el modo por defecto: casi
+  // todo lo que se barre es "este barrio", y eso es un arrastre, no veinte
+  // clics.
+  const [modo, setModo] = useState<ModoDibujo | null>(null);
   const [trazo, setTrazo] = useState<Punto[]>([]);
+  // El diálogo del nombre vive AQUÍ porque se abre desde dos sitios: el botón
+  // de la barra y el clic en el primer vértice sobre el mapa.
+  const [nombrando, setNombrando] = useState(false);
   const [buscando, setBuscando] = useState(false);
   const [importando, setImportando] = useState(false);
   const [errorBusqueda, setErrorBusqueda] = useState<string | null>(null);
@@ -136,6 +142,31 @@ export function TerritorioView({
   // cada tecla que se pulse en el panel.
   const onSeleccionarTerritorio = useCallback((id: string) => {
     setTerritorioResaltado((actual) => (actual === id ? null : id));
+  }, []);
+
+  // Los tres van en las dependencias del efecto que crea el overlay del trazo:
+  // una función nueva en cada render lo recrearía —parpadeando— en cada tecla
+  // que se pulse en el panel.
+  const agregarPunto = useCallback((punto: Punto) => {
+    setTrazo((t) => {
+      // El tope de vértices lo valida también el servidor; aquí evita que un
+      // trazo absurdo cuelgue la pestaña al estimar.
+      if (t.length >= VERTICES_MAX) return t;
+      // Un clic sobre el área ya dibujada llega por el polígono, y si además
+      // llegara por el mapa serían dos vértices idénticos de un solo clic.
+      // Nadie pone dos vértices en el mismo punto a propósito.
+      const ultimo = t[t.length - 1];
+      if (ultimo && ultimo.lat === punto.lat && ultimo.lng === punto.lng) return t;
+      return [...t, punto];
+    });
+  }, []);
+
+  const reemplazarTrazo = useCallback((puntos: Punto[]) => {
+    setTrazo(puntos);
+  }, []);
+
+  const cerrarArea = useCallback(() => {
+    setNombrando(true);
   }, []);
 
   async function buscar(query: string) {
@@ -199,7 +230,7 @@ export function TerritorioView({
           onClick={() => {
             // Dibujar y capturar se disputan el MISMO clic del mapa: encender
             // uno apaga el otro.
-            setDibujando(false);
+            setModo(null);
             setModoCaptura((m) => !m);
             if (seleccion?.tipo === "nuevo") setSeleccion(null);
           }}
@@ -208,18 +239,31 @@ export function TerritorioView({
         </Button>
       </div>
 
-      {dibujando && (
+      {modo && (
         <div className="shrink-0 px-5 pt-3">
           <DibujarTerritorio
+            modo={modo}
+            onModo={(nuevo) => {
+              setModo(nuevo);
+              // Del rectángulo al contorno la caja sigue siendo un polígono de
+              // cuatro vértices y se puede seguir editando; al revés no hay
+              // conversión honesta (DibujarTerritorio lo confirma antes).
+              if (nuevo === "rectangulo") setTrazo([]);
+            }}
             trazo={trazo}
+            nombrando={nombrando}
+            onNombrando={setNombrando}
             onDeshacer={() => setTrazo((t) => t.slice(0, -1))}
+            onLimpiar={() => setTrazo([])}
             onDescartar={() => {
-              setDibujando(false);
+              setModo(null);
               setTrazo([]);
+              setNombrando(false);
             }}
             onGuardado={() => {
-              setDibujando(false);
+              setModo(null);
               setTrazo([]);
+              setNombrando(false);
               router.refresh();
             }}
           />
@@ -254,11 +298,12 @@ export function TerritorioView({
             territorios={territorios}
             negocios={negocios}
             fallaCarga={fallaTerritorios}
-            dibujando={dibujando}
+            dibujando={modo !== null}
             onDibujar={() => {
               setModoCaptura(false);
               setTrazo([]);
-              setDibujando((d) => !d);
+              setNombrando(false);
+              setModo((m) => (m === null ? "rectangulo" : null));
             }}
             barriendoId={barrido?.territorioId ?? null}
             onBarrer={(t) => setAEstimarId(t.id)}
@@ -310,23 +355,31 @@ export function TerritorioView({
             onSeleccionarTerritorio={onSeleccionarTerritorio}
             // En MapCanvas esto solo pone el cursor en cruz, y dibujar también
             // es "toca el mapa": el puntero tiene que decirlo.
-            modoCaptura={modoCaptura || dibujando}
+            modoCaptura={modoCaptura || modo !== null}
             onSeleccionar={setSeleccion}
             onClickMapa={(lat, lng) => {
-              if (dibujando) {
-                // El tope de vértices lo valida también el servidor; aquí evita
-                // que un trazo absurdo cuelgue la pestaña al estimar.
-                setTrazo((t) => (t.length >= VERTICES_MAX ? t : [...t, { lat, lng }]));
+              // En rectángulo el clic no pone nada: el área sale del arrastre,
+              // que TrazoEnCurso escucha sobre el mapa.
+              if (modo === "poligono") {
+                agregarPunto({ lat, lng });
                 return;
               }
-              if (modoCaptura) {
+              if (modo === null && modoCaptura) {
                 setSeleccion({ tipo: "nuevo", lat, lng });
                 setModoCaptura(false);
               }
             }}
           >
             {/* Va DENTRO del mapa: useMap() necesita el contexto del APIProvider. */}
-            {dibujando && <TrazoEnCurso trazo={trazo} />}
+            {modo && (
+              <TrazoEnCurso
+                modo={modo}
+                trazo={trazo}
+                onTrazo={reemplazarTrazo}
+                onAgregarPunto={agregarPunto}
+                onCerrarArea={cerrarArea}
+              />
+            )}
           </MapCanvas>
         </div>
 
