@@ -114,54 +114,74 @@ export async function registrarSolicitudEntrante(
 
   let meetUrl: string | null = null;
   let choque = false;
+  let agendada = false;
   if (cita && calendario) {
-    // El choque solo informa: se agenda igual (perder una cita conseguida es
-    // peor que solapar dos eventos en el calendario).
-    choque = await calendario.hayChoque(cita.inicio, cita.fin);
-    const titulo = `Zakumi · ${nombre ?? telefono}`;
-    const evento = await calendario.crearEvento({
-      titulo,
-      descripcion: [
-        detalle ? `Lo que pidió: ${detalle}` : null,
-        `Servicio: ${servicioDelSlug(slug)?.nombre ?? "por definir"}`,
-        `Contacto: ${telefono}`,
-        `Origen: ${entrada.origen}`,
-        urlPanel(),
-      ]
-        .filter((l) => l)
-        .join("\n"),
-      inicio: cita.inicio,
-      fin: cita.fin,
-    });
-    if (evento) {
-      meetUrl = evento.meetUrl;
-      const { error: errUpd } = await supabase
-        .from("solicitudes")
-        .update({
-          cita_meet_url: evento.meetUrl,
-          cita_evento_id: evento.eventoId,
-          cita_link_google: evento.linkGoogle,
-        })
-        .eq("id", solicitudId);
-      if (errUpd) console.error("[solicitud entrante] update cita:", errUpd.message);
+    // `Calendario` es inyectable (hoy el falso de los tests, mañana
+    // google.ts) y nada en el tipo obliga a que resuelva en vez de lanzar —
+    // un choque de red acá no puede tirar una solicitud que ya quedó
+    // guardada, así que el bloque entero cae en pie si algo revienta.
+    try {
+      // El choque solo informa: se agenda igual (perder una cita conseguida
+      // es peor que solapar dos eventos en el calendario).
+      choque = await calendario.hayChoque(cita.inicio, cita.fin);
+      const titulo = `Zakumi · ${nombre ?? telefono}`;
+      const evento = await calendario.crearEvento({
+        titulo,
+        descripcion: [
+          detalle ? `Lo que pidió: ${detalle}` : null,
+          `Servicio: ${servicioDelSlug(slug)?.nombre ?? "por definir"}`,
+          `Contacto: ${telefono}`,
+          `Origen: ${entrada.origen}`,
+          urlPanel(),
+        ]
+          .filter((l) => l)
+          .join("\n"),
+        inicio: cita.inicio,
+        fin: cita.fin,
+      });
+      if (evento) {
+        // Agendada = se creó el evento, no que además haya llegado el link de
+        // Meet: un evento sin sala igual ocupó el horario en el calendario.
+        agendada = true;
+        meetUrl = evento.meetUrl;
+        const { error: errUpd } = await supabase
+          .from("solicitudes")
+          .update({
+            cita_meet_url: evento.meetUrl,
+            cita_evento_id: evento.eventoId,
+            cita_link_google: evento.linkGoogle,
+          })
+          .eq("id", solicitudId);
+        if (errUpd) console.error("[solicitud entrante] update cita:", errUpd.message);
+      }
+    } catch (e) {
+      console.error("[solicitud entrante] calendario:", e);
     }
   }
 
-  await avisar(
-    construirAviso({
-      origen: entrada.origen,
-      nombre,
-      telefono,
-      servicio: servicioDelSlug(slug)?.nombre ?? null,
-      detalle,
-      mejorHorario: limpio(entrada.mejorHorario),
-      cita,
-      citaTextoCrudo: cita ? null : citaCrudaTexto,
-      meetUrl,
-      choque,
-      urlPanel: urlPanel(),
-    }),
-  );
+  try {
+    // El aviso es lo último y lo menos crítico de los tres pasos: que
+    // `avisar` (inyectable — el `avisarAdmin` real ya es fire-and-forget,
+    // pero nada lo garantiza aquí) reviente no puede borrar que la solicitud
+    // (y su cita, si la hubo) ya quedaron en pie.
+    await avisar(
+      construirAviso({
+        origen: entrada.origen,
+        nombre,
+        telefono,
+        servicio: servicioDelSlug(slug)?.nombre ?? null,
+        detalle,
+        mejorHorario: limpio(entrada.mejorHorario),
+        cita,
+        citaTextoCrudo: cita ? null : citaCrudaTexto,
+        meetUrl,
+        choque,
+        urlPanel: urlPanel(),
+      }),
+    );
+  } catch (e) {
+    console.error("[solicitud entrante] aviso:", e);
+  }
 
-  return { estado: "creada", solicitudId, agendada: meetUrl !== null };
+  return { estado: "creada", solicitudId, agendada };
 }

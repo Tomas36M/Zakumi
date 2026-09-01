@@ -190,4 +190,72 @@ describe("registrarSolicitudEntrante", () => {
     expect(r).toMatchObject({ estado: "creada", agendada: false });
     expect(insertado[0]).toMatchObject({ cita_inicio: "2026-09-03T15:00:00.000Z" });
   });
+
+  it("si crearEvento LANZA, la solicitud igual queda y el aviso sale", async () => {
+    const { cliente } = supabaseFalso();
+    const avisar = vi.fn<(texto: string) => Promise<void>>(async () => {});
+    const calendarioQueLanza: Calendario = {
+      crearEvento: async () => {
+        throw new Error("timeout de red");
+      },
+      hayChoque: async () => false,
+    };
+
+    const r = await registrarSolicitudEntrante(
+      cliente,
+      { ...BASE, citaCruda: "2026-09-03T10:00" },
+      { avisar, calendario: calendarioQueLanza, ahora: AHORA },
+    );
+
+    expect(r).toMatchObject({ estado: "creada", agendada: false });
+    expect(avisar).toHaveBeenCalledOnce();
+  });
+
+  it("si hayChoque LANZA, la solicitud igual queda y el aviso sale", async () => {
+    const { cliente } = supabaseFalso();
+    const avisar = vi.fn<(texto: string) => Promise<void>>(async () => {});
+    const calendarioQueLanza: Calendario = {
+      crearEvento: calendarioOk.crearEvento,
+      hayChoque: async () => {
+        throw new Error("credenciales vencidas");
+      },
+    };
+
+    const r = await registrarSolicitudEntrante(
+      cliente,
+      { ...BASE, citaCruda: "2026-09-03T10:00" },
+      { avisar, calendario: calendarioQueLanza, ahora: AHORA },
+    );
+
+    expect(r).toMatchObject({ estado: "creada", agendada: false });
+    expect(avisar).toHaveBeenCalledOnce();
+  });
+
+  it("si avisar LANZA, la función igual resuelve con la solicitud creada", async () => {
+    const { cliente } = supabaseFalso();
+    const avisar = vi.fn<(texto: string) => Promise<void>>(async () => {
+      throw new Error("el bot de WhatsApp está caído");
+    });
+
+    const r = await registrarSolicitudEntrante(cliente, BASE, { avisar, ahora: AHORA });
+
+    expect(r).toEqual({ estado: "creada", solicitudId: "sol-1", agendada: false });
+  });
+
+  it("un evento sin link de Meet igual cuenta como agendada", async () => {
+    const { cliente } = supabaseFalso();
+    const avisar = vi.fn<(texto: string) => Promise<void>>(async () => {});
+    const calendarioSinMeet: Calendario = {
+      crearEvento: async () => ({ eventoId: "ev-1", meetUrl: null, linkGoogle: null }),
+      hayChoque: async () => false,
+    };
+
+    const r = await registrarSolicitudEntrante(
+      cliente,
+      { ...BASE, citaCruda: "2026-09-03T10:00" },
+      { avisar, calendario: calendarioSinMeet, ahora: AHORA },
+    );
+
+    expect(r).toMatchObject({ estado: "creada", agendada: true });
+  });
 });
