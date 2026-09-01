@@ -243,8 +243,8 @@ export function useBarrido(territorio: Territorio) {
           if (vivos === 0 && aborto.current === control) {
             aborto.current = null;
             setEstado((e) => ({ ...e, corriendo: false }));
-            // Los negocios nuevos bajan por props del server, como en el
-            // importar de MapaView. Una sola vez, al final (o nunca, si ya
+            // Los negocios nuevos bajan por props del server, como al
+            // importar negocios. Una sola vez, al final (o nunca, si ya
             // refrescó `pausar`).
             refrescarUnaVez();
           }

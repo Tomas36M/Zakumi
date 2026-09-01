@@ -50,8 +50,8 @@ function PinHit({ children }: { children: React.ReactNode }) {
 }
 
 // Territorio sin dueño: identidad estable para que el efecto de
-// PoligonosTerritorio no se repita en cada render de un caller (MapaView, la
-// vista vieja que la Task 14 borra) que no le pasa territorios.
+// PoligonosTerritorio no se repita en cada render si algún caller no le pasa
+// territorios.
 const SIN_TERRITORIOS: Territorio[] = [];
 
 function noSeleccionarTerritorio() {}
@@ -134,9 +134,8 @@ type Props = {
   modoCaptura: boolean;
   onSeleccionar: (seleccion: Seleccion) => void;
   onClickMapa: (lat: number, lng: number) => void;
-  /** Territorios guardados, dibujados como polígonos bajo los pines. Opcional
-   * porque MapaView (la vista vieja, que la Task 14 borra) monta este
-   * componente sin territorios. */
+  /** Territorios guardados, dibujados como polígonos bajo los pines. Opcional:
+   * un caller sin territorios (o mientras cargan) puede omitirlo. */
   territorios?: Territorio[];
   /** El territorio que se pinta con más opacidad — hoy, el que el caller
    * decida resaltar (p.ej. el que tiene el barrido abierto). */

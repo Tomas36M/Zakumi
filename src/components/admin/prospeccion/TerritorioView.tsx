@@ -19,8 +19,8 @@ import { FichaLateral } from "./FichaLateral";
 import { PanelTerritorios } from "./PanelTerritorios";
 import { TrazoEnCurso } from "./TrazoEnCurso";
 
-/** Qué está abierto en la isla derecha. Vive aquí (y no en MapaView, que la
- * Task 14 borra) porque MapCanvas lo importa. */
+/** Qué está abierto en la isla derecha. Vive aquí porque MapCanvas lo
+ * importa. */
 export type Seleccion =
   | { tipo: "negocio"; id: string }
   | { tipo: "resultado"; placeId: string }
