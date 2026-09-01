@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { caraDe, pestanaInicial, type CaraProspeccion } from "@/lib/admin/prospeccion-caras";
-import type { Negocio } from "@/lib/admin/negocios";
+import { estadoCenso, type Negocio } from "@/lib/admin/negocios";
 import type { Territorio } from "@/lib/admin/territorios";
 import { NegociosView } from "@/components/admin/negocios/NegociosView";
 import { Banner } from "@/components/admin/ui/Banner";
@@ -78,7 +78,12 @@ export function ProspeccionView({
   // el ajuste "Max rows" de Supabase, la consulta vuelve capada y sin error, y
   // esta es la única señal de que la cabecera está contando un tope y no un
   // censo.
-  const truncada = negociosTotal !== null && negociosTotal > negocios.length;
+  //
+  // Y si la cuenta exacta FALLÓ (negociosTotal === null), eso no es garantía
+  // de que no falte nada: `estadoCenso` trata "la lista llegó justo al tope"
+  // como su propia señal de recorte, para no volver a caer en el hueco que
+  // dejaba pasar un `null > n` silencioso.
+  const censo = estadoCenso(negocios.length, negociosTotal);
 
   function cambiarCara(nueva: CaraProspeccion) {
     if (nueva === cara) return;
@@ -98,8 +103,11 @@ export function ProspeccionView({
         <span className="text-xs text-tinta-40">
           <strong className="text-tinta-85">{negocios.length}</strong>
           {/* Con la lista topada, "N negocios" a secas sería la cifra de la
-              pantalla presentada como la cifra de la base. */}
-          {truncada && <> de {negociosTotal}</>} negocios ·{" "}
+              pantalla presentada como la cifra de la base. Sin cuenta exacta
+              no hay un total que nombrar, así que el "+" es lo único honesto:
+              dice "al menos esto" sin inventar un número. */}
+          {censo.tipo === "recortado" && <> de {censo.total}</>}
+          {censo.tipo === "recortado_sin_conteo" && <>+</>} negocios ·{" "}
           <strong className="text-tinta-85">{sinWeb}</strong> sin web ·{" "}
           <strong className="text-tinta-85">{territorios.length}</strong> territorios
         </span>
@@ -160,13 +168,24 @@ export function ProspeccionView({
         )}
 
         {/* Un censo que no dice que está recortado no es un censo. */}
-        {truncada && (
+        {censo.tipo === "recortado" && (
           <Banner variante="error">
-            La base tiene <strong>{negociosTotal}</strong> negocios y esta
+            La base tiene <strong>{censo.total}</strong> negocios y esta
             pantalla cargó los <strong>{negocios.length}</strong> más recientes.
             Todo lo de aquí cuenta SOLO esos {negocios.length}: los contadores de
             arriba, los filtros de la lista, los pines del mapa y los negocios
             por territorio. Los más antiguos existen y no están en pantalla.
+          </Banner>
+        )}
+        {censo.tipo === "recortado_sin_conteo" && (
+          <Banner variante="error">
+            Esta pantalla cargó <strong>{negocios.length}</strong> negocios, su
+            tope máximo — y la cuenta real de cuántos hay en la base falló, así
+            que no hay forma de decir cuántos faltan (aunque es casi seguro que
+            faltan). Todo lo de aquí cuenta SOLO esos {negocios.length}: los
+            contadores de arriba, los filtros de la lista, los pines del mapa y
+            los negocios por territorio. Recarga la página para reintentar la
+            cuenta.
           </Banner>
         )}
       </div>

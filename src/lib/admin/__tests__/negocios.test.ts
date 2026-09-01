@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ciudadesDe, ESTADOS, labelEstado } from "../negocios";
+import { ciudadesDe, estadoCenso, ESTADOS, labelEstado, TOPE_LEADS } from "../negocios";
 import type { EstadoNegocio, Negocio } from "../negocios";
 
 function negocioCon(ciudad: string | null): Negocio {
@@ -66,6 +66,32 @@ describe("ciudadesDe", () => {
 
   it("sin negocios, sin ciudades", () => {
     expect(ciudadesDe([])).toEqual([]);
+  });
+});
+
+describe("estadoCenso", () => {
+  it("completo: la cuenta exacta coincide con lo cargado", () => {
+    expect(estadoCenso(50, 50)).toEqual({ tipo: "completo" });
+  });
+
+  it("recortado: la cuenta exacta confirma que faltan filas, y dice cuántas hay", () => {
+    expect(estadoCenso(900, 4312)).toEqual({ tipo: "recortado", total: 4312 });
+  });
+
+  it("recortado_sin_conteo: la cuenta falló (null) pero la lista llegó al tope", () => {
+    expect(estadoCenso(TOPE_LEADS, null)).toEqual({ tipo: "recortado_sin_conteo" });
+  });
+
+  it("completo: la cuenta falló (null) pero la lista NO llegó al tope — no hay tope que la haya mordido", () => {
+    expect(estadoCenso(TOPE_LEADS - 1, null)).toEqual({ tipo: "completo" });
+  });
+
+  it("REGRESIÓN: un `null > n` silencioso no puede volver a colarse como 'completo'", () => {
+    // Este es exactamente el hueco del hallazgo: negociosTotal null Y la lista
+    // en su tope. Antes del fix, `null > n` es `false` y no había ninguna
+    // señal de recorte.
+    const resultado = estadoCenso(TOPE_LEADS, null);
+    expect(resultado.tipo).not.toBe("completo");
   });
 });
 
