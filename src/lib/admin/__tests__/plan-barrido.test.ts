@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { planDeBarrido } from "../plan-barrido";
-import { claveTesela, claveTrabajo, teselar } from "../barrido";
+import { acumularResumen, hijasDe, planDeBarrido, type ResumenBarrido, type Trabajo } from "../plan-barrido";
+import { claveTesela, claveTrabajo, teselar, PROFUNDIDAD_MAX } from "../barrido";
+import type { ResumenTesela } from "../barrido-servidor";
 import type { Territorio } from "../territorios";
 
 const POLIGONO = [
@@ -70,5 +71,104 @@ describe("planDeBarrido", () => {
     const plan = planDeBarrido(territorioCon([]), ["ferreteria"]);
     const t = plan[0];
     expect(t.clave).toBe(`${claveTesela(t.tesela.centro, t.tesela.radio)}#ferreteria`);
+  });
+});
+
+const RESUMEN_CERO: ResumenBarrido = {
+  encontrados: 0,
+  fueraDelArea: 0,
+  sinTelefono: 0,
+  insertados: 0,
+  saturadasAlFondo: 0,
+  sinContabilizar: 0,
+};
+
+function resumenTesela(overrides: Partial<ResumenTesela> = {}): ResumenTesela {
+  return {
+    encontrados: 5,
+    fueraDelArea: 1,
+    sinTelefono: 2,
+    insertados: 2,
+    saturada: false,
+    contabilizada: true,
+    ...overrides,
+  };
+}
+
+describe("acumularResumen", () => {
+  it("suma cada campo del resultado de la tesela sobre el resumen previo", () => {
+    const r = acumularResumen(RESUMEN_CERO, resumenTesela(), 0);
+    expect(r).toEqual({
+      encontrados: 5,
+      fueraDelArea: 1,
+      sinTelefono: 2,
+      insertados: 2,
+      saturadasAlFondo: 0,
+      sinContabilizar: 0,
+    });
+  });
+
+  it("acumula sobre un resumen previo no-cero, no lo reemplaza", () => {
+    const previo = acumularResumen(RESUMEN_CERO, resumenTesela(), 0);
+    const siguiente = acumularResumen(previo, resumenTesela(), 0);
+    expect(siguiente.encontrados).toBe(10);
+    expect(siguiente.insertados).toBe(4);
+  });
+
+  it("suma sinContabilizar exactamente cuando contabilizada es false", () => {
+    const contabilizada = acumularResumen(RESUMEN_CERO, resumenTesela({ contabilizada: true }), 0);
+    expect(contabilizada.sinContabilizar).toBe(0);
+
+    const sinContabilizar = acumularResumen(
+      RESUMEN_CERO,
+      resumenTesela({ contabilizada: false }),
+      0,
+    );
+    expect(sinContabilizar.sinContabilizar).toBe(1);
+  });
+
+  it("saturadasAlFondo solo sube si la tesela saturó Y está en el tope de partición", () => {
+    const saturada = resumenTesela({ saturada: true });
+
+    const enElFondo = acumularResumen(RESUMEN_CERO, saturada, PROFUNDIDAD_MAX);
+    expect(enElFondo.saturadasAlFondo).toBe(1);
+
+    const antesDelFondo = acumularResumen(RESUMEN_CERO, saturada, PROFUNDIDAD_MAX - 1);
+    expect(antesDelFondo.saturadasAlFondo).toBe(0);
+
+    const noSaturadaEnElFondo = acumularResumen(
+      RESUMEN_CERO,
+      resumenTesela({ saturada: false }),
+      PROFUNDIDAD_MAX,
+    );
+    expect(noSaturadaEnElFondo.saturadasAlFondo).toBe(0);
+  });
+});
+
+describe("hijasDe", () => {
+  const tesela = teselar(POLIGONO)[0];
+
+  function trabajo(profundidad: number): Trabajo {
+    return {
+      tesela,
+      vertical: "ferreteria",
+      profundidad,
+      clave: claveTrabajo(tesela, "ferreteria"),
+    };
+  }
+
+  it("parte una celda en 4 por debajo del tope de partición", () => {
+    expect(hijasDe(trabajo(0))).toHaveLength(4);
+    expect(hijasDe(trabajo(PROFUNDIDAD_MAX - 1))).toHaveLength(4);
+  });
+
+  it("no parte más allá del tope de partición", () => {
+    expect(hijasDe(trabajo(PROFUNDIDAD_MAX))).toEqual([]);
+  });
+
+  it("las hijas heredan la vertical de la madre y suben una profundidad", () => {
+    const hijas = hijasDe(trabajo(0));
+    expect(hijas.every((h) => h.vertical === "ferreteria")).toBe(true);
+    expect(hijas.every((h) => h.profundidad === 1)).toBe(true);
   });
 });
