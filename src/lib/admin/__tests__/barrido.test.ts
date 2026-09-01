@@ -6,6 +6,7 @@ import {
   claveTrabajo,
   esSaturada,
   estimarBarrido,
+  poligonoSeCruza,
   puntoEnPoligono,
   subdividir,
   teselar,
@@ -244,3 +245,104 @@ function distanciaM(a: Punto, b: Punto): number {
     Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
   return 2 * R * Math.asin(Math.sqrt(h));
 }
+
+describe("poligonoSeCruza", () => {
+  const CUADRADO_SIMPLE: Punto[] = [
+    { lat: 0, lng: 0 },
+    { lat: 0, lng: 1 },
+    { lat: 1, lng: 1 },
+    { lat: 1, lng: 0 },
+  ];
+
+  it("un cuadrado bien dibujado no se cruza", () => {
+    expect(poligonoSeCruza(CUADRADO_SIMPLE)).toBe(false);
+  });
+
+  it("un triángulo nunca se cruza (no hay dos aristas no vecinas)", () => {
+    expect(
+      poligonoSeCruza([
+        { lat: 0, lng: 0 },
+        { lat: 0, lng: 1 },
+        { lat: 1, lng: 0.5 },
+      ]),
+    ).toBe(false);
+  });
+
+  it("detecta el moño: dos vértices del cuadrado intercambiados", () => {
+    // Mismos cuatro puntos, orden cruzado. Es el error que produce un clic en
+    // el orden equivocado, y el relleno del mapa lo disimula.
+    expect(
+      poligonoSeCruza([
+        { lat: 0, lng: 0 },
+        { lat: 1, lng: 1 },
+        { lat: 0, lng: 1 },
+        { lat: 1, lng: 0 },
+      ]),
+    ).toBe(true);
+  });
+
+  it("un polígono cóncavo en L NO cuenta como cruzado", () => {
+    // La forma legítima más parecida a un cruce: si esta diera true, la
+    // advertencia saldría en la mitad de los territorios reales.
+    expect(
+      poligonoSeCruza([
+        { lat: 0, lng: 0 },
+        { lat: 0, lng: 2 },
+        { lat: 1, lng: 2 },
+        { lat: 1, lng: 1 },
+        { lat: 2, lng: 1 },
+        { lat: 2, lng: 0 },
+      ]),
+    ).toBe(false);
+  });
+
+  it("las aristas vecinas comparten un vértice y eso no es cruzarse", () => {
+    // Incluye el par que cierra el anillo (última con primera): sin esa
+    // excepción TODO polígono daría cruzado.
+    expect(poligonoSeCruza(CUADRADO_SIMPLE)).toBe(false);
+    expect(
+      poligonoSeCruza([
+        { lat: 0, lng: 0 },
+        { lat: 0, lng: 1 },
+        { lat: 1, lng: 1 },
+        { lat: 1, lng: 0 },
+        { lat: 0.5, lng: -0.5 },
+      ]),
+    ).toBe(false);
+  });
+
+  it("un trazo doblado sobre sí mismo lee como FUERA lo que cubrió dos veces", () => {
+    // La razón de existir de la función, y no es cosmética. Este contorno se
+    // dobla sobre lo ya dibujado: la franja central queda cubierta DOS veces y
+    // el par-impar de puntoEnPoligono la cuenta como fuera. celdaTocaPoligono
+    // sí genera teselas ahí (el borde las toca), Google las cobra y
+    // recortarAlArea tira todo lo que devuelvan.
+    const DOBLADO: Punto[] = [
+      { lat: 0, lng: 0 },
+      { lat: 0, lng: 4 },
+      { lat: 2, lng: 4 },
+      { lat: 2, lng: 1 },
+      { lat: 1, lng: 1 },
+      { lat: 1, lng: 3 },
+      { lat: 3, lng: 3 },
+      { lat: 3, lng: 0 },
+    ];
+    expect(poligonoSeCruza(DOBLADO)).toBe(true);
+    // Dentro del dibujo a ojo, pero cubierto dos veces: par-impar dice fuera.
+    expect(puntoEnPoligono({ lat: 1.5, lng: 2 }, DOBLADO)).toBe(false);
+    // Cubierto una sola vez, arriba y abajo de esa franja: sí cuenta.
+    expect(puntoEnPoligono({ lat: 0.5, lng: 2 }, DOBLADO)).toBe(true);
+    expect(puntoEnPoligono({ lat: 2.5, lng: 2 }, DOBLADO)).toBe(true);
+  });
+
+  it("menos de 4 vértices se resuelve sin recorrer nada", () => {
+    expect(poligonoSeCruza([])).toBe(false);
+    expect(poligonoSeCruza([{ lat: 0, lng: 0 }])).toBe(false);
+    expect(
+      poligonoSeCruza([
+        { lat: 0, lng: 0 },
+        { lat: 1, lng: 1 },
+      ]),
+    ).toBe(false);
+  });
+});

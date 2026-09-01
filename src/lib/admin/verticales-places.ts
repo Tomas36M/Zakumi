@@ -18,6 +18,17 @@ export const TIPOS_POR_VERTICAL: Readonly<Record<string, readonly string[]>> = {
   comercio: ["grocery_store", "supermarket", "convenience_store", "florist"],
 };
 
+/** Los includedTypes de una vertical, o `[]` si no es una vertical nuestra.
+ *
+ * `Object.hasOwn` y no un acceso pelado con `??`: el corchete sobre un objeto
+ * literal también encuentra lo heredado de `Object.prototype`, así que
+ * `tiposDeVertical("constructor")` devolvía la FUNCIÓN `Object` — con
+ * `.length` distinto de cero, así que pasaba la guarda `tipos.length === 0`
+ * del handler de barrido. Después `JSON.stringify` descarta las funciones y
+ * el `includedTypes` desaparecía del body: Google corría una búsqueda de
+ * cercanía SIN tipos, facturada, devolviendo lo que hubiera. Solo lo alcanza
+ * un admin autenticado, pero una llamada pagada que consulta otra cosa de la
+ * que se pidió no es aceptable de todos modos. */
 export function tiposDeVertical(slug: string): readonly string[] {
-  return TIPOS_POR_VERTICAL[slug] ?? [];
+  return Object.hasOwn(TIPOS_POR_VERTICAL, slug) ? TIPOS_POR_VERTICAL[slug] : [];
 }

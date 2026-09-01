@@ -6,7 +6,12 @@ import { createSupabaseServer } from "@/lib/supabase/server";
 import { verifySession } from "./dal";
 import { ESTADOS, type EstadoNegocio } from "./negocios";
 import { normalizarTelefonoCO } from "./telefono";
-import { urlHttpONull, type ResultadoPlace } from "./places";
+import {
+  ciudadLimpia,
+  filaDeNegocio,
+  urlHttpONull,
+  type ResultadoPlace,
+} from "./places";
 
 export type EstadoLogin = { error: string | null };
 
@@ -47,15 +52,6 @@ export async function logout(): Promise<void> {
    ———————————————————————————————————————————————————————————————————— */
 
 const ESTADOS_VALIDOS = new Set(ESTADOS.map((e) => e.valor));
-
-/** Ciudad libre: cualquier texto no vacío, o null. Con territorios ya no hay
- * un enum de municipios que validar — el dato honesto es el que trae Google
- * (o el que escribe el humano), recortado a un largo razonable. */
-function ciudadLimpia(valor: unknown): string | null {
-  if (typeof valor !== "string") return null;
-  const limpio = valor.trim();
-  return limpio ? limpio.slice(0, 120) : null;
-}
 
 function esEstado(valor: unknown): valor is EstadoNegocio {
   return typeof valor === "string" && ESTADOS_VALIDOS.has(valor as EstadoNegocio);
@@ -105,23 +101,10 @@ export async function importarNegocios(
     ) {
       return { error: "Uno de los resultados llegó incompleto." };
     }
-    // Nunca confiar en la normalización del cliente.
-    const { telefono, tipo } = normalizarTelefonoCO(r.telefono);
-    filas.push({
-      nombre: r.nombre.trim().slice(0, 300),
-      direccion: typeof r.direccion === "string" ? r.direccion : null,
-      ciudad: ciudadLimpia(r.ciudad),
-      lat: r.lat,
-      lng: r.lng,
-      categoria: typeof r.categoria === "string" ? r.categoria : null,
-      rating: typeof r.rating === "number" ? r.rating : null,
-      sitio_web: urlHttpONull(r.sitioWeb),
-      telefono,
-      tipo_telefono: tipo,
-      google_place_id: r.placeId,
-      territorio_id: null,
-      fuente: "places" as const,
-    });
+    // Mismo armado de fila que el barrido (places.ts): una sola definición
+    // para los dos escritores de `negocios`. Re-normaliza el teléfono: nunca
+    // confiar en la normalización del cliente.
+    filas.push(filaDeNegocio(r, null));
   }
 
   const { data, error } = await supabase

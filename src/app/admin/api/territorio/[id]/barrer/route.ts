@@ -7,9 +7,9 @@ import {
   type ResumenTesela,
 } from "@/lib/admin/barrido-servidor";
 import {
+  filaDeNegocio,
   placeANegocio,
   soloConTelefono,
-  urlHttpONull,
   type PlaceApi,
 } from "@/lib/admin/places";
 import type { Territorio } from "@/lib/admin/territorios";
@@ -203,28 +203,12 @@ export async function POST(
     const { data: filas, error } = await sesion.supabase
       .from("negocios")
       .upsert(
-        // Mismo saneo que importarNegocios, y por la misma razón elevada al
-        // cuadrado: este es hoy el escritor PRINCIPAL de `negocios`.
-        //   · `nombre` tiene check (length between 1 and 300) en la base: UN
-        //     nombre largo de Google tumbaba el upsert ENTERO — tesela cobrada
-        //     y los otros 19 negocios perdidos.
-        //   · `sitio_web` se pinta tal cual en un <a href> de NegociosView y
-        //     FichaNegocio: pasa por urlHttpONull o no pasa.
-        contactables.map((r) => ({
-          nombre: r.nombre.trim().slice(0, 300) || "(sin nombre)",
-          direccion: r.direccion,
-          ciudad: r.ciudad,
-          lat: r.lat,
-          lng: r.lng,
-          categoria: r.categoria,
-          rating: r.rating,
-          sitio_web: urlHttpONull(r.sitioWeb),
-          telefono: r.telefono,
-          tipo_telefono: r.tipoTelefono,
-          google_place_id: r.placeId,
-          fuente: "places" as const,
-          territorio_id: territorio.id,
-        })),
+        // El MISMO armado de fila que importarNegocios (filaDeNegocio, en
+        // places.ts), y por una razón elevada al cuadrado: este es hoy el
+        // escritor PRINCIPAL de `negocios`. Tenerlo duplicado ya había hecho
+        // divergir la ciudad — allá saneada, acá cruda — y dos grafías de un
+        // municipio son dos entradas en el filtro de la lista de leads.
+        contactables.map((r) => filaDeNegocio(r, territorio.id)),
         { onConflict: "google_place_id", ignoreDuplicates: true },
       )
       .select("id");

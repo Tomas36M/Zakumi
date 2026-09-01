@@ -74,6 +74,37 @@ function segmentosCruzan(a1: Punto, a2: Punto, b1: Punto, b2: Punto): boolean {
   return d1 > 0 !== d2 > 0 && d3 > 0 !== d4 > 0;
 }
 
+/** ¿El polígono se cruza consigo mismo (un "moño", o un trazo que se dobla
+ * sobre lo ya dibujado)?
+ *
+ * Importa porque `puntoEnPoligono` es par-impar, y en un contorno cruzado el
+ * par-impar deja de coincidir con lo que se ve: **la zona que el trazo cubre
+ * dos veces se lee como FUERA**. `celdaTocaPoligono` sí genera teselas ahí (el
+ * borde las toca), se le compran a Google y `recortarAlArea` tira todos sus
+ * resultados — el barrido termina en 100 % sobre una zona que jamás censó, que
+ * es exactamente el fallo que esta pantalla existe para no cometer. El gasto sí
+ * queda acotado (`cajaDe` es min/max sobre los vértices, así que un cruce solo
+ * puede dar MENOS teselas que su caja): es un problema de censo, no de plata.
+ *
+ * O(n²) sobre los ≤500 vértices que deja pasar `poligonoValido`: 125.000
+ * pruebas de orientación en el peor caso, y un trazo a mano no pasa de decenas.
+ * Las aristas vecinas se saltan: compartir un vértice no es cruzarse. */
+export function poligonoSeCruza(poligono: readonly Punto[]): boolean {
+  const n = poligono.length;
+  // Con tres lados no hay dos aristas no vecinas que puedan cruzarse.
+  if (n < 4) return false;
+  for (let i = 0; i < n; i++) {
+    const a1 = poligono[i];
+    const a2 = poligono[(i + 1) % n];
+    for (let j = i + 1; j < n; j++) {
+      // Vecinas (j = i+1) y el par que cierra el anillo (i = 0, j = n-1).
+      if (j === i + 1 || (i === 0 && j === n - 1)) continue;
+      if (segmentosCruzan(a1, a2, poligono[j], poligono[(j + 1) % n])) return true;
+    }
+  }
+  return false;
+}
+
 /** ¿La celda rectangular centrada en `centro` toca el polígono? Tres pruebas,
  * porque ninguna sola basta: centro/esquinas adentro (celda dentro del área),
  * vértice del polígono adentro (área pequeña dentro de la celda) y cruce de

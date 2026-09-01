@@ -27,4 +27,21 @@ describe("TIPOS_POR_VERTICAL", () => {
   it("una vertical desconocida devuelve vacío en vez de romper el barrido", () => {
     expect(tiposDeVertical("no-existe")).toEqual([]);
   });
+
+  it("no confunde lo heredado de Object.prototype con una vertical", () => {
+    // Con un acceso pelado por corchetes, estos nombres devolvían la función
+    // heredada del prototipo. Su `.length` no es cero, así que colaba por la
+    // guarda `tipos.length === 0` del handler; después JSON.stringify la
+    // descartaba y Google corría una búsqueda de cercanía SIN tipos —
+    // facturada— devolviendo cualquier cosa.
+    for (const nombre of [
+      "constructor",
+      "toString",
+      "valueOf",
+      "hasOwnProperty",
+      "__proto__",
+    ]) {
+      expect(tiposDeVertical(nombre), `heredado de Object: ${nombre}`).toEqual([]);
+    }
+  });
 });
