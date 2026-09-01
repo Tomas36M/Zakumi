@@ -46,6 +46,58 @@ create trigger territorios_updated_at
   before update on public.territorios
   for each row execute function public.set_updated_at();
 
+-- ---- anotar_tesela: registrar una tesela barrida en UN solo UPDATE ----------
+-- El route handler de Task 8 corre de a CONCURRENCIA=4 en paralelo (Task 10)
+-- contra la misma fila de territorios. Un read-modify-write hecho desde la
+-- app (leer llamadas/teselas_hechas, escribir de vuelta) pierde anotaciones
+-- bajo esa carrera: dos requests leen llamadas=5, ambas escriben 6, una de
+-- las dos teselas queda sin anotar — y al reanudar el barrido, Google cobra
+-- otra vez por una tesela que ya se había pagado. Esta función hace las tres
+-- cosas (contador, teselas_hechas, verticales) en un solo UPDATE atómico:
+-- Postgres serializa los UPDATE concurrentes sobre la misma fila, así que no
+-- hay ventana entre leer y escribir.
+--
+-- security invoker (no definer, a diferencia de registrar_llamada_voz en
+-- voz.sql): quien llama esta función ya es la sesión admin autenticada del
+-- route handler — la misma sesión que la policy territorios_solo_admin exige
+-- — no un webhook sin sesión de usuario. Con invoker, el UPDATE de adentro
+-- sigue pasando por esa policy: un no-admin que la invocara directo no
+-- rompería nada (RLS no le deja ver ni tocar la fila), y no hace falta
+-- reimplementar el check de es_admin() acá adentro. definer + grant a
+-- authenticated habría abierto ese hueco (cualquier autenticado, incluido un
+-- cliente del portal, tocando territorios de cualquiera sin pasar por RLS);
+-- definer + grant a service_role (el patrón textual de voz.sql) habría hecho
+-- la función imposible de llamar desde este handler, que nunca usa la
+-- service-role key (server.ts es explícito: "la service-role key NO se usa
+-- en la app").
+--
+-- teselas_hechas ? p_clave usa el operador jsonb "existe": true si p_clave ya
+-- es un elemento del array. p_clave es la clave de TRABAJO (tesela#vertical,
+-- claveTrabajo() en barrido.ts), no solo la de la tesela — una tesela se
+-- barre una vez POR VERTICAL.
+create or replace function public.anotar_tesela(
+  p_territorio uuid,
+  p_clave      text,
+  p_vertical   text
+) returns void
+language plpgsql
+security invoker
+set search_path = public
+as $$
+begin
+  update territorios
+     set llamadas       = llamadas + 1,
+         teselas_hechas = case when teselas_hechas ? p_clave
+                                then teselas_hechas
+                                else teselas_hechas || to_jsonb(p_clave) end,
+         verticales     = case when p_vertical = any(verticales)
+                                then verticales
+                                else array_append(verticales, p_vertical) end,
+         ultimo_barrido = now()
+   where id = p_territorio;
+end;
+$$;
+
 -- ---- negocios: territorio de origen ------------------------------------------
 
 alter table public.negocios
@@ -78,5 +130,12 @@ create policy territorios_solo_admin on public.territorios
   with check ((select public.es_admin()));
 
 revoke all on public.territorios from anon;
+
+-- anotar_tesela es security invoker: RLS (territorios_solo_admin, arriba) es
+-- la barrera real. El revoke/grant explícito es defensa en profundidad, no
+-- la única puerta — sigue el estilo explícito de voz.sql en vez de confiar
+-- en el grant a PUBLIC por defecto de Postgres en una función nueva.
+revoke all on function public.anotar_tesela(uuid, text, text) from public, anon;
+grant execute on function public.anotar_tesela(uuid, text, text) to authenticated;
 
 commit;

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { METROS_POR_GRADO_LAT } from "../barrido";
 import { circuloDentroDelTerritorio, recortarAlArea } from "../barrido-servidor";
 import type { Territorio } from "../territorios";
 import type { ResultadoPlace } from "../places";
@@ -69,6 +70,19 @@ describe("circuloDentroDelTerritorio", () => {
     expect(circuloDentroDelTerritorio({ lat: 4.73, lng: -74.27 }, 0, TERRITORIO)).toBe(
       false,
     );
+  });
+
+  it("rechaza un centro justo más allá del margen bbox+radio en longitud", () => {
+    // El margen de longitud se escala por cos(lat) — este test es el único
+    // que ejercita esa cuenta del lado que rechaza, no solo del que acepta.
+    const radio = 400;
+    const lat = TERRITORIO.bbox_norte;
+    const margenLng =
+      radio / (METROS_POR_GRADO_LAT * Math.cos((lat * Math.PI) / 180));
+    const justoEnElMargen = { lat, lng: TERRITORIO.bbox_este + margenLng };
+    const unPocoMasAlla = { lat, lng: TERRITORIO.bbox_este + margenLng + 1e-6 };
+    expect(circuloDentroDelTerritorio(justoEnElMargen, radio, TERRITORIO)).toBe(true);
+    expect(circuloDentroDelTerritorio(unPocoMasAlla, radio, TERRITORIO)).toBe(false);
   });
 });
 

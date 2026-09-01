@@ -173,29 +173,31 @@ export async function POST(
     insertados = filas?.length ?? 0;
   }
 
-  // La tesela se anota en teselas_hechas SOLO después de que Google respondió
-  // y el insert quedó bien: si el insert falla, se devuelve 502 antes de
+  // La tesela se anota SOLO después de que Google respondió y el insert de
+  // negocios quedó bien: si el insert falla, ya se devolvió 502 antes de
   // llegar aquí y el barrido reintentará esta tesela — se paga dos veces esa
   // llamada, pero nunca se pierde un negocio. Es el lado correcto del canje.
-  const clave = claveTesela(centro, radio);
-  const tesela = { centro, radio, clave };
-  const hechas = new Set(territorio.teselas_hechas ?? []);
-  hechas.add(claveTrabajo(tesela, vertical));
-  const verticales = new Set(territorio.verticales ?? []);
-  verticales.add(vertical);
+  //
+  // anotar_tesela (supabase/prospeccion.sql) hace el llamadas+1 / append a
+  // teselas_hechas / append a verticales en UN solo UPDATE atómico en
+  // Postgres. Task 10 corre este handler de a CONCURRENCIA=4 en paralelo
+  // contra la misma fila de territorios: un read-modify-write hecho acá (leer
+  // territorio.llamadas/teselas_hechas y escribir de vuelta) perdía
+  // anotaciones bajo esa carrera — y con ellas, plata: al reanudar el barrido
+  // se le volvía a pagar a Google por teselas que ya se habían barrido.
+  const clave = claveTrabajo({ centro, radio, clave: claveTesela(centro, radio) }, vertical);
+  const { error: errorAnotar } = await sesion.supabase.rpc("anotar_tesela", {
+    p_territorio: territorio.id,
+    p_clave: clave,
+    p_vertical: vertical,
+  });
 
-  const { error: errorUpdate } = await sesion.supabase
-    .from("territorios")
-    .update({
-      llamadas: territorio.llamadas + 1,
-      teselas_hechas: [...hechas],
-      verticales: [...verticales],
-      ultimo_barrido: new Date().toISOString(),
-    })
-    .eq("id", territorio.id);
-
-  if (errorUpdate) {
-    console.error("[barrido] error actualizando territorio:", errorUpdate.message);
+  if (errorAnotar) {
+    // La llamada ya se cobró y los negocios ya se guardaron: no hay reintento
+    // seguro (reintentar la duplicaría en la factura de Google). Se avisa vía
+    // `contabilizada: false` — el cliente lo suma y avisa, ver Task 10 — en
+    // vez de convertir esto en una respuesta de error.
+    console.error("[barrido] error anotando tesela:", errorAnotar.message);
   }
 
   const resumen: ResumenTesela = {
@@ -204,6 +206,7 @@ export async function POST(
     sinTelefono: enElArea.length - contactables.length,
     insertados,
     saturada: esSaturada(crudos.length),
+    contabilizada: !errorAnotar,
   };
   return NextResponse.json(resumen);
 }

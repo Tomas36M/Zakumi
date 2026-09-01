@@ -8,6 +8,11 @@ export type ResumenTesela = {
   sinTelefono: number;
   insertados: number;
   saturada: boolean;
+  /** false si la llamada se hizo y los negocios se guardaron pero la anotación
+   * en el territorio falló: se cobró y no quedó contabilizada. El cliente lo
+   * suma y avisa — callar un cobro no contabilizado es mentirle al usuario
+   * sobre lo que gastó. */
+  contabilizada: boolean;
 };
 
 export const RADIO_MIN = 50;
