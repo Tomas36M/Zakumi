@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { getSesionAdmin } from "@/lib/admin/dal";
-import { CIUDADES, type Ciudad } from "@/lib/admin/negocios";
 import {
   marcarImportados,
   placeANegocio,
@@ -22,9 +21,12 @@ const FIELD_MASK = [
   "places.websiteUri",
   "places.types",
   "places.businessStatus",
+  // addressComponents es tier Pro y ya pagamos Enterprise por el teléfono:
+  // entra sin subir la factura (verificado 2026-08-31).
+  "places.addressComponents",
 ].join(",");
 
-type Payload = { query?: unknown; ciudad?: unknown };
+type Payload = { query?: unknown };
 
 export async function POST(request: Request) {
   // La key de Places vive solo en el servidor; la sesión evita que este
@@ -46,8 +48,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "consulta_invalida" }, { status: 400 });
   }
 
-  const ciudad = CIUDADES.find((c) => c.valor === payload.ciudad);
-
   let respuesta: Response;
   try {
     respuesta = await fetch("https://places.googleapis.com/v1/places:searchText", {
@@ -63,19 +63,8 @@ export async function POST(request: Request) {
         languageCode: "es",
         regionCode: "CO", // sin esto, "Madrid" es España
         pageSize: 20,
-        ...(ciudad
-          ? {
-              locationBias: {
-                circle: {
-                  center: {
-                    latitude: ciudad.centro.lat,
-                    longitude: ciudad.centro.lng,
-                  },
-                  radius: ciudad.radio,
-                },
-              },
-            }
-          : {}),
+        // Sin locationBias: los presets de ciudad murieron con el enum y
+        // ningún cliente manda centro+radio. El único sesgo es regionCode.
       }),
     });
   } catch (error) {
@@ -97,10 +86,9 @@ export async function POST(request: Request) {
   }
 
   const data = (await respuesta.json()) as { places?: PlaceApi[] };
-  const sesgo = ciudad?.valor as Exclude<Ciudad, "otra"> | undefined;
   // Al mapa solo llegan negocios contactables: sin teléfono no hay venta.
   const resultados: ResultadoPlace[] = soloConTelefono(
-    (data.places ?? []).map((p) => placeANegocio(p, sesgo)),
+    (data.places ?? []).map((p) => placeANegocio(p)),
   );
 
   // Dedupe visual: marcar los que ya están en la base.

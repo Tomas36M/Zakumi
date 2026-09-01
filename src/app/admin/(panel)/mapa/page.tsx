@@ -1,20 +1,7 @@
-import { MapaView } from "@/components/admin/mapa/MapaView";
-import { verifySession } from "@/lib/admin/dal";
-import type { Negocio } from "@/lib/admin/negocios";
+import { redirect } from "next/navigation";
 
-export const metadata = { title: "Mapa" };
-
-export default async function MapaPage() {
-  const { supabase } = await verifySession();
-
-  const { data, error } = await supabase
-    .from("negocios")
-    .select("*")
-    .order("created_at", { ascending: false });
-
-  if (error) {
-    console.error("[mapa] error cargando negocios:", error.message);
-  }
-
-  return <MapaView negocios={(data as Negocio[]) ?? []} />;
+// Dos puertas a la misma ficha se desincronizan (lección de la PR #12 con
+// /admin/voz/<id-de-Zak>). Los enlaces viejos siguen funcionando.
+export default function MapaPage() {
+  redirect("/admin/prospeccion?tab=territorio");
 }

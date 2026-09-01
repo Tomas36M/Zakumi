@@ -7,13 +7,13 @@ import { useRouter } from "next/navigation";
 import { Bot, MessageSquare, Trash2 } from "lucide-react";
 import { actualizarNegocio, cambiarEstadoLote, eliminarNegocios } from "@/lib/admin/actions";
 import {
-  CIUDADES,
+  ciudadesDe,
   ESTADOS,
   labelEstado,
-  type Ciudad,
   type EstadoNegocio,
   type Negocio,
 } from "@/lib/admin/negocios";
+import type { Territorio } from "@/lib/admin/territorios";
 import { agruparPorVertical, contactables, linkChatZak } from "@/lib/admin/zak";
 import { enviarTandaZak } from "@/lib/admin/zak-actions";
 import { Banner } from "@/components/admin/ui/Banner";
@@ -23,11 +23,6 @@ import { EmptyState } from "@/components/admin/ui/EmptyState";
 import { Field, Input, Select } from "@/components/admin/ui/Field";
 import { Island } from "@/components/admin/ui/Island";
 import { ListRow } from "@/components/admin/ui/ListRow";
-
-const LABEL_CIUDAD = new Map<string, string>(
-  CIUDADES.map((c) => [c.valor, c.label]),
-);
-LABEL_CIUDAD.set("otra", "Otra");
 
 // Punto de color del pipeline (clases literales: Tailwind no ve plantillas).
 const COLOR_ESTADO: Record<EstadoNegocio, string> = {
@@ -40,18 +35,45 @@ const COLOR_ESTADO: Record<EstadoNegocio, string> = {
 };
 
 const GRID_FILA =
-  "grid grid-cols-[auto_minmax(0,3fr)_minmax(0,1fr)_minmax(0,1.4fr)_auto_2.5rem] items-center gap-3";
+  "grid grid-cols-[auto_minmax(0,3fr)_minmax(0,1fr)_minmax(0,1.4fr)_minmax(0,1.2fr)_auto_2.5rem] items-center gap-3";
 
 type FiltroTelefono = "todos" | "con" | "sin";
+type FiltroWeb = "todos" | "sin" | "con";
 
-export function NegociosView({ negocios }: { negocios: Negocio[] }) {
+/** El dominio del sitio (sin protocolo ni "www."): la fila necesita algo
+ * corto que no rompa el grid, no la URL completa. */
+function dominioDe(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return url;
+  }
+}
+
+/** `className` viaja al <Cockpit>: la cara Leads de /admin/prospeccion monta
+ * esta vista DENTRO de otro cockpit, y dos cockpits anidados con la altura
+ * fija de viewport se desbordan (vuelve el scroll de página). Ahí se le pasa
+ * `min-[900px]:h-auto min-[900px]:min-h-0 min-[900px]:flex-1` para que ocupe
+ * el hueco del padre en vez de una pantalla entera. */
+export function NegociosView({
+  negocios,
+  territorios = [],
+  className,
+}: {
+  negocios: Negocio[];
+  territorios?: Territorio[];
+  className?: string;
+}) {
   const router = useRouter();
   const [guardando, startGuardar] = useTransition();
   const [q, setQ] = useState("");
-  const [ciudad, setCiudad] = useState<Ciudad | "todas">("todas");
+  const [ciudad, setCiudad] = useState<string | "todas">("todas");
   const [estado, setEstado] = useState<EstadoNegocio | "todos">("todos");
   const [categoria, setCategoria] = useState<string>("todas");
   const [telefono, setTelefono] = useState<FiltroTelefono>("todos");
+  // "Sin web" es la señal de lead: es a quien le vendemos marca y sitio.
+  const [web, setWeb] = useState<FiltroWeb>("todos");
+  const [territorio, setTerritorio] = useState<string | "todos">("todos");
   const [seleccionados, setSeleccionados] = useState<ReadonlySet<string>>(
     new Set(),
   );
@@ -65,6 +87,13 @@ export function NegociosView({ negocios }: { negocios: Negocio[] }) {
     return [...set].sort();
   }, [negocios]);
 
+  const ciudades = useMemo(() => ciudadesDe(negocios), [negocios]);
+
+  const territoriosOrdenados = useMemo(
+    () => [...territorios].sort((a, b) => a.nombre.localeCompare(b.nombre, "es")),
+    [territorios],
+  );
+
   const filtrados = useMemo(() => {
     const texto = q.trim().toLowerCase();
     return negocios.filter((n) => {
@@ -73,10 +102,13 @@ export function NegociosView({ negocios }: { negocios: Negocio[] }) {
       if (categoria !== "todas" && n.categoria !== categoria) return false;
       if (telefono === "con" && n.telefono === null) return false;
       if (telefono === "sin" && n.telefono !== null) return false;
+      if (web === "sin" && n.sitio_web) return false;
+      if (web === "con" && !n.sitio_web) return false;
+      if (territorio !== "todos" && n.territorio_id !== territorio) return false;
       if (texto && !n.nombre.toLowerCase().includes(texto)) return false;
       return true;
     });
-  }, [negocios, q, ciudad, estado, categoria, telefono]);
+  }, [negocios, q, ciudad, estado, categoria, telefono, web, territorio]);
 
   const idsFiltrados = useMemo(
     () => new Set(filtrados.map((n) => n.id)),
@@ -176,7 +208,7 @@ export function NegociosView({ negocios }: { negocios: Negocio[] }) {
   }
 
   return (
-    <Cockpit>
+    <Cockpit className={className}>
       {dialogo}
       {/* El buscador se queda fijo arriba; los resultados scrollean debajo. */}
       <div className="shrink-0 px-5 pt-4">
@@ -198,19 +230,15 @@ export function NegociosView({ negocios }: { negocios: Negocio[] }) {
                 <span className="text-sm text-tinta-40"> de {negocios.length} negocios</span>
               </p>
             </div>
-            <div className="grid grid-cols-2 gap-3 min-[900px]:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 min-[900px]:grid-cols-3">
               <Field label="Ciudad">
-                <Select
-                  value={ciudad}
-                  onChange={(e) => setCiudad(e.target.value as Ciudad | "todas")}
-                >
+                <Select value={ciudad} onChange={(e) => setCiudad(e.target.value)}>
                   <option value="todas">Todas</option>
-                  {CIUDADES.map((c) => (
-                    <option key={c.valor} value={c.valor}>
-                      {c.label}
+                  {ciudades.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
                     </option>
                   ))}
-                  <option value="otra">Otra</option>
                 </Select>
               </Field>
               <Field label="Estado">
@@ -249,6 +277,29 @@ export function NegociosView({ negocios }: { negocios: Negocio[] }) {
                   <option value="todos">Todos</option>
                   <option value="con">Con teléfono</option>
                   <option value="sin">Sin teléfono</option>
+                </Select>
+              </Field>
+              <Field label="Sitio web">
+                <Select
+                  value={web}
+                  onChange={(e) => setWeb(e.target.value as FiltroWeb)}
+                >
+                  <option value="todos">Todos</option>
+                  <option value="sin">Sin web</option>
+                  <option value="con">Con web</option>
+                </Select>
+              </Field>
+              <Field label="Territorio">
+                <Select
+                  value={territorio}
+                  onChange={(e) => setTerritorio(e.target.value)}
+                >
+                  <option value="todos">Todos</option>
+                  {territoriosOrdenados.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.nombre}
+                    </option>
+                  ))}
                 </Select>
               </Field>
             </div>
@@ -304,13 +355,13 @@ export function NegociosView({ negocios }: { negocios: Negocio[] }) {
         {negocios.length === 0 ? (
           <EmptyState
             titulo="Todavía no hay negocios."
-            detalle="Ve al Mapa, busca «ferreterías en Ubaté» e importa los que tengan teléfono."
+            detalle="Ve a Territorio, dibuja el área que quieras trabajar y bárrela: los negocios con teléfono que haya adentro aterrizan solos en esta lista."
           />
         ) : filtrados.length === 0 ? (
           <EmptyState titulo="Ningún negocio coincide con esos filtros." />
         ) : (
           <div className="barra-fina overflow-x-auto">
-            <div className="flex min-w-[680px] flex-col gap-1">
+            <div className="flex min-w-[780px] flex-col gap-1">
               <div
                 className={`${GRID_FILA} px-3 py-2 text-[11px] font-medium uppercase tracking-[0.12em] text-tinta-40`}
               >
@@ -327,6 +378,7 @@ export function NegociosView({ negocios }: { negocios: Negocio[] }) {
                 <span>Negocio</span>
                 <span>Ciudad</span>
                 <span>Teléfono</span>
+                <span>Sitio web</span>
                 <span>Estado</span>
                 <span aria-label="Acciones" />
               </div>
@@ -371,13 +423,29 @@ export function NegociosView({ negocios }: { negocios: Negocio[] }) {
                       ) : null}
                     </span>
                     <span className="truncate text-sm text-tinta-60">
-                      {LABEL_CIUDAD.get(n.ciudad)}
+                      {n.ciudad ?? <span className="text-tinta-40">—</span>}
                     </span>
                     <span className="text-sm tabular-nums text-tinta-60">
                       {n.telefono ?? <span className="text-tinta-40">—</span>}
                       {n.tipo_telefono === "fijo" ? (
                         <span className="text-xs text-tinta-40"> fijo</span>
                       ) : null}
+                    </span>
+                    <span className="min-w-0 truncate text-sm">
+                      {n.sitio_web ? (
+                        <a
+                          href={n.sitio_web}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="truncate text-tinta-60 underline-offset-2 hover:text-tinta hover:underline"
+                        >
+                          {dominioDe(n.sitio_web)}
+                        </a>
+                      ) : (
+                        // Es la señal que se está buscando, no un dato
+                        // secundario: se marca con el acento.
+                        <span className="font-medium text-acento">Sin web</span>
+                      )}
                     </span>
                     <label className="flex items-center gap-1.5">
                       <span

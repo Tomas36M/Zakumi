@@ -4,9 +4,14 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { verifySession } from "./dal";
-import { ESTADOS, type Ciudad, type EstadoNegocio } from "./negocios";
+import { ESTADOS, type EstadoNegocio } from "./negocios";
 import { normalizarTelefonoCO } from "./telefono";
-import type { ResultadoPlace } from "./places";
+import {
+  ciudadLimpia,
+  filaDeNegocio,
+  urlHttpONull,
+  type ResultadoPlace,
+} from "./places";
 
 export type EstadoLogin = { error: string | null };
 
@@ -31,7 +36,7 @@ export async function login(
     return { error: "Credenciales inválidas." };
   }
 
-  redirect("/admin/mapa");
+  redirect("/admin/prospeccion?tab=territorio");
 }
 
 export async function logout(): Promise<void> {
@@ -46,12 +51,7 @@ export async function logout(): Promise<void> {
    públicos) y re-normaliza en servidor lo que venga del cliente.
    ———————————————————————————————————————————————————————————————————— */
 
-const CIUDADES_VALIDAS = new Set<Ciudad>(["madrid", "ubate", "bogota", "otra"]);
 const ESTADOS_VALIDOS = new Set(ESTADOS.map((e) => e.valor));
-
-function esCiudad(valor: unknown): valor is Ciudad {
-  return typeof valor === "string" && CIUDADES_VALIDAS.has(valor as Ciudad);
-}
 
 function esEstado(valor: unknown): valor is EstadoNegocio {
   return typeof valor === "string" && ESTADOS_VALIDOS.has(valor as EstadoNegocio);
@@ -68,16 +68,10 @@ function coordenadasValidas(lat: unknown, lng: unknown): boolean {
   );
 }
 
-/** Solo URLs navegables: nada de javascript: ni esquemas raros en los href. */
-function urlHttpONull(valor: unknown): string | null {
-  if (typeof valor !== "string") return null;
-  const limpio = valor.trim();
-  return /^https?:\/\/\S+$/i.test(limpio) ? limpio : null;
-}
-
 function revalidarPanel() {
-  revalidatePath("/admin/mapa");
-  revalidatePath("/admin/negocios");
+  // `/admin/mapa` y `/admin/negocios` son stubs de redirect desde la T14:
+  // revalidarlos no invalida nada que alguien mire. La pantalla real es una.
+  revalidatePath("/admin/prospeccion");
 }
 
 /**
@@ -107,22 +101,10 @@ export async function importarNegocios(
     ) {
       return { error: "Uno de los resultados llegó incompleto." };
     }
-    // Nunca confiar en la normalización del cliente.
-    const { telefono, tipo } = normalizarTelefonoCO(r.telefono);
-    filas.push({
-      nombre: r.nombre.trim().slice(0, 300),
-      direccion: typeof r.direccion === "string" ? r.direccion : null,
-      ciudad: esCiudad(r.ciudad) ? r.ciudad : ("otra" as Ciudad),
-      lat: r.lat,
-      lng: r.lng,
-      categoria: typeof r.categoria === "string" ? r.categoria : null,
-      rating: typeof r.rating === "number" ? r.rating : null,
-      sitio_web: urlHttpONull(r.sitioWeb),
-      telefono,
-      tipo_telefono: tipo,
-      google_place_id: r.placeId,
-      fuente: "places" as const,
-    });
+    // Mismo armado de fila que el barrido (places.ts): una sola definición
+    // para los dos escritores de `negocios`. Re-normaliza el teléfono: nunca
+    // confiar en la normalización del cliente.
+    filas.push(filaDeNegocio(r, null));
   }
 
   const { data, error } = await supabase
@@ -144,7 +126,7 @@ export async function crearNegocioManual(datos: {
   nombre: string;
   lat: number;
   lng: number;
-  ciudad: Ciudad;
+  ciudad: string | null;
   direccion?: string;
   categoria?: string;
   telefono?: string;
@@ -156,7 +138,6 @@ export async function crearNegocioManual(datos: {
   if (!coordenadasValidas(datos.lat, datos.lng)) {
     return { error: "Las coordenadas no son válidas." };
   }
-  if (!esCiudad(datos.ciudad)) return { error: "Ciudad no válida." };
 
   const bruto = datos.telefono?.trim() ?? "";
   const { telefono, tipo } = normalizarTelefonoCO(bruto);
@@ -169,12 +150,13 @@ export async function crearNegocioManual(datos: {
     .insert({
       nombre: nombre.slice(0, 300),
       direccion: datos.direccion?.trim() || null,
-      ciudad: datos.ciudad,
+      ciudad: ciudadLimpia(datos.ciudad),
       lat: datos.lat,
       lng: datos.lng,
       categoria: datos.categoria?.trim() || null,
       telefono,
       tipo_telefono: tipo,
+      territorio_id: null,
       fuente: "manual" as const,
     })
     .select("id")
@@ -196,7 +178,7 @@ export async function actualizarNegocio(
     telefono?: string;
     nombre?: string;
     categoria?: string;
-    ciudad?: Ciudad;
+    ciudad?: string | null;
     sitio_web?: string;
     direccion?: string;
   },
@@ -226,10 +208,7 @@ export async function actualizarNegocio(
     fila.nombre = nombre.slice(0, 300);
   }
   if ("categoria" in cambios) fila.categoria = cambios.categoria?.trim() || null;
-  if ("ciudad" in cambios) {
-    if (!esCiudad(cambios.ciudad)) return { error: "Ciudad no válida." };
-    fila.ciudad = cambios.ciudad;
-  }
+  if ("ciudad" in cambios) fila.ciudad = ciudadLimpia(cambios.ciudad);
   if ("sitio_web" in cambios) fila.sitio_web = urlHttpONull(cambios.sitio_web);
   if ("direccion" in cambios) fila.direccion = cambios.direccion?.trim() || null;
 

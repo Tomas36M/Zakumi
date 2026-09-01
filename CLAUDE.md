@@ -114,6 +114,59 @@ entrada "Voz" en `Sidebar.tsx`) — no queda ninguna clase `adm-*`.
   `SUPABASE_SERVICE_ROLE_KEY` (webhook + /api/zak/llamar), `ZAK_VOZ_TOKEN`.
 - `catalogo.ts` sigue `disponible: false` en `agente-voz` hasta el paso 8 del runbook.
 
+## Encontrar clientes /admin/prospeccion — territorios y barrido (2026-09-01, rama `feat/mapa-prospeccion`)
+
+Spec + **runbook de encendido**: `docs/superpowers/specs/2026-08-31-mapa-prospeccion-design.md`.
+Ledger de decisiones (37 rulings, leerlo antes de "arreglar" algo que parece raro):
+`.superpowers/sdd/2026-08-31-mapa-prospeccion/progress.md`.
+
+- **Una sola puerta**: `/admin/prospeccion` con dos caras (`?tab=territorio` |
+  `?tab=leads`). `/admin/mapa` y `/admin/negocios` son **redirects**, no
+  pantallas — no revalidar esas rutas ni enlazarlas.
+- **SQL antes del deploy**: `supabase/prospeccion.sql` (base nueva) o
+  `supabase/prospeccion-parches.sql` (base que ya corrió una versión anterior),
+  y en ambos casos ANTES de subir el código: el archivo mata el enum
+  `public.ciudad` y el código nuevo asume `ciudad` texto libre.
+- **El modelo de plata**: una tesela × una vertical = **una** llamada a Nearby
+  Search = **US$0,035** (Enterprise, US$35/1.000). El navegador emite esas
+  llamadas de a 4 en paralelo contra
+  `/admin/api/territorio/[id]/barrer` — la ÚNICA ruta del repo que gasta dinero
+  por petición. Guardarraíles, en orden: estimación previa en el diálogo →
+  `circuloDentroDelTerritorio` (bbox, en el servidor) → tope de 2× lo aprobado
+  que pausa el barrido y vuelve a preguntar → `teselas_hechas` para no pagar
+  dos veces lo mismo.
+- **Regla de la pantalla**: los contadores de plata no mienten y un censo no
+  declara completitud que no tiene. Cualquier cifra que pueda estar truncada,
+  vieja o incompleta se dice con un banner, no se maquilla.
+- **Si un barrido se va de las manos** (no hay botón de pánico en el panel, y
+  esto es lo que hay):
+  1. **Cerrar la pestaña** — el bucle vive en el navegador; sin pestaña no hay
+     más llamadas. Lo ya barrido queda guardado y reanudar no lo vuelve a pagar.
+  2. **Cuota diaria** en Google Cloud → APIs & Services → Quotas → Places API
+     (New) → *Nearby Search requests per day*: es el único tope duro real.
+  3. **Alerta de presupuesto** en Billing → Budgets & alerts sobre el proyecto
+     de la key.
+  4. Revisar el gasto real en los logs de Vercel: el handler emite una línea
+     `{"evt":"tesela",…}` por llamada facturada (territorio, tesela, vertical).
+- **Ajustes de Supabase que esta pantalla asume** (consola, no repo):
+  - *Settings → API → Max rows* = **1000** (el default). PostgREST recorta ahí
+    toda consulta, en silencio y sin error. Por eso el tope de la lista de leads
+    es 900: para que el límite que manda sea el que está escrito en el código.
+    Subir el 900 sin subir antes Max rows no hace nada.
+  - *Automatically expose new tables* está **activado**, y Supabase recomienda
+    lo contrario ("control access manually"). O sea: `territorios` —y cualquier
+    tabla futura— nace publicada en la Data API. Hoy no es un hueco (la policy
+    `territorios_solo_admin` de `prospeccion.sql` la protege de verdad; un
+    `cliente` del portal no saca nada), pero **una tabla nueva SIN política
+    nace expuesta**. Regla: toda tabla que se añada trae su `enable row level
+    security` + policy en el mismo archivo .sql que la crea.
+- Notas: `barrer/route.ts` lleva `maxDuration = 30` y su timeout hacia Google
+  es de 8 s a propósito (que corte el nuestro antes que la plataforma: un 504
+  se contaría como fallo gratis sobre una llamada ya facturada). El límite de
+  filas de la lista de leads es explícito en
+  `src/app/admin/(panel)/prospeccion/page.tsx` y se avisa en pantalla cuando
+  hay más de las que se muestran.
+
 ## Varias sesiones de Claude comparten este checkout
 
 - Los commits caen en **la rama que esté checked out** — antes de commitear,

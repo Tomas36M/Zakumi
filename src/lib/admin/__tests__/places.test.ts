@@ -1,11 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
-  inferirCiudad,
+  ciudadLimpia,
+  filaDeNegocio,
+  localidadDe,
   marcarImportados,
   placeANegocio,
   soloConTelefono,
+  urlHttpONull,
 } from "../places";
-import type { PlaceApi } from "../places";
+import type { PlaceApi, ResultadoPlace } from "../places";
 
 const FERRETERIA_UBATE: PlaceApi = {
   id: "ChIJferreteria123",
@@ -18,6 +21,11 @@ const FERRETERIA_UBATE: PlaceApi = {
   websiteUri: "https://eltornillo.co",
   types: ["hardware_store", "point_of_interest", "establishment"],
   businessStatus: "OPERATIONAL",
+  addressComponents: [
+    { longText: "Ubaté", types: ["locality", "political"] },
+    { longText: "Cundinamarca", types: ["administrative_area_level_1"] },
+    { longText: "Colombia", types: ["country"] },
+  ],
 };
 
 describe("placeANegocio", () => {
@@ -33,7 +41,7 @@ describe("placeANegocio", () => {
       sitioWeb: "https://eltornillo.co",
       telefono: "+576017430000",
       tipoTelefono: "fijo",
-      ciudad: "ubate",
+      ciudad: "Ubaté",
       operativo: true,
       yaImportado: false,
     });
@@ -81,24 +89,35 @@ describe("placeANegocio", () => {
   });
 });
 
-describe("inferirCiudad", () => {
-  it("detecta Ubaté en la dirección, con y sin tilde", () => {
-    expect(inferirCiudad("Cra 5 #3-21, Ubaté, Cundinamarca")).toBe("ubate");
-    expect(inferirCiudad("Cra 5 #3-21, Ubate, Cundinamarca")).toBe("ubate");
+describe("localidadDe", () => {
+  it("saca el municipio del componente locality", () => {
+    expect(
+      localidadDe([
+        { longText: "Madrid", types: ["locality", "political"] },
+        { longText: "Cundinamarca", types: ["administrative_area_level_1"] },
+      ]),
+    ).toBe("Madrid");
   });
 
-  it("detecta Madrid y Bogotá", () => {
-    expect(inferirCiudad("Cl. 7 #4-12, Madrid, Cundinamarca")).toBe("madrid");
-    expect(inferirCiudad("Av. Caracas #45-10, Bogotá, Colombia")).toBe("bogota");
+  it("cae a administrative_area_level_2 cuando no hay locality", () => {
+    expect(
+      localidadDe([
+        { longText: "Ubaté", types: ["administrative_area_level_2"] },
+        { longText: "Colombia", types: ["country"] },
+      ]),
+    ).toBe("Ubaté");
   });
 
-  it("sin match usa el sesgo de la búsqueda", () => {
-    expect(inferirCiudad("Vereda El Rincón, Colombia", "madrid")).toBe("madrid");
+  it("devuelve null cuando Google no manda localidad", () => {
+    expect(localidadDe([{ longText: "Colombia", types: ["country"] }])).toBeNull();
+    expect(localidadDe(undefined)).toBeNull();
+    expect(localidadDe([])).toBeNull();
   });
 
-  it("sin match y sin sesgo → otra", () => {
-    expect(inferirCiudad("Vereda El Rincón, Colombia")).toBe("otra");
-    expect(inferirCiudad(null)).toBe("otra");
+  it("no confunde 'Madrid, España' con Madrid Cundinamarca: la localidad es literal", () => {
+    // regionCode=CO en el handler evita el caso; aquí solo se exige que la
+    // función NO normalice ni adivine nada.
+    expect(localidadDe([{ longText: "Madrid", types: ["locality"] }])).toBe("Madrid");
   });
 });
 
@@ -127,5 +146,147 @@ describe("marcarImportados", () => {
     ];
     const marcados = marcarImportados(resultados, new Set(["ChIJotro456"]));
     expect(marcados.map((r) => r.yaImportado)).toEqual([false, true]);
+  });
+});
+
+// Único escritor de `negocios.sitio_web`, y el valor se pinta tal cual en un
+// <a href>. Vive en places.ts justo para que el barrido —que mete muchísimas
+// más filas que la importación manual— no lo esquive.
+describe("urlHttpONull", () => {
+  it("deja pasar http y https", () => {
+    expect(urlHttpONull("https://zakumistudio.com")).toBe("https://zakumistudio.com");
+    expect(urlHttpONull("http://ferreteria-ubate.co/tienda")).toBe(
+      "http://ferreteria-ubate.co/tienda",
+    );
+  });
+
+  it("recorta espacios alrededor", () => {
+    expect(urlHttpONull("  https://zakumistudio.com  ")).toBe("https://zakumistudio.com");
+  });
+
+  it("mata los esquemas que no son navegables", () => {
+    expect(urlHttpONull("javascript:alert(1)")).toBeNull();
+    expect(urlHttpONull("data:text/html,<script>alert(1)</script>")).toBeNull();
+    expect(urlHttpONull("//evil.example")).toBeNull();
+    expect(urlHttpONull("zakumistudio.com")).toBeNull();
+  });
+
+  it("null para lo vacío y lo que no es texto", () => {
+    expect(urlHttpONull("")).toBeNull();
+    expect(urlHttpONull("   ")).toBeNull();
+    expect(urlHttpONull(null)).toBeNull();
+    expect(urlHttpONull(undefined)).toBeNull();
+    expect(urlHttpONull(42)).toBeNull();
+  });
+});
+
+const FERRETERIA: ResultadoPlace = {
+  placeId: "ChIJferreteria123",
+  nombre: "  Ferretería El Tornillo  ",
+  direccion: "Cra. 7 #8-21, Ubaté",
+  lat: 5.3081,
+  lng: -73.8146,
+  categoria: "hardware_store",
+  rating: 4.4,
+  sitioWeb: "https://eltornillo.co",
+  telefono: "+576017430000",
+  tipoTelefono: "fijo",
+  ciudad: "  Ubaté  ",
+  operativo: true,
+  yaImportado: false,
+};
+
+describe("ciudadLimpia", () => {
+  it("recorta y conserva el municipio tal como viene", () => {
+    expect(ciudadLimpia("  Ubaté  ")).toBe("Ubaté");
+  });
+
+  it("null para lo vacío y lo que no es texto", () => {
+    expect(ciudadLimpia("   ")).toBeNull();
+    expect(ciudadLimpia(null)).toBeNull();
+    expect(ciudadLimpia(undefined)).toBeNull();
+    expect(ciudadLimpia(42)).toBeNull();
+  });
+
+  it("recorta a 120 caracteres (el largo que acepta la columna)", () => {
+    expect(ciudadLimpia("x".repeat(300))).toHaveLength(120);
+  });
+});
+
+describe("filaDeNegocio", () => {
+  it("arma la fila de negocios con el territorio de origen", () => {
+    expect(filaDeNegocio(FERRETERIA, "terr-1")).toEqual({
+      nombre: "Ferretería El Tornillo",
+      direccion: "Cra. 7 #8-21, Ubaté",
+      ciudad: "Ubaté",
+      lat: 5.3081,
+      lng: -73.8146,
+      categoria: "hardware_store",
+      rating: 4.4,
+      sitio_web: "https://eltornillo.co",
+      telefono: "+576017430000",
+      tipo_telefono: "fijo",
+      google_place_id: "ChIJferreteria123",
+      fuente: "places",
+      territorio_id: "terr-1",
+    });
+  });
+
+  it("la importación manual pasa territorio null y sale la MISMA fila", () => {
+    // El invariante que justifica que exista esta función: los dos escritores
+    // de `negocios` escriben lo mismo salvo el territorio. Estuvo duplicada y
+    // ya había divergido en la ciudad.
+    const conTerritorio = filaDeNegocio(FERRETERIA, "terr-1");
+    const sinTerritorio = filaDeNegocio(FERRETERIA, null);
+    expect(sinTerritorio).toEqual({ ...conTerritorio, territorio_id: null });
+  });
+
+  it("sanea la ciudad: dos grafías de un municipio serían dos filtros", () => {
+    // Era la divergencia real: el barrido la metía cruda y la importación no.
+    expect(filaDeNegocio({ ...FERRETERIA, ciudad: " Madrid " }, null).ciudad).toBe(
+      "Madrid",
+    );
+    expect(filaDeNegocio({ ...FERRETERIA, ciudad: null }, null).ciudad).toBeNull();
+  });
+
+  it("el nombre cabe en el check de la base y nunca queda vacío", () => {
+    // Un solo nombre demasiado largo tumbaba el upsert ENTERO: tesela cobrada
+    // y los otros 19 negocios de esa tesela perdidos.
+    const largo = filaDeNegocio({ ...FERRETERIA, nombre: "x".repeat(500) }, null);
+    expect(largo.nombre).toHaveLength(300);
+    const vacio = filaDeNegocio({ ...FERRETERIA, nombre: "   " }, null);
+    expect(vacio.nombre).toBe("(sin nombre)");
+  });
+
+  it("el sitio web pasa por urlHttpONull: se pinta en un href", () => {
+    expect(
+      filaDeNegocio({ ...FERRETERIA, sitioWeb: "javascript:alert(1)" }, null).sitio_web,
+    ).toBeNull();
+  });
+
+  it("re-normaliza el teléfono en vez de confiar en quien lo mandó", () => {
+    // Del barrido llega ya normalizado (idempotente); de la importación llega
+    // lo que quiso el cliente.
+    const fila = filaDeNegocio({ ...FERRETERIA, telefono: "300 123 4567" }, null);
+    expect(fila.telefono).toBe("+573001234567");
+    expect(fila.tipo_telefono).toBe("movil");
+    expect(filaDeNegocio(FERRETERIA, null).telefono).toBe("+576017430000");
+  });
+
+  it("null en los campos opcionales que no llegan con el tipo esperado", () => {
+    const fila = filaDeNegocio(
+      {
+        ...FERRETERIA,
+        direccion: null,
+        categoria: null,
+        rating: null,
+        sitioWeb: null,
+      },
+      null,
+    );
+    expect(fila.direccion).toBeNull();
+    expect(fila.categoria).toBeNull();
+    expect(fila.rating).toBeNull();
+    expect(fila.sitio_web).toBeNull();
   });
 });

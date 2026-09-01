@@ -9,11 +9,10 @@ import {
   Boxes,
   Inbox,
   LogOut,
-  Map,
   Menu,
   PanelLeftClose,
   PanelLeftOpen,
-  Store,
+  Target,
   UserCog,
   Users,
   X,
@@ -25,8 +24,8 @@ import { IconButton } from "@/components/admin/ui/IconButton";
 import { alternarSidebar, useSidebarColapsado } from "@/components/admin/ui/sidebar-store";
 
 const SECCIONES = [
-  { href: "/admin/mapa", label: "Mapa", Icono: Map },
-  { href: "/admin/negocios", label: "Negocios", Icono: Store },
+  // Una sola puerta: dos puertas a lo mismo se desincronizan.
+  { href: "/admin/prospeccion", label: "Encontrar clientes", Icono: Target },
   { href: "/admin/zak", label: "Zak", Icono: Bot },
   { href: "/admin/solicitudes", label: "Solicitudes", Icono: Inbox },
   { href: "/admin/clientes", label: "Clientes", Icono: Users },
@@ -99,7 +98,7 @@ function ContenidoSidebar({
     <div className="flex h-full flex-col gap-aire">
       <div className="flex items-center justify-between rounded-isla bg-isla px-3 py-3">
         {!colapsado && (
-          <Link href="/admin/mapa" className="pl-1 text-sm font-bold tracking-wide text-tinta">
+          <Link href="/admin/prospeccion" className="pl-1 text-sm font-bold tracking-wide text-tinta">
             ZAKUMI <span className="font-editorial text-acento italic">Panel</span>
           </Link>
         )}

@@ -17,7 +17,12 @@ export function Modal({ abierto, onCerrar, titulo, children }: Props) {
     <Dialog.Root open={abierto} onOpenChange={onCerrar}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-50 bg-black/50" />
-        <Dialog.Content className="fixed top-1/2 left-1/2 z-50 w-[min(480px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-isla border border-hairline bg-velo p-6 backdrop-blur-xl">
+        {/* max-h + overflow: el diálogo está centrado y fijo, así que un
+            cuerpo más alto que la ventana se desbordaba por ARRIBA y por
+            ABAJO sin barra de scroll — y el botón de confirmar quedaba
+            inalcanzable. Le pasaba justo al más caro de todos (el de barrer,
+            que es el más alto del panel) en una ventana baja. */}
+        <Dialog.Content className="fixed top-1/2 left-1/2 z-50 max-h-[calc(100dvh-4rem)] w-[min(480px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-isla border border-hairline bg-velo p-6 backdrop-blur-xl">
           <div className="mb-3 flex items-center justify-between gap-2">
             <Dialog.Title className="text-base font-medium text-tinta">{titulo}</Dialog.Title>
             <Dialog.Close asChild>

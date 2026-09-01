@@ -1,0 +1,68 @@
+import { cajaDe, type Punto } from "./barrido";
+
+export type Territorio = {
+  id: string;
+  nombre: string;
+  poligono: Punto[];
+  bbox_sur: number;
+  bbox_norte: number;
+  bbox_oeste: number;
+  bbox_este: number;
+  verticales: string[];
+  teselas_hechas: string[];
+  /** Claves de trabajo cuyas teselas devolvieron el tope de 20 resultados. Es
+   * lo que hace DURABLE la subdivisión: sin esto las 4 hijas de una celda
+   * saturada solo viven en la cola del navegador y una recarga las pierde para
+   * siempre (la madre ya está en `teselas_hechas`, así que el plan la salta). */
+  teselas_saturadas: string[];
+  llamadas: number;
+  ultimo_barrido: string | null;
+  creado_por: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export const NOMBRE_MAX = 120;
+
+/** Grados de lado máximos de la caja. ~1.1° ≈ 120 km: más que eso no es un
+ * territorio de prospección, es una factura de Google. */
+export const LADO_MAX_GRADOS = 1.1;
+
+/** Tope de vértices de un territorio. `celdaTocaPoligono` recorre la lista de
+ * vértices ~10 veces POR TESELA, y un bbox del tamaño máximo son decenas de
+ * miles de teselas; además `teselar` corre en el navegador para estimar el
+ * costo. Un trazo de miles de puntos cuelga la pestaña antes de gastar un peso.
+ * Un territorio dibujado a mano no pasa de unas decenas de vértices. */
+export const VERTICES_MAX = 500;
+
+export function poligonoValido(poligono: readonly Punto[]): boolean {
+  if (poligono.length < 3) return false;
+  if (poligono.length > VERTICES_MAX) return false;
+  const enElPlaneta = poligono.every(
+    (p) =>
+      Number.isFinite(p.lat) &&
+      Number.isFinite(p.lng) &&
+      p.lat >= -90 &&
+      p.lat <= 90 &&
+      p.lng >= -180 &&
+      p.lng <= 180,
+  );
+  if (!enElPlaneta) return false;
+  const caja = cajaDe(poligono);
+  return (
+    caja.norte - caja.sur <= LADO_MAX_GRADOS &&
+    caja.este - caja.oeste <= LADO_MAX_GRADOS
+  );
+}
+
+export function filasDeTerritorio(poligono: Punto[], nombre: string) {
+  const caja = cajaDe(poligono);
+  return {
+    nombre: nombre.trim().slice(0, NOMBRE_MAX),
+    poligono,
+    bbox_sur: caja.sur,
+    bbox_norte: caja.norte,
+    bbox_oeste: caja.oeste,
+    bbox_este: caja.este,
+  };
+}

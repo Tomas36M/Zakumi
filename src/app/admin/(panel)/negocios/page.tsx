@@ -1,20 +1,7 @@
-import { NegociosView } from "@/components/admin/negocios/NegociosView";
-import { verifySession } from "@/lib/admin/dal";
-import type { Negocio } from "@/lib/admin/negocios";
+import { redirect } from "next/navigation";
 
-export const metadata = { title: "Negocios" };
-
-export default async function NegociosPage() {
-  const { supabase } = await verifySession();
-
-  const { data, error } = await supabase
-    .from("negocios")
-    .select("*")
-    .order("created_at", { ascending: false });
-
-  if (error) {
-    console.error("[negocios] error cargando negocios:", error.message);
-  }
-
-  return <NegociosView negocios={(data as Negocio[]) ?? []} />;
+// Dos puertas a la misma ficha se desincronizan (lección de la PR #12 con
+// /admin/voz/<id-de-Zak>). Los enlaces viejos siguen funcionando.
+export default function NegociosPage() {
+  redirect("/admin/prospeccion?tab=leads");
 }
