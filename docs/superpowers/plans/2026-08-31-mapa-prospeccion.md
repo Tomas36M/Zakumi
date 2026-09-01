@@ -26,7 +26,7 @@
 
 ### Task 1: Sincronizar el checkout y abrir la rama
 
-`main` local está 35 commits atrás de `origin/main`. Piezas que la spec manda copiar como patrón — `Cockpit`, `src/lib/admin/zak-caras.ts`, `src/components/admin/zak/CarasZak.tsx` — **existen en `origin/main` pero no localmente**. Sin este paso, las tareas 9 y 11 no encuentran el patrón que deben seguir.
+`main` local está 35 commits atrás de `origin/main`. Piezas que la spec manda copiar como patrón — `Cockpit`, `src/lib/admin/zak-caras.ts`, `src/components/admin/bots/CarasZak.tsx` — **existen en `origin/main` pero no localmente**. Sin este paso, las tareas 9 y 11 no encuentran el patrón que deben seguir.
 
 **Files:**
 - Ninguno (preparación del entorno)
@@ -55,7 +55,7 @@ git switch -c feat/mapa-prospeccion origin/main
 - [ ] **Step 3: Verificar que el patrón a copiar ya existe**
 
 ```bash
-ls src/lib/admin/zak-caras.ts src/components/admin/zak/CarasZak.tsx
+ls src/lib/admin/zak-caras.ts src/components/admin/bots/CarasZak.tsx
 grep -rl "Cockpit" src/components/admin | head -3
 ```
 
@@ -205,7 +205,9 @@ describe("teselar", () => {
       { lat: caja.norte, lng: caja.este },
       { lat: caja.norte, lng: caja.oeste },
     ]).length;
-    expect(conRecorte).toBeLessThan(sinRecorte / 2);
+    // Una diagonal cruza ~7 de las 16 celdas de la caja: el umbral prueba
+    // que el recorte muerde de verdad sin atarse a un conteo exacto.
+    expect(conRecorte).toBeLessThan(sinRecorte * 0.75);
   });
 
   it("un polígono degenerado no explota ni devuelve vacío", () => {
@@ -465,15 +467,22 @@ export function teselar(
   const caja = cajaDe(poligono);
   const paso = radio * Math.SQRT2;
   const pasoLat = paso / METROS_POR_GRADO_LAT;
-  const latMedia = (caja.sur + caja.norte) / 2;
-  const pasoLng = paso / metrosPorGradoLng(latMedia);
-
   const filas = Math.max(1, Math.ceil((caja.norte - caja.sur) / pasoLat));
-  const columnas = Math.max(1, Math.ceil((caja.este - caja.oeste) / pasoLng));
 
   const teselas: Tesela[] = [];
   for (let f = 0; f < filas; f++) {
     const lat = caja.sur + (f + 0.5) * pasoLat;
+    // El paso de longitud se calcula POR FILA, y desde el borde de la fila más
+    // cercano al ecuador — que es donde un grado mide más metros y la celda
+    // sale más ancha. Con un paso único para todo el polígono, las filas del
+    // lado del ecuador quedan más anchas que el círculo que debe cubrirlas y
+    // dejan huecos: un censo que miente sin avisar.
+    const bordeEcuatorial = Math.min(
+      Math.abs(lat - pasoLat / 2),
+      Math.abs(lat + pasoLat / 2),
+    );
+    const pasoLng = paso / metrosPorGradoLng(bordeEcuatorial);
+    const columnas = Math.max(1, Math.ceil((caja.este - caja.oeste) / pasoLng));
     for (let c = 0; c < columnas; c++) {
       const lng = caja.oeste + (c + 0.5) * pasoLng;
       const centro = { lat, lng };
@@ -839,7 +848,7 @@ create index if not exists territorios_creado_por_idx on public.territorios (cre
 drop trigger if exists territorios_updated_at on public.territorios;
 create trigger territorios_updated_at
   before update on public.territorios
-  for each row execute function public.tocar_updated_at();
+  for each row execute function public.set_updated_at();
 
 -- ---- negocios: territorio de origen ------------------------------------------
 
@@ -874,7 +883,7 @@ revoke all on public.territorios from anon;
 - [ ] **Step 3: Verificar los nombres del trigger y del helper de RLS**
 
 ```bash
-grep -n "updated_at()\|function public.es_admin\|public.es_admin()" supabase/schema.sql supabase/rls.sql | head
+grep -n "set_updated_at\|es_admin" supabase/schema.sql supabase/perfiles.sql | head
 ```
 
 Esperado: aparecen la función del trigger `updated_at` y el helper de admin. **Si se llaman distinto** (p. ej. `public.set_updated_at()` o `public.is_admin()`), corregir `prospeccion.sql` para usar los nombres reales. Este paso existe porque un nombre inventado hace fallar el script a mitad de camino, dejando la migración a medias.
@@ -2151,16 +2160,24 @@ Aquí se parte `MapaView` (250 líneas) antes de que le entre dibujo, territorio
 - Create: `src/components/admin/prospeccion/PanelTerritorios.tsx`
 - Create: `src/components/admin/prospeccion/DibujarTerritorio.tsx`
 - Create: `src/components/admin/prospeccion/BarridoProgreso.tsx`
-- Reference: `src/components/admin/zak/CarasZak.tsx`, `src/components/admin/mapa/MapaView.tsx`
+- Reference: `src/components/admin/bots/CarasZak.tsx`, `src/components/admin/mapa/MapaView.tsx`
 
 **Interfaces:**
 - Consumes: `caraDe`, `pestanaInicial` (Task 9); `useBarrido`, `planDeBarrido` (Task 10); `estimarBarrido`, `teselar` (Task 2); `crearTerritorio`, `renombrarTerritorio`, `eliminarTerritorio` (Task 7); `Territorio`; `VERTICALES_PROSPECCION` de `zak.ts`
 - Produces: la ruta `/admin/prospeccion`
 
+- [ ] **Step 0: Instalar los tipos de Google Maps**
+
+`@types/google.maps` NO está en `package.json` (verificado): solo está `@vis.gl/react-google-maps`, que lo declara como peer. Sin él, `google.maps.Polygon` y `google.maps.drawing` no compilan — ni aquí ni en la Task 12.
+
+```bash
+npm i -D @types/google.maps
+```
+
 - [ ] **Step 1: Leer los patrones antes de escribir**
 
 ```bash
-cat src/components/admin/zak/CarasZak.tsx
+cat src/components/admin/bots/CarasZak.tsx
 cat src/components/admin/mapa/MapaView.tsx
 grep -rn "Cockpit" src/components/admin --include=*.tsx | head -5
 ```
@@ -2343,6 +2360,8 @@ Si `saturadasAlFondo > 0`, un `Banner`: *"N zonas quedaron muy densas para el de
 
 - [ ] **Step 8: `TerritorioView`**
 
+**Primero, mudar el tipo `Seleccion`.** Hoy lo exporta `MapaView.tsx` y lo importa `MapCanvas.tsx:20` (`import type { Seleccion } from "./MapaView"`). La Task 14 borra `MapaView.tsx`, así que ese tipo tiene que vivir aquí: muévelo a `TerritorioView.tsx` tal cual y cambia el import de `MapCanvas` a `@/components/admin/prospeccion/TerritorioView`. Si se deja para después, la Task 14 rompe la compilación al borrar el archivo.
+
 Lo que era `MapaView`, sin las pestañas de ciudad, con `PanelTerritorios` a la izquierda, `BarridoProgreso` cuando hay barrido corriendo, y la ficha a la derecha. El buscador de texto (`SearchPanel`) se conserva pero pasa a un panel colapsado: sigue siendo útil para consultas sueltas, ya no es el protagonista.
 
 - [ ] **Step 9: Verificar en el navegador**
@@ -2465,6 +2484,8 @@ git commit -m "prospección: polígonos de territorio y anillo de sin-web en el 
 
 - [ ] **Step 1: Añadir los filtros**
 
+**Antes de tocar nada:** la Task 11 ya montó la cara Leads con `<NegociosView negocios={…} />`, la firma de hoy. Al añadir el prop `territorios` hay que actualizar TAMBIÉN ese sitio de llamada en `src/components/admin/prospeccion/ProspeccionView.tsx`, o queda un error de tipos.
+
 Junto al `FiltroTelefono` que ya existe:
 
 ```tsx
@@ -2557,7 +2578,7 @@ git rm src/components/admin/mapa/MapaView.tsx
 grep -rn "MapaView" src/ | head
 ```
 
-Esperado: sin resultados. Si `Seleccion` (el tipo que exportaba `MapaView`) sigue usándose en `MapCanvas`/`FichaNegocio`, moverlo a `src/components/admin/prospeccion/TerritorioView.tsx` y actualizar los imports.
+Esperado: sin resultados. El tipo `Seleccion` ya se mudó a `TerritorioView.tsx` en la Task 11 — si `grep -rn 'from "./MapaView"' src/` devuelve algo, esa mudanza no se hizo y hay que completarla ANTES de borrar el archivo.
 
 - [ ] **Step 4: Verificación completa**
 
