@@ -11,10 +11,12 @@ import {
   rechazarSolicitud,
 } from "@/lib/admin/solicitudes-actions";
 import { servicioDelSlug } from "@/lib/catalogo";
+import { fechaLegible } from "@/lib/solicitudes/mensaje";
 import {
   esTerminal,
   labelEstado,
   type EstadoSolicitud,
+  type OrigenSolicitud,
   type Solicitud,
 } from "@/lib/portal/solicitudes";
 import { Badge, type TonoBadge } from "@/components/admin/ui/Badge";
@@ -40,6 +42,16 @@ const TONO_SOLICITUD: Record<EstadoSolicitud, TonoBadge> = {
   rechazada: "descartado",
 };
 
+// Solo las solicitudes que NO vienen del portal necesitan decir por dónde
+// entraron — las del portal ya se identifican por tener perfil.
+const CANAL_SOLICITUD: Record<
+  Exclude<OrigenSolicitud, "portal">,
+  { label: string; tono: TonoBadge }
+> = {
+  voz: { label: "Llamada", tono: "contactado" },
+  whatsapp: { label: "WhatsApp", tono: "respondido" },
+};
+
 type Props = {
   solicitudes: Solicitud[];
   perfiles: Record<string, PerfilResumen>;
@@ -53,7 +65,7 @@ export function BandejaSolicitudes({ solicitudes, perfiles }: Props) {
     return (
       <EmptyState
         titulo="Nada por ahora."
-        detalle="Cuando alguien pida un servicio en el portal, aparece aquí (y te llega el aviso por WhatsApp)."
+        detalle="Cuando alguien pida un servicio —en la tienda, por llamada o por WhatsApp— aparece aquí y te llega el aviso."
       />
     );
   }
@@ -65,7 +77,11 @@ export function BandejaSolicitudes({ solicitudes, perfiles }: Props) {
           <p className="text-sm text-tinta-40">Sin solicitudes por atender.</p>
         ) : (
           abiertas.map((s) => (
-            <TarjetaSolicitud key={s.id} solicitud={s} perfil={perfiles[s.user_id]} />
+            <TarjetaSolicitud
+              key={s.id}
+              solicitud={s}
+              perfil={s.user_id ? perfiles[s.user_id] : undefined}
+            />
           ))
         )}
       </div>
@@ -77,7 +93,11 @@ export function BandejaSolicitudes({ solicitudes, perfiles }: Props) {
           </h2>
           <div className="flex flex-col gap-aire">
             {cerradas.map((s) => (
-              <TarjetaSolicitud key={s.id} solicitud={s} perfil={perfiles[s.user_id]} />
+              <TarjetaSolicitud
+                key={s.id}
+                solicitud={s}
+                perfil={s.user_id ? perfiles[s.user_id] : undefined}
+              />
             ))}
           </div>
         </>
@@ -107,7 +127,13 @@ function TarjetaSolicitud({
   const [ocupado, startTransition] = useTransition();
   const { confirmar, dialogo } = useConfirmar();
   const servicio = servicioDelSlug(s.servicio_slug);
-  const quien = perfil?.nombre || perfil?.email || "sin perfil";
+  // Solo las del portal tienen perfil que buscar; el resto trae su propio
+  // contacto (quien llamó o escribió, no quien tiene cuenta).
+  const quien =
+    s.origen === "portal"
+      ? perfil?.nombre || perfil?.email || "sin perfil"
+      : [s.contacto_nombre, s.contacto_telefono].filter(Boolean).join(" · ") ||
+        "sin contacto";
 
   function correr(accion: () => Promise<{ error: string | null }>) {
     setError(null);
@@ -134,12 +160,41 @@ function TarjetaSolicitud({
             )}
           </div>
           <div className="flex items-center gap-2">
+            {s.origen !== "portal" && (
+              <Badge tono={CANAL_SOLICITUD[s.origen].tono}>
+                {CANAL_SOLICITUD[s.origen].label}
+              </Badge>
+            )}
             <Badge tono={TONO_SOLICITUD[s.estado]}>{labelEstado(s.estado)}</Badge>
             <span className="text-xs text-tinta-40">{fechaCorta(s.created_at)}</span>
           </div>
         </header>
 
         {s.mensaje && <p className="text-sm text-tinta-85 italic">“{s.mensaje}”</p>}
+
+        {s.cita_inicio && (
+          <p className="text-xs text-tinta-60">
+            📅 {fechaLegible(s.cita_inicio)}
+            {s.cita_meet_url && (
+              <>
+                {" — "}
+                <a
+                  href={s.cita_meet_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="font-medium text-acento hover:underline"
+                >
+                  Meet
+                </a>
+              </>
+            )}
+          </p>
+        )}
+        {s.cita_texto_crudo && (
+          <p className="text-xs text-tinta-60">
+            Quiere agendar: «{s.cita_texto_crudo}» — sin hora
+          </p>
+        )}
 
         {s.cotizacion_monto !== null && (
           <p className="text-xs text-tinta-60">
@@ -182,21 +237,32 @@ function TarjetaSolicitud({
         {(s.estado === "link_enviado" || s.estado === "pagada") && (
           <div className="flex flex-wrap items-center gap-2">
             {dialogo}
-            <Button
-              variante="primaria"
-              disabled={ocupado}
-              onClick={async () => {
-                const ok = await confirmar({
-                  titulo: "¿Confirmas que el pago llegó?",
-                  mensaje:
-                    "Esto crea el cliente y su producto, registra el primer pago y activa el servicio.",
-                  accion: "Confirmar y activar",
-                });
-                if (ok) correr(() => activarSolicitud(s.id));
-              }}
-            >
-              {ocupado ? "Activando…" : "Confirmar pago y activar"}
-            </Button>
+            {s.user_id === null ? (
+              // activarSolicitud busca el perfil por user_id: en una solicitud
+              // de voz o WhatsApp no hay cuenta que buscar, así que el botón
+              // fallaría siempre. Crear el cliente y darle acceso al portal es
+              // un paso aparte que hoy no hace esta pantalla.
+              <p className="text-xs text-tinta-60">
+                Para activar, primero crea el cliente y dale acceso al portal —
+                esta solicitud no tiene cuenta que vincular.
+              </p>
+            ) : (
+              <Button
+                variante="primaria"
+                disabled={ocupado}
+                onClick={async () => {
+                  const ok = await confirmar({
+                    titulo: "¿Confirmas que el pago llegó?",
+                    mensaje:
+                      "Esto crea el cliente y su producto, registra el primer pago y activa el servicio.",
+                    accion: "Confirmar y activar",
+                  });
+                  if (ok) correr(() => activarSolicitud(s.id));
+                }}
+              >
+                {ocupado ? "Activando…" : "Confirmar pago y activar"}
+              </Button>
+            )}
             <BotonRechazar
               ocupado={ocupado}
               onRechazar={(motivo) => correr(() => rechazarSolicitud(s.id, motivo))}

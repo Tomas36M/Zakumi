@@ -3,7 +3,11 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { ChevronDown } from "lucide-react";
-import { guardarConfigVoz, marcarAgenteComoZak } from "@/lib/admin/voz-actions";
+import {
+  guardarConfigVoz,
+  marcarAgenteComoZak,
+  ponerAlDiaCamposZak,
+} from "@/lib/admin/voz-actions";
 import type { AgenteVozFila } from "@/lib/admin/voz";
 import type { VozEleven } from "@/lib/voz/api";
 import { CAMPOS_VOZ, seccionesDe, type CampoVoz, type SeccionesVoz } from "@/lib/voz/guias";
@@ -12,6 +16,7 @@ import {
   type CampoExtraccion,
   type TipoExtraccion,
 } from "@/lib/voz/tipos";
+import { EXTRACCION_ZAK, fusionarExtraccion } from "@/lib/voz/zak";
 import { cn } from "@/lib/cn";
 import { Badge } from "@/components/admin/ui/Badge";
 import { Banner } from "@/components/admin/ui/Banner";
@@ -53,6 +58,7 @@ export function ConfigAgenteVoz({
   const [abierto, setAbierto] = useState<CampoVoz | null>(null);
   const [avanzado, setAvanzado] = useState(false);
   const [marcando, startMarcar] = useTransition();
+  const [poniendoAlDia, startPonerAlDia] = useTransition();
 
   function marcarZak() {
     setMensaje(null);
@@ -67,6 +73,35 @@ export function ConfigAgenteVoz({
         }
       } catch {
         setError("Se perdió la conexión — recarga para ver si quedó marcado.");
+      }
+    });
+  }
+
+  function ponerAlDia() {
+    setMensaje(null);
+    setError(null);
+    startPonerAlDia(async () => {
+      try {
+        const r = await ponerAlDiaCamposZak();
+        if (r.error) {
+          setError(r.error);
+          return;
+        }
+        // r.anadidos > 0 ya implica que el UPDATE en Supabase tuvo éxito,
+        // aunque la sincronización con ElevenLabs (r.aviso) haya fallado: sin
+        // esto, "Guardar y sincronizar" pisaría con la lista vieja del
+        // formulario los campos que el servidor ya escribió.
+        if (r.anadidos > 0) {
+          setExtraccion((prev) => fusionarExtraccion(prev, EXTRACCION_ZAK));
+        }
+        setMensaje(
+          r.aviso ??
+            (r.anadidos > 0
+              ? `Listo: ${r.anadidos} campo(s) nuevo(s) y sincronizado con ElevenLabs.`
+              : "Ya estaba al día; se re-sincronizó igual."),
+        );
+      } catch {
+        setError("Se perdió la conexión — recarga para ver si quedó al día.");
       }
     });
   }
@@ -231,10 +266,17 @@ export function ConfigAgenteVoz({
               )}
             </div>
             <div className="flex flex-col gap-2">
-              <p className="text-xs font-medium text-tinta-60">
-                Extracción de datos por llamada — lead_nombre / lead_telefono /
-                lead_detalle crean la venta en el portal del cliente
-              </p>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-xs font-medium text-tinta-60">
+                  Extracción de datos por llamada — lead_nombre / lead_telefono /
+                  lead_detalle crean la venta en el portal del cliente
+                </p>
+                {agente.es_zak && (
+                  <Button disabled={poniendoAlDia} onClick={ponerAlDia}>
+                    {poniendoAlDia ? "Poniendo al día…" : "Poner al día los campos"}
+                  </Button>
+                )}
+              </div>
               {extraccion.map((c, i) => (
                 <div key={i} className="flex flex-wrap items-center gap-2">
                   <Input

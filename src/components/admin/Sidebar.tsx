@@ -7,6 +7,7 @@ import {
   AudioLines,
   Bot,
   Boxes,
+  CalendarDays,
   Inbox,
   LogOut,
   Menu,
@@ -28,6 +29,7 @@ const SECCIONES = [
   { href: "/admin/prospeccion", label: "Encontrar clientes", Icono: Target },
   { href: "/admin/zak", label: "Zak", Icono: Bot },
   { href: "/admin/solicitudes", label: "Solicitudes", Icono: Inbox },
+  { href: "/admin/agenda", label: "Agenda", Icono: CalendarDays },
   { href: "/admin/clientes", label: "Clientes", Icono: Users },
   { href: "/admin/bots", label: "Bots", Icono: Boxes },
   { href: "/admin/voz", label: "Voz", Icono: AudioLines },
@@ -83,6 +85,35 @@ const TITULO_SALUD: Record<Salud, string> = {
   problema: "Jobs fallidos o sin conexión",
 };
 
+/** Píldora junto a "Agenda": cuántas citas hay hoy sin entrar a la página. */
+function useCitasHoy(): number {
+  const [citasHoy, setCitasHoy] = useState(0);
+
+  useEffect(() => {
+    let activo = true;
+    async function poll() {
+      try {
+        const res = await fetch("/admin/api/agenda/hoy");
+        if (!activo) return;
+        if (!res.ok) throw new Error(String(res.status));
+        const data = (await res.json()) as { hoy: number };
+        setCitasHoy(data.hoy);
+      } catch {
+        // Sin conexión: se queda con el último número conocido — mejor eso
+        // que la píldora parpadeando a 0 en cada corte de red.
+      }
+    }
+    void poll();
+    const timer = setInterval(poll, 60_000);
+    return () => {
+      activo = false;
+      clearInterval(timer);
+    };
+  }, []);
+
+  return citasHoy;
+}
+
 /** Contenido del sidebar: islas apiladas (marca / navegación / usuario). */
 function ContenidoSidebar({
   colapsado,
@@ -93,6 +124,7 @@ function ContenidoSidebar({
 }) {
   const pathname = usePathname();
   const salud = useSaludBots();
+  const citasHoy = useCitasHoy();
 
   return (
     <div className="flex h-full flex-col gap-aire">
@@ -139,6 +171,17 @@ function ContenidoSidebar({
                     !colapsado && "ml-auto",
                   )}
                 />
+              )}
+              {href === "/admin/agenda" && citasHoy > 0 && (
+                <span
+                  title={`${citasHoy} cita(s) hoy`}
+                  className={cn(
+                    "rounded-full bg-acento-10 px-1.5 text-[10px] font-semibold text-acento",
+                    !colapsado && "ml-auto",
+                  )}
+                >
+                  {citasHoy}
+                </span>
               )}
             </Link>
           );

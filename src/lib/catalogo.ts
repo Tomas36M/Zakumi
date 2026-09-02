@@ -79,3 +79,46 @@ export const CATALOGO_ZAKUMI: readonly Servicio[] = [
 export function servicioDelSlug(slug: string): Servicio | null {
   return CATALOGO_ZAKUMI.find((s) => s.slug === slug) ?? null;
 }
+
+/** Solicitud entrante donde el agente no logró identificar el servicio. No
+ *  está en el catálogo a propósito: la bandeja lo muestra crudo y eso es una
+ *  señal útil ("hay que preguntarle"), no un error. */
+export const SLUG_POR_DEFINIR = "por-definir";
+
+/** Palabras clave por slug. El ORDEN importa: 'mantenimiento web' contiene
+ *  'web', así que mantenimiento tiene que evaluarse antes que página web. */
+const CLAVES: readonly { slug: string; palabras: readonly string[] }[] = [
+  { slug: "mantenimiento-web", palabras: ["mantenimiento", "soporte"] },
+  { slug: "bot-whatsapp", palabras: ["whatsapp", "bot", "chatbot"] },
+  { slug: "agente-voz", palabras: ["voz", "llamada", "telefono", "call"] },
+  { slug: "crm", palabras: ["crm", "clientes"] },
+  { slug: "pagina-web", palabras: ["pagina", "web", "sitio", "landing"] },
+] as const;
+
+function normalizar(texto: string): string {
+  return texto
+    .toLowerCase()
+    .normalize("NFD")
+    // Marcas diacríticas combinantes: lo que "NFD" separa de la letra base
+    // (á → a + ´). El rango va escapado con \u a propósito: la versión
+    // anterior traía esos mismos caracteres incrustados LITERALES en el
+    // regex — invisibles en el editor y un riesgo si alguien copia/pega mal
+    // el archivo.
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
+/**
+ * Lo que el agente extrajo en `servicio_interes` (texto libre) → slug del
+ * catálogo. Nunca lanza y nunca devuelve vacío: sin coincidencia,
+ * SLUG_POR_DEFINIR.
+ */
+export function slugDeInteres(texto: unknown): string {
+  if (typeof texto !== "string" || texto.trim() === "") return SLUG_POR_DEFINIR;
+  const t = normalizar(texto);
+  const exacto = CATALOGO_ZAKUMI.find((s) => s.slug === t.trim());
+  if (exacto) return exacto.slug;
+  for (const { slug, palabras } of CLAVES) {
+    if (palabras.some((p) => t.includes(p))) return slug;
+  }
+  return SLUG_POR_DEFINIR;
+}

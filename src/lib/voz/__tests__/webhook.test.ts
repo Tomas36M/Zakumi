@@ -111,3 +111,78 @@ describe("parseEventoPostCall", () => {
     expect(parseEventoPostCall({ type: "post_call_transcription", data: {} }).tipo).toBe("ignorar");
   });
 });
+
+describe("parseEventoPostCall — campos de solicitud y cita", () => {
+  it("aplana servicio_interes y cita_fecha_hora como el resto de la extracción", () => {
+    const r = parseEventoPostCall(
+      evento({
+        analysis: {
+          data_collection_results: {
+            lead_nombre: { value: "María" },
+            lead_detalle: { value: "Quiere un bot para su restaurante" },
+            servicio_interes: { value: "bot de WhatsApp" },
+            cita_fecha_hora: { value: "2026-09-03T10:00" },
+            cita_confirmada: { value: true },
+          },
+          call_successful: "success",
+          transcript_summary: "María quiere un bot.",
+        },
+      }),
+    );
+    if (r.tipo !== "llamada") throw new Error("debió parsear");
+    expect(r.params.p_datos).toEqual({
+      lead_nombre: "María",
+      lead_detalle: "Quiere un bot para su restaurante",
+      servicio_interes: "bot de WhatsApp",
+      cita_fecha_hora: "2026-09-03T10:00",
+      cita_confirmada: true,
+    });
+  });
+});
+
+describe("parseEventoPostCall — fixture de agente de CLIENTE (no cambió nada)", () => {
+  // Esta rama añadió servicio_interes/cita_fecha_hora/cita_confirmada para
+  // Zak, pero el aplanado de data_collection_results es genérico: un agente
+  // de un cliente que solo extrae los campos de lead de siempre tiene que
+  // parsear EXACTAMENTE igual que antes de esta rama, sin que le aparezca
+  // ningún campo nuevo de la agenda.
+  it("un lead normal de un agente de cliente produce los mismos parámetros de siempre", () => {
+    const r = parseEventoPostCall(
+      evento(
+        {
+          agent_id: "agent_cliente_1",
+          analysis: {
+            data_collection_results: {
+              lead_nombre: { value: "Carlos", rationale: "lo dijo" },
+              lead_telefono: { value: "+573007778899", rationale: "número de la llamada" },
+              lead_interesado: { value: true, rationale: "pidió cita" },
+              lead_detalle: { value: "Quiere agendar una valoración", rationale: "lo pidió" },
+            },
+            call_successful: "success",
+            transcript_summary: "Carlos quiere una cita de valoración.",
+          },
+        },
+        { agente_id: "uuid-cliente-1", origen: "zakumi_salida", telefono: "+573007778899" },
+      ),
+    );
+    if (r.tipo !== "llamada") throw new Error("debió parsear");
+
+    expect(r.params.p_agent_id_eleven).toBe("agent_cliente_1");
+    expect(r.params.p_direccion).toBe("saliente");
+    expect(r.params.p_telefono).toBe("+573007778899");
+    expect(r.params.p_datos).toEqual({
+      lead_nombre: "Carlos",
+      lead_telefono: "+573007778899",
+      lead_interesado: true,
+      lead_detalle: "Quiere agendar una valoración",
+    });
+    // Ninguno de los campos nuevos de la agenda se cuela cuando el agente no
+    // los usa: el aplanado no le añade nada que la llamada no haya traído.
+    expect(Object.keys(r.params.p_datos ?? {})).toEqual([
+      "lead_nombre",
+      "lead_telefono",
+      "lead_interesado",
+      "lead_detalle",
+    ]);
+  });
+});

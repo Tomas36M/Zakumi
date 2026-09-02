@@ -54,6 +54,10 @@ export const SECCIONES_ZAK: SeccionesVoz = {
     "punto com. El siguiente paso siempre es que el equipo escriba por " +
     "WhatsApp con una demo hecha para el negocio.",
   guion:
+    "Ahora mismo, en UTC, son {{system__time_utc}} — Colombia va 5 horas " +
+    "detrás (UTC-5). Usa ese dato como ancla para saber qué día es hoy y " +
+    "calcular fechas relativas ('mañana', 'el martes', 'en ocho días'); " +
+    "nunca inventes ni asumas qué fecha es.\n\n" +
     "Objetivo de la llamada: despertar interés y dejar acordado que el equipo " +
     "de Zakumi escriba por WhatsApp con una demo. NO cerrar ventas ni cobrar.\n\n" +
     "1) Ya te presentaste como asistente de Zakumi en el saludo. Si " +
@@ -66,9 +70,16 @@ export const SECCIONES_ZAK: SeccionesVoz = {
     "4) Si hay interés: confirma que el equipo le escriba por WhatsApp a este " +
     "mismo número (o pide el número correcto), y pregunta el mejor horario " +
     "para contactarlo.\n" +
-    "5) Si piden hablar con una persona: di que Tomás, del equipo, los " +
+    "5) Si quiere una reunión con el equipo (demo en vivo, no solo el mensaje " +
+    "de WhatsApp): acuerda día y hora concretos. Repítelos en voz alta con el " +
+    "día, el mes y la hora — por ejemplo 'entonces quedamos el martes 3 de " +
+    "septiembre a las 10 de la mañana, ¿le sirve?'. Nunca lo dejes en 'mañana' " +
+    "o 'el jueves' a secas: la fecha completa dicha en voz alta es lo que " +
+    "queda registrado. Si no logran fijar hora, anota cuándo prefiere y sigue " +
+    "sin insistir.\n" +
+    "6) Si piden hablar con una persona: di que Tomás, del equipo, los " +
     "contacta hoy mismo, y asegúrate de tener nombre y número.\n" +
-    "6) Agradece y termina la llamada con end_call. Máximo unos 4 minutos: " +
+    "7) Agradece y termina la llamada con end_call. Máximo unos 4 minutos: " +
     "esta llamada abre la puerta, no la cierra.",
   horarios:
     "El equipo humano de Zakumi responde por WhatsApp de lunes a sábado, de " +
@@ -98,4 +109,36 @@ export const EXTRACCION_ZAK: readonly CampoExtraccion[] = [
     descripcion:
       "Cuándo prefiere que el equipo lo contacte por WhatsApp, tal como lo dijo (ej. 'mañana en la tarde'). Si no dijo, null.",
   },
+  {
+    clave: "cita_fecha_hora",
+    tipo: "string",
+    descripcion:
+      "Si acordaron una reunión con fecha Y hora concretas, devuélvela en formato AAAA-MM-DDTHH:MM en hora de Colombia (ej. 2026-09-03T15:30), " +
+      "calculada a partir de la fecha de hoy ({{system__time_utc}} en UTC, Colombia es UTC-5) — nunca una fecha inventada. " +
+      "Si solo dijo algo vago como 'el jueves por la tarde', devuelve ese texto tal cual. Si no hablaron de reunirse, null.",
+  },
+  {
+    clave: "cita_confirmada",
+    tipo: "boolean",
+    // Hoy es solo informativa: nada en src/lib/solicitudes/entrada.ts la lee
+    // ni la usa para decidir si agenda o no (eso lo decide únicamente si
+    // `cita_fecha_hora` parsea a una fecha válida). Se guarda para que quede
+    // en `llamadas_voz.datos` por si algún día se usa para filtrar.
+    descripcion:
+      "true solo si la persona confirmó explícitamente el día y la hora de la reunión. Si hay duda, null.",
+  },
 ] as const;
+
+/**
+ * Fusiona los campos estándar que le falten a un agente ya creado, sin pisar
+ * lo que se haya escrito a mano. Existe porque EXTRACCION_ZAK solo se aplica
+ * al CREAR el agente (crearAgenteZakVoz) y el de Zak ya existe: sin esto,
+ * añadir un campo estándar no llegaría nunca a producción.
+ */
+export function fusionarExtraccion(
+  actual: readonly CampoExtraccion[],
+  estandar: readonly CampoExtraccion[],
+): CampoExtraccion[] {
+  const claves = new Set(actual.map((c) => c.clave));
+  return [...actual, ...estandar.filter((c) => !claves.has(c.clave))];
+}
