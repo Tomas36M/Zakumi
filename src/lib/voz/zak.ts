@@ -98,4 +98,31 @@ export const EXTRACCION_ZAK: readonly CampoExtraccion[] = [
     descripcion:
       "Cuándo prefiere que el equipo lo contacte por WhatsApp, tal como lo dijo (ej. 'mañana en la tarde'). Si no dijo, null.",
   },
+  {
+    clave: "cita_fecha_hora",
+    tipo: "string",
+    descripcion:
+      "Si acordaron una reunión con fecha Y hora concretas, devuélvela en formato AAAA-MM-DDTHH:MM en hora de Colombia (ej. 2026-09-03T15:30). " +
+      "Si solo dijo algo vago como 'el jueves por la tarde', devuelve ese texto tal cual. Si no hablaron de reunirse, null.",
+  },
+  {
+    clave: "cita_confirmada",
+    tipo: "boolean",
+    descripcion:
+      "true solo si la persona confirmó explícitamente el día y la hora de la reunión. Si hay duda, null.",
+  },
 ] as const;
+
+/**
+ * Fusiona los campos estándar que le falten a un agente ya creado, sin pisar
+ * lo que se haya escrito a mano. Existe porque EXTRACCION_ZAK solo se aplica
+ * al CREAR el agente (crearAgenteZakVoz) y el de Zak ya existe: sin esto,
+ * añadir un campo estándar no llegaría nunca a producción.
+ */
+export function fusionarExtraccion(
+  actual: readonly CampoExtraccion[],
+  estandar: readonly CampoExtraccion[],
+): CampoExtraccion[] {
+  const claves = new Set(actual.map((c) => c.clave));
+  return [...actual, ...estandar.filter((c) => !claves.has(c.clave))];
+}

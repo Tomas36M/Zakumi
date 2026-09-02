@@ -22,6 +22,7 @@ import {
 import {
   CAP_DIARIO_ZAK,
   EXTRACCION_ZAK,
+  fusionarExtraccion,
   NOMBRE_AGENTE_ZAK,
   PRIMER_MENSAJE_ZAK,
   SECCIONES_ZAK,
@@ -779,4 +780,36 @@ export async function lanzarTandaVoz(
 
   revalidarVoz(id);
   return { enviadas: validos.length, invalidos };
+}
+
+/**
+ * Pone al día los campos de extracción del agente de Zak con EXTRACCION_ZAK y
+ * lo re-sincroniza con ElevenLabs. Preserva lo escrito a mano (ver
+ * fusionarExtraccion). Idempotente: correrlo dos veces no cambia nada.
+ */
+export async function ponerAlDiaCamposZak(): Promise<{ error: string | null; anadidos: number }> {
+  const { supabase } = await verifySession();
+
+  const agente = await agenteZakVoz(supabase);
+  if (!agente) return { error: "Zak no tiene voz todavía — créala en /admin/voz.", anadidos: 0 };
+
+  const fusionada = fusionarExtraccion(agente.extraccion, EXTRACCION_ZAK);
+  const anadidos = fusionada.length - agente.extraccion.length;
+
+  if (anadidos > 0) {
+    const { error } = await supabase
+      .from("agentes_voz")
+      .update({ extraccion: fusionada })
+      .eq("id", agente.id);
+    if (error) {
+      console.error("[ponerAlDiaCamposZak] update:", error.message);
+      return { error: "No se pudieron guardar los campos.", anadidos: 0 };
+    }
+  }
+
+  // Sincronizar SIEMPRE, aunque no se haya añadido nada: puede que la fila ya
+  // estuviera al día pero ElevenLabs no.
+  const r = await sincronizarAgenteVoz(agente.id);
+  revalidarVoz(agente.id);
+  return { error: r.error, anadidos };
 }

@@ -44,3 +44,37 @@ describe("la semilla de la voz de Zak", () => {
     expect(CAP_DIARIO_ZAK).toBeLessThanOrEqual(50);
   });
 });
+
+import { fusionarExtraccion, EXTRACCION_ZAK as ZAK } from "../zak";
+
+describe("fusionarExtraccion", () => {
+  it("añade las claves estándar que faltan", () => {
+    const r = fusionarExtraccion([{ clave: "lead_nombre", tipo: "string", descripcion: "x" }], ZAK);
+    expect(r.map((c) => c.clave)).toEqual(expect.arrayContaining(["cita_fecha_hora", "cita_confirmada"]));
+  });
+
+  it("NO pisa lo que Tomás escribió a mano", () => {
+    const mia = { clave: "lead_nombre", tipo: "string" as const, descripcion: "MI TEXTO" };
+    const r = fusionarExtraccion([mia], ZAK);
+    expect(r.find((c) => c.clave === "lead_nombre")?.descripcion).toBe("MI TEXTO");
+  });
+
+  it("conserva los campos propios que no están en el estándar", () => {
+    const propio = { clave: "presupuesto", tipo: "integer" as const, descripcion: "cuánto" };
+    const r = fusionarExtraccion([propio], ZAK);
+    expect(r.some((c) => c.clave === "presupuesto")).toBe(true);
+  });
+
+  it("es idempotente", () => {
+    const una = fusionarExtraccion([], ZAK);
+    expect(fusionarExtraccion(una, ZAK)).toEqual(una);
+  });
+});
+
+describe("EXTRACCION_ZAK", () => {
+  it("trae los campos de cita", () => {
+    const claves = ZAK.map((c) => c.clave);
+    expect(claves).toContain("cita_fecha_hora");
+    expect(claves).toContain("cita_confirmada");
+  });
+});
