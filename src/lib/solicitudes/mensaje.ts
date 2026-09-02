@@ -91,3 +91,35 @@ export function construirAvisoRescate(d: DatosAvisoRescate): string {
 
   return lineas.join("\n");
 }
+
+// ---- Plantillas de Meta (las de utilidad creadas el 2026-09-02 en el WABA) ----
+// Nombres tal cual están en Meta. Las variables van EN EL ORDEN del cuerpo
+// aprobado: cambiar el orden acá sin cambiar la plantilla desordena el aviso.
+export const PLANTILLA_AVISO_SOLICITUD = "aviso_solicitud";
+export const PLANTILLA_AVISO_RESCATE = "aviso_prospecto_perdido";
+
+/** aviso_solicitud: {{1}} canal · {{2}} contacto · {{3}} servicio · {{4}} detalle.
+ *  Un solo hueco para todo lo variable (cita, Meet, lo que pidió, horario), así
+ *  que se concatena con " · " y nunca queda vacío. */
+export function variablesAviso(d: DatosAviso): string[] {
+  const quien = [d.nombre, d.telefono].filter((x) => x).join(" · ") || "sin datos de contacto";
+  const partes: string[] = [];
+  if (d.cita) {
+    partes.push(`📅 ${fechaLegible(d.cita.inicio)}${d.choque ? " ⚠️ choca con otro evento" : ""}`);
+    partes.push(d.meetUrl ? `Meet: ${d.meetUrl}` : "sin link de Meet");
+  } else if (d.citaTextoCrudo) {
+    partes.push(`Quiere agendar: «${d.citaTextoCrudo}», sin fecha clara`);
+  }
+  if (d.detalle) partes.push(`«${d.detalle}»`);
+  if (d.mejorHorario) partes.push(`Prefiere que lo contacten: ${d.mejorHorario}`);
+  return [CANAL[d.origen], quien, d.servicio ?? "por definir", partes.join(" · ") || "sin más detalle"];
+}
+
+/** aviso_prospecto_perdido: {{1}} canal · {{2}} motivo · {{3}} datos capturados. */
+export function variablesAvisoRescate(d: DatosAvisoRescate): string[] {
+  const quien = [d.nombre, d.telefono].filter((x) => x).join(" · ");
+  const datos =
+    [quien, d.detalle ? `«${d.detalle}»` : null].filter((x) => x).join(" · ") ||
+    "sin datos de contacto";
+  return [CANAL[d.origen], MOTIVO_RESCATE[d.motivo], datos];
+}
