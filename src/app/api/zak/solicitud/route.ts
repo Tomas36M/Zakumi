@@ -1,5 +1,6 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
+import { diaBogota } from "@/lib/solicitudes/fecha";
 import { registrarSolicitudEntrante } from "@/lib/solicitudes/entrada";
 import { createSupabaseService } from "@/lib/voz/supabase-service";
 
@@ -53,9 +54,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "sin_configurar" }, { status: 503 });
   }
 
-  // Sin `ref` del bot, la clave de idempotencia se ancla al teléfono y al día:
-  // dos cierres del mismo chat el mismo día son el mismo interés, no dos.
-  const ref = texto(b.ref) ?? `${telefono}:${new Date().toISOString().slice(0, 10)}`;
+  // Sin `ref` del bot, la clave de idempotencia se ancla al teléfono y al día
+  // calendario en Bogotá (no en UTC, donde corre el servidor): dos cierres
+  // del mismo chat el mismo día para la persona son el mismo interés, no dos.
+  const ref = texto(b.ref) ?? `${telefono}:${diaBogota(new Date())}`;
 
   const r = await registrarSolicitudEntrante(supabase, {
     origen: "whatsapp",

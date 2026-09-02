@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parsearCita } from "../fecha";
+import { diaBogota, parsearCita } from "../fecha";
 
 // Todas las pruebas anclan "ahora" para que no caduquen con el tiempo.
 const AHORA = new Date("2026-09-01T15:00:00Z"); // 10:00 en Bogotá
@@ -41,5 +41,17 @@ describe("parsearCita", () => {
     expect(parsearCita("", { ahora: AHORA })).toBeNull();
     expect(parsearCita(null, { ahora: AHORA })).toBeNull();
     expect(parsearCita(42, { ahora: AHORA })).toBeNull();
+  });
+});
+
+describe("diaBogota", () => {
+  it("una fecha UTC que ya rodó de día sigue en el día anterior en Bogotá", () => {
+    // 02:00 UTC del día 2 son las 21:00 del día 1 en Bogotá (UTC-5).
+    expect(diaBogota(new Date("2026-09-02T02:00:00Z"))).toBe("2026-09-01");
+  });
+
+  it("una fecha UTC que no cruzó medianoche da el mismo día en Bogotá", () => {
+    // 15:00 UTC son las 10:00 en Bogotá: mismo día en ambos lados.
+    expect(diaBogota(new Date("2026-09-01T15:00:00Z"))).toBe("2026-09-01");
   });
 });

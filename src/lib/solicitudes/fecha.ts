@@ -13,6 +13,23 @@ export const DURACION_POR_DEFECTO_MIN = 30;
 
 export type Cita = { inicio: string; fin: string };
 
+/** Formateador de una sola vez: `en-CA` da "AAAA-MM-DD" directo, sin tener
+ *  que reordenar partes a mano. */
+const FORMATO_DIA_BOGOTA = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "America/Bogota",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
+/** El día calendario en Bogotá, no en UTC (donde corre el servidor): a las
+ *  19:00 en Bogotá ya es el día siguiente en UTC, y usar `toISOString`
+ *  desalinea cualquier clave de idempotencia anclada "por día" con el día
+ *  que la persona realmente vivió. */
+export function diaBogota(fecha: Date): string {
+  return FORMATO_DIA_BOGOTA.format(fecha);
+}
+
 export function parsearCita(
   crudo: unknown,
   opciones: { ahora?: Date; duracionMin?: number } = {},
