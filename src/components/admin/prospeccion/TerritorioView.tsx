@@ -37,14 +37,17 @@ const ERRORES_BUSQUEDA: Record<string, string> = {
 const ISLA_FLOTANTE =
   "min-[1000px]:absolute min-[1000px]:top-8 min-[1000px]:z-10 min-[1000px]:max-h-[calc(100%-5rem)] min-[1000px]:rounded-isla min-[1000px]:border min-[1000px]:border-hairline min-[1000px]:bg-isla/95 min-[1000px]:p-4 min-[1000px]:backdrop-blur-sm";
 
-/** Un barrido abierto: el id del territorio, las verticales confirmadas y las
- * llamadas que el usuario aprobó al confirmar. El territorio se busca vivo en
- * el array — el prop se renueva en cada router.refresh() del barrido y una
- * copia se quedaría con el contador viejo. */
+/** Un barrido abierto: el id del territorio, las verticales confirmadas, las
+ * llamadas que el usuario aprobó al confirmar, y el margen (`factorTope`) que
+ * ese permiso trae consigo — 2× para la confirmación normal, 1× (sin margen)
+ * para el botón de solo lo gratis. El territorio se busca vivo en el array —
+ * el prop se renueva en cada router.refresh() del barrido y una copia se
+ * quedaría con el contador viejo. */
 export type BarridoAbierto = {
   territorioId: string;
   verticales: string[];
   llamadasAprobadas: number;
+  factorTope: number;
 };
 
 type Props = {
@@ -286,6 +289,7 @@ export function TerritorioView({
             territorio={territorioBarrido}
             verticales={barrido.verticales}
             llamadasAprobadas={barrido.llamadasAprobadas}
+            factorTope={barrido.factorTope}
             fallaTerritorios={fallaTerritorios}
             onAviso={onAvisoBarrido}
             onCerrar={() => onBarrido(null)}
@@ -423,8 +427,8 @@ export function TerritorioView({
           territorio={aEstimar}
           consultasMes={consultasMes}
           onCerrar={() => setAEstimarId(null)}
-          onConfirmar={(verticales, llamadasAprobadas) => {
-            onBarrido({ territorioId: aEstimar.id, verticales, llamadasAprobadas });
+          onConfirmar={(verticales, llamadasAprobadas, factorTope) => {
+            onBarrido({ territorioId: aEstimar.id, verticales, llamadasAprobadas, factorTope });
             setAEstimarId(null);
           }}
         />

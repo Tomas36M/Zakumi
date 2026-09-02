@@ -5,6 +5,8 @@ import {
   poligonoSeCruza,
   PRECIO_POR_LLAMADA_USD,
   CUOTA_GRATIS_MENSUAL,
+  FACTOR_TOPE_APROBADO,
+  FACTOR_TOPE_GRATIS,
   estimarBarrido,
   estadoDeCuota,
   teselar,
@@ -33,9 +35,12 @@ type Props = {
    * no se puede afirmar cuota gratis sobre un dato que no se tiene. */
   consultasMes: number | null;
   onCerrar: () => void;
-  /** `llamadasAprobadas` es la cifra que el usuario está aceptando gastar: el
-   * barrido se frena solo al doblarla en vez de seguir comprando. */
-  onConfirmar: (verticales: string[], llamadasAprobadas: number) => void;
+  /** `llamadasAprobadas` es la cifra que el usuario está aceptando gastar.
+   * `factorTope` decide cuánto margen tiene el barrido antes de frenarse solo
+   * y volver a preguntar: `FACTOR_TOPE_APROBADO` (2×) para la confirmación
+   * normal, `FACTOR_TOPE_GRATIS` (1×, sin margen) para el botón de solo lo
+   * gratis — ese botón promete un tope exacto, no un estimado. */
+  onConfirmar: (verticales: string[], llamadasAprobadas: number, factorTope: number) => void;
 };
 
 const METRICAS_GOOGLE_URL = "https://console.cloud.google.com/google/maps-apis/metrics";
@@ -296,7 +301,9 @@ export function DialogoBarrer({ territorio, consultasMes, onCerrar, onConfirmar 
           <div className="flex flex-wrap justify-end gap-2">
             <Button onClick={onCerrar}>Cancelar</Button>
             {ofrecerGratis && (
-              <Button onClick={() => onConfirmar(slugs, planGratis.length)}>
+              <Button
+                onClick={() => onConfirmar(slugs, planGratis.length, FACTOR_TOPE_GRATIS)}
+              >
                 Barrer las {planGratis.length} gratis
               </Button>
             )}
@@ -304,7 +311,7 @@ export function DialogoBarrer({ territorio, consultasMes, onCerrar, onConfirmar 
               variante="primaria"
               disabled={primarioDeshabilitado}
               aria-describedby={requiereMonto ? "monto-confirmar-ayuda" : undefined}
-              onClick={() => onConfirmar(slugs, tanda.llamadas)}
+              onClick={() => onConfirmar(slugs, tanda.llamadas, FACTOR_TOPE_APROBADO)}
             >
               Barrer y gastar {formatoUsd(tanda.costoUsd)}
             </Button>

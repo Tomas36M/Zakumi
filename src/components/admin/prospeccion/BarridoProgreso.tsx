@@ -2,7 +2,11 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { X } from "lucide-react";
-import { poligonoSeCruza, PRECIO_POR_LLAMADA_USD } from "@/lib/admin/barrido";
+import {
+  poligonoSeCruza,
+  PRECIO_POR_LLAMADA_USD,
+  FACTOR_TOPE_GRATIS,
+} from "@/lib/admin/barrido";
 import { formatoUsd } from "@/lib/admin/formato";
 import type { ResumenBarrido } from "@/lib/admin/plan-barrido";
 import type { Territorio } from "@/lib/admin/territorios";
@@ -40,6 +44,12 @@ type Props = {
   verticales: string[];
   /** Las llamadas que el usuario aceptó gastar al confirmar. */
   llamadasAprobadas: number;
+  /** El margen que trae ese permiso: `FACTOR_TOPE_APROBADO` (2×) para la
+   * confirmación normal, `FACTOR_TOPE_GRATIS` (1×, sin margen) para el botón
+   * de solo lo gratis — ese botón prometió un tope exacto, no un estimado, y
+   * dejarle el mismo margen que al normal lo dejaría comprar pagado sin
+   * volver a preguntar. */
+  factorTope: number;
   /** La consulta de territorios falló: el contador de gasto que trae el prop
    * `territorio` es viejo y no se puede presentar como si estuviera al día. */
   fallaTerritorios: boolean;
@@ -84,11 +94,6 @@ function esCero(r: ResumenBarrido): boolean {
   );
 }
 
-/** Cuánto se puede pasar el barrido de lo aprobado antes de frenarse solo y
- * volver a preguntar. La estimación es un estimado, no un techo: una zona
- * densa se subdivide y multiplica sus llamadas. */
-const FACTOR_TOPE = 2;
-
 /**
  * La barra de un barrido en curso y su resumen al final. Es el único
  * componente que llama a `useBarrido`, y el padre lo monta con
@@ -101,6 +106,7 @@ export function BarridoProgreso({
   territorio,
   verticales,
   llamadasAprobadas,
+  factorTope,
   fallaTerritorios,
   onAviso,
   onCerrar,
@@ -208,7 +214,7 @@ export function BarridoProgreso({
   // ---- El tope de gasto ----------------------------------------------------
   const [ampliaciones, setAmpliaciones] = useState(1);
   /** Lo que concede cada permiso (el inicial y cada "Continuar"). */
-  const otorga = llamadasAprobadas * FACTOR_TOPE;
+  const otorga = llamadasAprobadas * factorTope;
   const tope = otorga * ampliaciones;
 
   useEffect(() => {
@@ -223,6 +229,11 @@ export function BarridoProgreso({
   const termino = arranco && !corriendo && hechos >= total;
   const faltan = Math.max(0, total - hechos);
   const capado = arranco && !corriendo && !termino && tope > 0 && gastadas >= tope;
+  // El botón "solo lo gratis" prometió un tope exacto (factorTope = 1, sin
+  // margen): si se frenó, fue POR ESO, no porque una zona densa sorprendiera
+  // al margen del 2×. El motivo que se explica en el banner de abajo tiene
+  // que ser el correcto, o el usuario desconfía de la próxima cifra que vea.
+  const porCuotaGratis = capado && factorTope === FACTOR_TOPE_GRATIS;
 
   // Reanudar puede ser un no-op silencioso: si los trabajos que faltaban se
   // habían sacado de la cola justo antes del abort, `arrancar` vuelve sin
@@ -382,12 +393,28 @@ export function BarridoProgreso({
           preguntar es gastar plata que no autorizó. */}
       {capado && (
         <Banner variante="error">
-          Aprobaste {llamadasAprobadas} consultas ≈{" "}
-          {formatoUsd(llamadasAprobadas * PRECIO_POR_LLAMADA_USD)} y ya van{" "}
-          <strong>{gastadas}</strong> ≈{" "}
-          <strong>{formatoUsd(gastadas * PRECIO_POR_LLAMADA_USD)}</strong>: hubo más
-          zonas densas de las que cabía suponer y cada una se partió en cuatro. El
-          barrido se frenó solo con {faltan} teselas en la cola — nada se perdió.
+          {porCuotaGratis ? (
+            <>
+              Aprobaste barrer {llamadasAprobadas} consultas gratis ≈{" "}
+              {formatoUsd(llamadasAprobadas * PRECIO_POR_LLAMADA_USD)}, y el
+              barrido se frenó justo ahí — sin margen, porque ese botón
+              prometió que esta tanda no costaba nada. Van{" "}
+              <strong>{gastadas}</strong> emitidas ≈{" "}
+              <strong>{formatoUsd(gastadas * PRECIO_POR_LLAMADA_USD)}</strong>.
+              De aquí en adelante todo lo que sigas barriendo se paga. El
+              barrido se frenó solo con {faltan} teselas en la cola — nada se
+              perdió.
+            </>
+          ) : (
+            <>
+              Aprobaste {llamadasAprobadas} consultas ≈{" "}
+              {formatoUsd(llamadasAprobadas * PRECIO_POR_LLAMADA_USD)} y ya van{" "}
+              <strong>{gastadas}</strong> ≈{" "}
+              <strong>{formatoUsd(gastadas * PRECIO_POR_LLAMADA_USD)}</strong>: hubo más
+              zonas densas de las que cabía suponer y cada una se partió en cuatro. El
+              barrido se frenó solo con {faltan} teselas en la cola — nada se perdió.
+            </>
+          )}
         </Banner>
       )}
 

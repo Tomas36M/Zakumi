@@ -51,6 +51,23 @@ export function estadoDeCuota(consumidas: number): EstadoCuota {
   return { consumidas: usadas, restantes, agotada: restantes === 0 };
 }
 
+/** Cuánto se puede pasar el barrido de lo aprobado antes de frenarse solo y
+ * volver a preguntar (`otorga = llamadasAprobadas * factorTope` en
+ * `BarridoProgreso`). Dos valores, no uno, porque las dos confirmaciones del
+ * diálogo prometen cosas distintas:
+ *
+ * - `FACTOR_TOPE_APROBADO`: la confirmación normal ("Barrer y gastar $X").
+ *   La estimación es un estimado, no un techo — una zona densa se subdivide y
+ *   multiplica sus llamadas — así que se deja margen para que el barrido
+ *   corra sin interrumpirse por cada celda saturada.
+ * - `FACTOR_TOPE_GRATIS`: el botón "Barrer las N gratis" promete que esa
+ *   tanda no cuesta nada. Con el mismo margen de `FACTOR_TOPE_APROBADO` el
+ *   barrido seguiría comprando el DOBLE de lo aprobado —la mitad de eso ya
+ *   pagado— antes de frenarse: el botón mentiría sobre lo que acababa de
+ *   prometer. Este factor es 1: el número que el botón mostró ES el límite. */
+export const FACTOR_TOPE_APROBADO = 2;
+export const FACTOR_TOPE_GRATIS = 1;
+
 /** Margen sobre la estimación base por la subdivisión adaptativa. */
 export const FACTOR_DENSIDAD = 1.4;
 
