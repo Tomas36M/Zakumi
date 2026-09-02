@@ -5,11 +5,12 @@ import {
   poligonoSeCruza,
   PRECIO_POR_LLAMADA_USD,
   CUOTA_GRATIS_MENSUAL,
-  FACTOR_TOPE_APROBADO,
-  FACTOR_TOPE_GRATIS,
   estimarBarrido,
   estadoDeCuota,
+  llamadasCobradas,
+  permisoDeBarrido,
   teselar,
+  type PermisoBarrido,
 } from "@/lib/admin/barrido";
 import { planDeBarrido, recortarACuota } from "@/lib/admin/plan-barrido";
 import { formatoNumero, formatoUsd } from "@/lib/admin/formato";
@@ -35,20 +36,12 @@ type Props = {
    * no se puede afirmar cuota gratis sobre un dato que no se tiene. */
   consultasMes: number | null;
   onCerrar: () => void;
-  /** `llamadasAprobadas` × `factorTope` es el techo de llamadas EMITIDAS que
-   * concede este permiso: al llegar ahí el barrido se frena solo y vuelve a
-   * preguntar. Salen así de los dos caminos del diálogo:
-   *
-   * - **Se paga** (la tanda se pasa de la cuota, o no hay dato de cuota):
-   *   `tanda.llamadas` × `FACTOR_TOPE_APROBADO` (2×). La estimación es un
-   *   estimado, no un techo, y el margen deja correr la subdivisión de zonas
-   *   densas sin interrumpir por cada celda.
-   * - **No se paga** (el botón de solo lo gratis, o la tanda que cabe entera en
-   *   la cuota): lo que QUEDA de cuota × `FACTOR_TOPE_GRATIS` (1×, sin margen).
-   *   Los dos botones prometieron que la tanda no cuesta, así que el techo es
-   *   la línea de lo gratis exacta — con el margen del 2× el barrido cruzaría a
-   *   pagado sin que nadie escribiera un monto. */
-  onConfirmar: (verticales: string[], llamadasAprobadas: number, factorTope: number) => void;
+  /** El permiso viaja entero (`permisoDeBarrido`): lo aprobado, cuántas de esas
+   * llamadas no se pagan, y el techo de emitidas. Los dos botones que confirman
+   * lo arman con la MISMA función, así que el techo se calcula en un solo sitio
+   * — y la banda de progreso recibe el `gratis` que necesita para no valorar a
+   * precio de lista lo que Google no cobra. */
+  onConfirmar: (verticales: string[], permiso: PermisoBarrido) => void;
 };
 
 const METRICAS_GOOGLE_URL = "https://console.cloud.google.com/google/maps-apis/metrics";
@@ -109,16 +102,13 @@ export function DialogoBarrer({ territorio, consultasMes, onCerrar, onConfirmar 
   // plan entero cabe, este botón haría lo mismo que el principal.
   const ofrecerGratis = cuota !== null && planGratis.length > 0 && planGratis.length < plan.length;
 
-  // Sin dato de cuota no se puede afirmar que la tanda cabe entera gratis:
-  // se trata igual que si de verdad se pasara, y se pide el monto escrito.
-  const cabeEntero = cuota !== null && tanda.llamadas <= cuota.restantes;
-  const requiereMonto = pendientes > 0 && !cabeEntero;
-
-  // Las consultas de esta tanda que Google SÍ va a cobrar: las que no caben en
-  // lo que queda de cuota. Sin dato de cuota se cobran todas — no se puede
+  // El permiso de esta tanda: lo aprobado, lo que no se paga y el techo de
+  // emitidas. Sin dato de cuota (`gratis: 0`) se cobra todo — no se puede
   // descontar de un número que no se tiene.
-  const llamadasPagadas =
-    cuota === null ? tanda.llamadas : tanda.llamadas - planGratis.length;
+  const permiso = permisoDeBarrido(tanda.llamadas, cuota === null ? null : cuota.restantes);
+  // Las consultas de esta tanda que Google SÍ va a cobrar.
+  const llamadasPagadas = llamadasCobradas(tanda.llamadas, permiso.gratis);
+  const requiereMonto = pendientes > 0 && llamadasPagadas > 0;
   /** El monto de esta tanda, UNA sola vez. De acá salen a la vez el rótulo del
    * botón, la línea de gratis/pagado y lo que hay que teclear: si el botón y la
    * comprobación se calcularan por separado, el día que una cambie el campo
@@ -269,9 +259,12 @@ export function DialogoBarrer({ territorio, consultasMes, onCerrar, onConfirmar 
             densa multiplica sus llamadas. En densidad típica esto termina cerca
             de {formatoUsd(tanda.costoMaxUsd)}; en un centro muy denso, bastante
             más.{" "}
-            {cabeEntero
+            {/* El techo es lo gratis que queda + el doble de lo que se paga, así
+                que la frase cambia según qué mitad manda: sin nada pagado, el
+                freno es la línea del gratis. */}
+            {llamadasPagadas === 0
               ? "El barrido se frena solo al llegar al final de la cuota gratis y te vuelve a preguntar."
-              : "El barrido se frena solo al doblar lo aprobado y te vuelve a preguntar."}
+              : "El barrido se frena solo al doblar las consultas que se pagan y te vuelve a preguntar."}
           </p>
           <p className="mt-2 border-t border-hairline pt-2 text-tinta-40">
             Barrer solo le pregunta a Google qué negocios hay y los guarda acá.
@@ -387,29 +380,30 @@ export function DialogoBarrer({ territorio, consultasMes, onCerrar, onConfirmar 
             <Button onClick={onCerrar}>Cancelar</Button>
             {ofrecerGratis && (
               <Button
-                onClick={() => onConfirmar(slugs, planGratis.length, FACTOR_TOPE_GRATIS)}
+                onClick={() =>
+                  // `cuota` no es null: `ofrecerGratis` ya lo exige. El permiso
+                  // sale de la misma función que el del botón principal, y como
+                  // el recorte nunca se pasa de `restantes`, no lleva llamadas
+                  // cobradas: su techo es la línea del gratis, sin margen.
+                  onConfirmar(
+                    slugs,
+                    permisoDeBarrido(planGratis.length, cuota?.restantes ?? null),
+                  )
+                }
               >
                 Barrer las {formatoNumero(planGratis.length)} gratis
               </Button>
             )}
-            {/* Cuando la tanda cabe entera en la cuota NO se pide monto escrito
-                —correcto, no cuesta— pero con el tope de 2× la subdivisión de
-                zonas densas podía llevar el barrido muy por encima de la línea
-                de lo gratis: 700 pendientes con 1.000 libres llegaban a 1.400
-                emitidas, 400 facturadas ≈ US$14, sin que nadie escribiera un
-                monto en ninguna parte. El permiso que se concede es entonces
-                "hasta el final de lo gratis" (`cuota.restantes` × 1): el
-                barrido frena en la línea y vuelve a preguntar, que es el flujo
-                diseñado, en vez de cruzarla en silencio. */}
+            {/* Un solo permiso, calculado por `permisoDeBarrido`: el techo sale
+                del gratis que queda más el doble de lo que se paga. Sin ramas
+                acá, porque las dos que había —la tanda gratis y la de pago— son
+                la misma fórmula con y sin llamadas cobradas, y dos fórmulas
+                para lo mismo terminan divergiendo. */}
             <Button
               variante="primaria"
               disabled={primarioDeshabilitado}
               aria-describedby={requiereMonto ? "monto-confirmar-ayuda" : undefined}
-              onClick={() =>
-                cabeEntero && cuota !== null
-                  ? onConfirmar(slugs, cuota.restantes, FACTOR_TOPE_GRATIS)
-                  : onConfirmar(slugs, tanda.llamadas, FACTOR_TOPE_APROBADO)
-              }
+              onClick={() => onConfirmar(slugs, permiso)}
             >
               {pendientes === 0
                 ? "Barrer"

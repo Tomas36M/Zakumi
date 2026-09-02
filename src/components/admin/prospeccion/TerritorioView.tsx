@@ -6,7 +6,7 @@ import { ChevronDown, ChevronRight } from "lucide-react";
 import { importarNegocios } from "@/lib/admin/actions";
 import type { Negocio } from "@/lib/admin/negocios";
 import type { ResultadoPlace } from "@/lib/admin/places";
-import type { Punto } from "@/lib/admin/barrido";
+import type { PermisoBarrido, Punto } from "@/lib/admin/barrido";
 import { VERTICES_MAX, type Territorio } from "@/lib/admin/territorios";
 import { cn } from "@/lib/cn";
 import { Button } from "@/components/admin/ui/Button";
@@ -37,17 +37,15 @@ const ERRORES_BUSQUEDA: Record<string, string> = {
 const ISLA_FLOTANTE =
   "min-[1000px]:absolute min-[1000px]:top-8 min-[1000px]:z-10 min-[1000px]:max-h-[calc(100%-5rem)] min-[1000px]:rounded-isla min-[1000px]:border min-[1000px]:border-hairline min-[1000px]:bg-isla/95 min-[1000px]:p-4 min-[1000px]:backdrop-blur-sm";
 
-/** Un barrido abierto: el id del territorio, las verticales confirmadas, las
- * llamadas que el usuario aprobó al confirmar, y el margen (`factorTope`) que
- * ese permiso trae consigo — 2× para la confirmación normal, 1× (sin margen)
- * para el botón de solo lo gratis. El territorio se busca vivo en el array —
- * el prop se renueva en cada router.refresh() del barrido y una copia se
- * quedaría con el contador viejo. */
+/** Un barrido abierto: el id del territorio, las verticales confirmadas y el
+ * permiso de gasto que se concedió al confirmar (lo aprobado, cuánto de eso no
+ * se paga y el techo de llamadas emitidas). El territorio se busca vivo en el
+ * array — el prop se renueva en cada router.refresh() del barrido y una copia
+ * se quedaría con el contador viejo. */
 export type BarridoAbierto = {
   territorioId: string;
   verticales: string[];
-  llamadasAprobadas: number;
-  factorTope: number;
+  permiso: PermisoBarrido;
 };
 
 type Props = {
@@ -288,8 +286,7 @@ export function TerritorioView({
             key={territorioBarrido.id}
             territorio={territorioBarrido}
             verticales={barrido.verticales}
-            llamadasAprobadas={barrido.llamadasAprobadas}
-            factorTope={barrido.factorTope}
+            permiso={barrido.permiso}
             fallaTerritorios={fallaTerritorios}
             onAviso={onAvisoBarrido}
             onCerrar={() => onBarrido(null)}
@@ -427,8 +424,8 @@ export function TerritorioView({
           territorio={aEstimar}
           consultasMes={consultasMes}
           onCerrar={() => setAEstimarId(null)}
-          onConfirmar={(verticales, llamadasAprobadas, factorTope) => {
-            onBarrido({ territorioId: aEstimar.id, verticales, llamadasAprobadas, factorTope });
+          onConfirmar={(verticales, permiso) => {
+            onBarrido({ territorioId: aEstimar.id, verticales, permiso });
             setAEstimarId(null);
           }}
         />

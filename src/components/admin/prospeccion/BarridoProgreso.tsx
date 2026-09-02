@@ -5,7 +5,8 @@ import { X } from "lucide-react";
 import {
   poligonoSeCruza,
   PRECIO_POR_LLAMADA_USD,
-  FACTOR_TOPE_GRATIS,
+  llamadasCobradas,
+  type PermisoBarrido,
 } from "@/lib/admin/barrido";
 import { formatoNumero, formatoUsd } from "@/lib/admin/formato";
 import type { ResumenBarrido } from "@/lib/admin/plan-barrido";
@@ -43,18 +44,13 @@ type Props = {
   territorio: Territorio;
   /** Las verticales que se confirmaron en el diálogo de estimación. */
   verticales: string[];
-  /** La base del permiso: las llamadas que el usuario aceptó al confirmar si la
-   * tanda se paga, o lo que quedaba de cuota gratis si no. */
-  llamadasAprobadas: number;
-  /** El margen que trae ese permiso: `FACTOR_TOPE_APROBADO` (2×) para la
-   * confirmación que se paga, `FACTOR_TOPE_GRATIS` (1×, sin margen) para los
-   * dos caminos que prometieron gratis (el botón de solo lo gratis y la tanda
-   * que cabía entera en la cuota) — ahí el techo es la línea exacta de lo
-   * gratis, y dejarles el mismo margen que al normal los dejaría comprar
-   * pagado sin volver a preguntar. También es la señal de que la continuación
-   * pide monto escrito: se llegó a esta pausa desde un botón que decía que no
-   * costaba nada. */
-  factorTope: number;
+  /** Lo que se aprobó en el diálogo: las llamadas de la tanda, cuántas de las
+   * emitidas no se pagan (`gratis`, lo que quedaba de cuota; 0 si no se pudo
+   * leer) y el techo de emitidas. `gratis` es lo que le permite a esta banda
+   * decir cuánto se ha COBRADO en vez de valorar a precio de lista llamadas
+   * que Google regala — y `llamadas <= gratis` es la señal de que se llegó
+   * hasta acá desde un botón que decía que no costaba nada. */
+  permiso: PermisoBarrido;
   /** La consulta de territorios falló: el contador de gasto que trae el prop
    * `territorio` es viejo y no se puede presentar como si estuviera al día. */
   fallaTerritorios: boolean;
@@ -110,8 +106,7 @@ function esCero(r: ResumenBarrido): boolean {
 export function BarridoProgreso({
   territorio,
   verticales,
-  llamadasAprobadas,
-  factorTope,
+  permiso,
   fallaTerritorios,
   onAviso,
   onCerrar,
@@ -218,9 +213,18 @@ export function BarridoProgreso({
 
   // ---- El tope de gasto ----------------------------------------------------
   const [ampliaciones, setAmpliaciones] = useState(1);
-  /** Lo que concede cada permiso (el inicial y cada "Continuar"). */
-  const otorga = llamadasAprobadas * factorTope;
+  /** Lo que concede cada permiso (el inicial y cada "Continuar"). Lo calculó
+   * `permisoDeBarrido` en el diálogo: lo gratis que quedaba más el doble de lo
+   * que se paga. */
+  const otorga = permiso.tope;
   const tope = otorga * ampliaciones;
+  /** De todo lo emitido, lo que Google COBRA. Las llamadas que caben en la
+   * cuota no valen dinero, y valorarlas a precio de lista era volver a pintar
+   * en rojo el "US$ 42,00" que originó esta rama — encima de un barrido al que
+   * se llegó por un botón que decía "gratis". `permiso.gratis` es la foto del
+   * momento en que se confirmó: si otra cosa consumió cuota mientras tanto,
+   * esto se queda corto, como todo lo que sale del conteo propio. */
+  const cobradas = llamadasCobradas(gastadas, permiso.gratis);
 
   useEffect(() => {
     // Frenar es exactamente lo que hace una cuota de Google: los workers paran,
@@ -234,12 +238,12 @@ export function BarridoProgreso({
   const termino = arranco && !corriendo && hechos >= total;
   const faltan = Math.max(0, total - hechos);
   const capado = arranco && !corriendo && !termino && tope > 0 && gastadas >= tope;
-  // Los dos botones que prometen "gratis" conceden un tope exacto (factorTope =
-  // 1, sin margen): si se frenó, fue POR llegar al final de la cuota, no porque
-  // una zona densa sorprendiera al margen del 2×. El motivo que se explica en
-  // el banner de abajo tiene que ser el correcto, o el usuario desconfía de la
-  // próxima cifra que vea.
-  const arrancoGratis = factorTope === FACTOR_TOPE_GRATIS;
+  // El diálogo no cobró nada por esta tanda: se llegó hasta acá desde un botón
+  // que decía "gratis", sin escribir ningún monto. Entonces el techo era la
+  // línea de la cuota, así que si se frenó fue POR llegar ahí y no porque una
+  // zona densa sorprendiera al margen del 2×. El motivo que explica el banner
+  // tiene que ser el correcto, o el usuario desconfía de la próxima cifra.
+  const arrancoGratis = llamadasCobradas(permiso.llamadas, permiso.gratis) === 0;
   const porCuotaGratis = capado && arrancoGratis;
 
   // ---- El peaje escrito de la continuación ---------------------------------
@@ -252,6 +256,8 @@ export function BarridoProgreso({
   // peso que se gasta no lo ha confirmado nadie. Solo en ese caso se pide el
   // monto, y sale de la MISMA cifra que rotula el botón.
   const [escritoContinuar, setEscritoContinuar] = useState("");
+  // El tramo siguiente se paga ENTERO: `capado` implica que lo emitido ya llegó
+  // al techo, y el techo nunca es menor que la cuota gratis del permiso.
   const montoContinuar = formatoUsd(otorga * PRECIO_POR_LLAMADA_USD);
   const coincideContinuar =
     escritoContinuar.replace(/[^\d.,]/g, "") === montoContinuar.replace(/[^\d.,]/g, "");
@@ -379,8 +385,9 @@ export function BarridoProgreso({
               // esta sesión.
               <span className="text-peligro">
                 el contador del territorio no se pudo refrescar; en esta sesión
-                van {gastadas} consultas ≈{" "}
-                {formatoUsd(gastadas * PRECIO_POR_LLAMADA_USD)}
+                van {formatoNumero(gastadas)} consultas emitidas,{" "}
+                {formatoNumero(cobradas)} de pago ≈{" "}
+                {formatoUsd(cobradas * PRECIO_POR_LLAMADA_USD)}
               </span>
             ) : (
               <>
@@ -419,29 +426,46 @@ export function BarridoProgreso({
       {capado && (
         <Banner variante="error">
           {porCuotaGratis ? (
-            // "Justo ahí, sin margen" era más rotundo que el mecanismo: las
-            // llamadas se cuentan ANTES de salir y el tope se mira en un
-            // render, así que las que ya iban en vuelo (hasta CONCURRENCIA)
-            // aterrizan pasada la línea. `gastadas` las incluye — el número no
-            // miente, la frase sí lo hacía.
+            // Acá NO se valoran las emitidas a precio de lista: se llegó a esta
+            // pantalla por un botón que decía "gratis", y un "≈ US$ 35,00" en
+            // rojo encima de llamadas que Google regala es exactamente el susto
+            // que originó esta rama. Se dice lo emitido (consultas) y, aparte,
+            // lo cobrado (plata). Tampoco se promete que frenó "en la línea":
+            // eso solo vale en el primer tramo, porque cada "Continuar" corre
+            // el techo (`tope = otorga * ampliaciones`). Y las llamadas que ya
+            // iban en vuelo cuando se tocó el tope aterrizan pasadas: se
+            // cuentan ANTES de salir y el techo se mira en un render.
             <>
-              Este barrido arrancó dentro de lo gratis y llegó al final de la
-              cuota: {formatoNumero(llamadasAprobadas)} consultas ≈{" "}
-              {formatoUsd(llamadasAprobadas * PRECIO_POR_LLAMADA_USD)} era todo
-              lo que quedaba libre este mes, y el barrido se frenó al tocar esa
-              línea — sin margen añadido, aunque las llamadas que ya iban en
-              vuelo alcanzan a pasarse por unas pocas. Van{" "}
-              <strong>{formatoNumero(gastadas)}</strong> emitidas ≈{" "}
-              <strong>{formatoUsd(gastadas * PRECIO_POR_LLAMADA_USD)}</strong>.
+              Este barrido arrancó dentro de lo gratis: las{" "}
+              {formatoNumero(permiso.gratis)} consultas que quedaban libres este
+              mes. Van <strong>{formatoNumero(gastadas)}</strong> emitidas y se
+              frenó acá para volver a preguntar — las que ya iban en vuelo
+              alcanzan a pasarse por unas pocas.{" "}
+              {cobradas === 0 ? (
+                <>Ninguna se ha cobrado todavía.</>
+              ) : (
+                <>
+                  De esas, <strong>{formatoNumero(cobradas)}</strong> ya se
+                  pagan ≈{" "}
+                  <strong>{formatoUsd(cobradas * PRECIO_POR_LLAMADA_USD)}</strong>.
+                </>
+              )}{" "}
               De aquí en adelante todo lo que sigas barriendo se paga. Quedan{" "}
               {formatoNumero(faltan)} teselas en la cola — nada se perdió.
             </>
           ) : (
+            // Lo aprobado también se valora por lo que se COBRA: con 699 gratis
+            // y una tanda de 700, el usuario escribió US$ 0,04 en el diálogo y
+            // este banner tiene que decir ese mismo número, no US$ 24,50.
             <>
-              Aprobaste {formatoNumero(llamadasAprobadas)} consultas ≈{" "}
-              {formatoUsd(llamadasAprobadas * PRECIO_POR_LLAMADA_USD)} y ya van{" "}
-              <strong>{formatoNumero(gastadas)}</strong> ≈{" "}
-              <strong>{formatoUsd(gastadas * PRECIO_POR_LLAMADA_USD)}</strong>: hubo más
+              Aprobaste {formatoNumero(permiso.llamadas)} consultas ≈{" "}
+              {formatoUsd(
+                llamadasCobradas(permiso.llamadas, permiso.gratis) *
+                  PRECIO_POR_LLAMADA_USD,
+              )}{" "}
+              y ya van <strong>{formatoNumero(gastadas)}</strong> emitidas,{" "}
+              <strong>{formatoNumero(cobradas)}</strong> de pago ≈{" "}
+              <strong>{formatoUsd(cobradas * PRECIO_POR_LLAMADA_USD)}</strong>: hubo más
               zonas densas de las que cabía suponer y cada una se partió en cuatro. El
               barrido se frenó solo con {formatoNumero(faltan)} teselas en la cola — nada
               se perdió.

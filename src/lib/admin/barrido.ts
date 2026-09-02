@@ -51,22 +51,71 @@ export function estadoDeCuota(consumidas: number): EstadoCuota {
   return { consumidas: usadas, restantes, agotada: restantes === 0 };
 }
 
-/** Cuánto se puede pasar el barrido de lo aprobado antes de frenarse solo y
- * volver a preguntar (`otorga = llamadasAprobadas * factorTope` en
- * `BarridoProgreso`). Dos valores, no uno, porque las dos confirmaciones del
- * diálogo prometen cosas distintas:
+/** El margen que se le deja al barrido POR ENCIMA de lo que se aprobó, antes de
+ * frenarse solo y volver a preguntar. Existe porque la estimación es un
+ * estimado y no un techo: una zona densa se subdivide y multiplica sus
+ * llamadas, y sin margen el barrido se interrumpiría en cada celda saturada.
  *
- * - `FACTOR_TOPE_APROBADO`: la confirmación normal ("Barrer y gastar $X").
- *   La estimación es un estimado, no un techo — una zona densa se subdivide y
- *   multiplica sus llamadas — así que se deja margen para que el barrido
- *   corra sin interrumpirse por cada celda saturada.
- * - `FACTOR_TOPE_GRATIS`: el botón "Barrer las N gratis" promete que esa
- *   tanda no cuesta nada. Con el mismo margen de `FACTOR_TOPE_APROBADO` el
- *   barrido seguiría comprando el DOBLE de lo aprobado —la mitad de eso ya
- *   pagado— antes de frenarse: el botón mentiría sobre lo que acababa de
- *   prometer. Este factor es 1: el número que el botón mostró ES el límite. */
+ * Multiplica SOLO las llamadas que se pagan (ver `permisoDeBarrido`). Aplicarlo
+ * a la tanda entera fue el bug de la primera ronda de arreglos: con 699 gratis
+ * restantes y una tanda de 700, el usuario escribía US$ 0,04 y el permiso
+ * autorizaba 1.400 emitidas ≈ US$ 24,54. El margen tiene que ser proporcional a
+ * la plata aprobada, nunca a la parte gratis. */
 export const FACTOR_TOPE_APROBADO = 2;
-export const FACTOR_TOPE_GRATIS = 1;
+
+/** El permiso de gasto que concede una confirmación del diálogo. Viaja entero
+ * hasta `BarridoProgreso`: los tres números tienen que llegar juntos o los
+ * contadores de la banda vuelven a valorar a precio de lista lo que es gratis. */
+export type PermisoBarrido = {
+  /** Las llamadas de la tanda que el usuario aprobó. */
+  llamadas: number;
+  /** Cuántas de las llamadas EMITIDAS no se pagan: lo que quedaba de cuota
+   * gratis cuando se concedió el permiso. Cero cuando no se pudo leer el
+   * consumo del mes — sin dato no se afirma que algo sea gratis. */
+  gratis: number;
+  /** Techo de llamadas emitidas. Al llegar, el barrido se frena y vuelve a
+   * preguntar. */
+  tope: number;
+};
+
+/** De unas llamadas emitidas, cuántas se cobran: las que no cabían en lo
+ * gratis. Es la única aritmética que convierte "consultas" en "plata" — el
+ * precio de lista de una llamada gratis no es un costo. */
+export function llamadasCobradas(emitidas: number, gratis: number): number {
+  const hechas = Number.isFinite(emitidas) && emitidas > 0 ? Math.floor(emitidas) : 0;
+  const libres = Number.isFinite(gratis) && gratis > 0 ? Math.floor(gratis) : 0;
+  return Math.max(0, hechas - libres);
+}
+
+/** El permiso que concede aprobar una tanda de `llamadas`, sabiendo que quedan
+ * `restantes` consultas gratis este mes (`null` = no se pudo leer el consumo).
+ *
+ * El techo es **toda la cuota gratis que queda, más el doble de las llamadas
+ * que se pagan**. Las dos mitades responden a cosas distintas: cruzar la línea
+ * de lo gratis exige una confirmación escrita (la pide el diálogo), así que
+ * ahí el barrido tiene que frenarse; por encima de esa línea el usuario ya
+ * autorizó un gasto y lo que hace falta es margen para la subdivisión.
+ *
+ * Casos que caen solos de esa fórmula, sin ramas especiales:
+ * - La tanda cabe entera en lo gratis ⇒ cero pagadas ⇒ el techo es `restantes`:
+ *   el barrido frena en la línea del gratis y ofrece continuar.
+ * - No queda nada gratis (o no se pudo leer el consumo) ⇒ todas se pagan ⇒ el
+ *   techo es `llamadas × FACTOR_TOPE_APROBADO`, como siempre.
+ * - `restantes` sin usar (una tanda chica con la cuota casi entera libre) deja
+ *   igualmente todo el gratis disponible: la subdivisión puede gastarlo sin
+ *   pedir permiso porque no cuesta. */
+export function permisoDeBarrido(
+  llamadas: number,
+  restantes: number | null,
+): PermisoBarrido {
+  const pedidas = Number.isFinite(llamadas) && llamadas > 0 ? Math.floor(llamadas) : 0;
+  const gratis =
+    restantes !== null && Number.isFinite(restantes) && restantes > 0
+      ? Math.floor(restantes)
+      : 0;
+  const pagadas = llamadasCobradas(pedidas, gratis);
+  return { llamadas: pedidas, gratis, tope: gratis + pagadas * FACTOR_TOPE_APROBADO };
+}
 
 /** Margen sobre la estimación base por la subdivisión adaptativa. */
 export const FACTOR_DENSIDAD = 1.4;
