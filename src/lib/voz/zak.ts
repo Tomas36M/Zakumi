@@ -54,6 +54,10 @@ export const SECCIONES_ZAK: SeccionesVoz = {
     "punto com. El siguiente paso siempre es que el equipo escriba por " +
     "WhatsApp con una demo hecha para el negocio.",
   guion:
+    "Ahora mismo, en UTC, son {{system__time_utc}} — Colombia va 5 horas " +
+    "detrás (UTC-5). Usa ese dato como ancla para saber qué día es hoy y " +
+    "calcular fechas relativas ('mañana', 'el martes', 'en ocho días'); " +
+    "nunca inventes ni asumas qué fecha es.\n\n" +
     "Objetivo de la llamada: despertar interés y dejar acordado que el equipo " +
     "de Zakumi escriba por WhatsApp con una demo. NO cerrar ventas ni cobrar.\n\n" +
     "1) Ya te presentaste como asistente de Zakumi en el saludo. Si " +
@@ -109,12 +113,17 @@ export const EXTRACCION_ZAK: readonly CampoExtraccion[] = [
     clave: "cita_fecha_hora",
     tipo: "string",
     descripcion:
-      "Si acordaron una reunión con fecha Y hora concretas, devuélvela en formato AAAA-MM-DDTHH:MM en hora de Colombia (ej. 2026-09-03T15:30). " +
+      "Si acordaron una reunión con fecha Y hora concretas, devuélvela en formato AAAA-MM-DDTHH:MM en hora de Colombia (ej. 2026-09-03T15:30), " +
+      "calculada a partir de la fecha de hoy ({{system__time_utc}} en UTC, Colombia es UTC-5) — nunca una fecha inventada. " +
       "Si solo dijo algo vago como 'el jueves por la tarde', devuelve ese texto tal cual. Si no hablaron de reunirse, null.",
   },
   {
     clave: "cita_confirmada",
     tipo: "boolean",
+    // Hoy es solo informativa: nada en src/lib/solicitudes/entrada.ts la lee
+    // ni la usa para decidir si agenda o no (eso lo decide únicamente si
+    // `cita_fecha_hora` parsea a una fecha válida). Se guarda para que quede
+    // en `llamadas_voz.datos` por si algún día se usa para filtrar.
     descripcion:
       "true solo si la persona confirmó explícitamente el día y la hora de la reunión. Si hay duda, null.",
   },
