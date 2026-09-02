@@ -10,11 +10,20 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { servicioDelSlug, slugDeInteres } from "@/lib/catalogo";
-import { avisarAdmin } from "@/lib/portal/avisos";
+import { avisarAdmin, type PlantillaAviso } from "@/lib/portal/avisos";
 import { calendarioGoogle } from "@/lib/agenda/google";
 import type { Calendario } from "@/lib/agenda/tipos";
 import { parsearCita, type Cita } from "./fecha";
-import { construirAviso, construirAvisoRescate } from "./mensaje";
+import {
+  construirAviso,
+  construirAvisoRescate,
+  PLANTILLA_AVISO_RESCATE,
+  PLANTILLA_AVISO_SOLICITUD,
+  variablesAviso,
+  variablesAvisoRescate,
+  type DatosAviso,
+  type DatosAvisoRescate,
+} from "./mensaje";
 
 // Topes de los textos libres que llegan por el endpoint público del bot (le
 // aceptamos lo que nos manden, así que hay que acotarlo antes de guardarlo):
@@ -54,7 +63,7 @@ export type ResultadoEntrada =
 export type DepsEntrada = {
   /** null = sin Google configurado. La fase 1 corre así a propósito. */
   calendario?: Calendario | null;
-  avisar?: (texto: string) => Promise<void>;
+  avisar?: (texto: string, plantilla?: PlantillaAviso) => Promise<void>;
   ahora?: Date;
 };
 
@@ -73,12 +82,13 @@ function limpio(v: unknown, tope = 2000): string | null {
  *  try/catch, mismo `avisar` inyectable. Se factoriza porque hacen falta dos
  *  veces (sin teléfono, insert fallido) además de la vez del camino feliz. */
 async function avisarSeguro(
-  avisar: (texto: string) => Promise<void>,
+  avisar: (texto: string, plantilla?: PlantillaAviso) => Promise<void>,
   texto: string,
   contexto: string,
+  plantilla?: PlantillaAviso,
 ): Promise<void> {
   try {
-    await avisar(texto);
+    await avisar(texto, plantilla);
   } catch (e) {
     console.error(`[solicitud entrante] aviso (${contexto}):`, e);
   }
@@ -101,11 +111,17 @@ export async function registrarSolicitudEntrante(
   // aviso de rescate lleva lo poco que sí se supo de él.
   if (!telefono) {
     console.error("[solicitud entrante] sin teléfono de contacto:", entrada.claveOrigen);
-    await avisarSeguro(
-      avisar,
-      construirAvisoRescate({ origen: entrada.origen, motivo: "sin_contacto", nombre, telefono: null, detalle }),
-      "sin contacto",
-    );
+    const rescate: DatosAvisoRescate = {
+      origen: entrada.origen,
+      motivo: "sin_contacto",
+      nombre,
+      telefono: null,
+      detalle,
+    };
+    await avisarSeguro(avisar, construirAvisoRescate(rescate), "sin contacto", {
+      nombre: PLANTILLA_AVISO_RESCATE,
+      variables: variablesAvisoRescate(rescate),
+    });
     return { estado: "error", motivo: "sin_contacto" };
   }
 
@@ -149,11 +165,11 @@ export async function registrarSolicitudEntrante(
     console.error("[solicitud entrante] insert:", error.message);
     // La fila no quedó, pero el prospecto sí existió: mismo aviso de rescate
     // que cuando falta el teléfono, para que se pueda recuperar a mano.
-    await avisarSeguro(
-      avisar,
-      construirAvisoRescate({ origen: entrada.origen, motivo: "db", nombre, telefono, detalle }),
-      "insert fallido",
-    );
+    const rescate: DatosAvisoRescate = { origen: entrada.origen, motivo: "db", nombre, telefono, detalle };
+    await avisarSeguro(avisar, construirAvisoRescate(rescate), "insert fallido", {
+      nombre: PLANTILLA_AVISO_RESCATE,
+      variables: variablesAvisoRescate(rescate),
+    });
     return { estado: "error", motivo: "db" };
   }
   const solicitudId = String((data as { id: string }).id);
@@ -221,23 +237,23 @@ export async function registrarSolicitudEntrante(
   // garantiza aquí) reviente no puede borrar que la solicitud (y su cita, si
   // la hubo) ya quedaron en pie. `avisarSeguro` es el mismo try/catch que
   // usan los dos avisos de rescate de arriba.
-  await avisarSeguro(
-    avisar,
-    construirAviso({
-      origen: entrada.origen,
-      nombre,
-      telefono,
-      servicio: servicioDelSlug(slug)?.nombre ?? null,
-      detalle,
-      mejorHorario: limpio(entrada.mejorHorario),
-      cita,
-      citaTextoCrudo: cita ? null : citaCrudaTexto,
-      meetUrl,
-      choque,
-      urlPanel: urlPanel(),
-    }),
-    "normal",
-  );
+  const datosAviso: DatosAviso = {
+    origen: entrada.origen,
+    nombre,
+    telefono,
+    servicio: servicioDelSlug(slug)?.nombre ?? null,
+    detalle,
+    mejorHorario: limpio(entrada.mejorHorario),
+    cita,
+    citaTextoCrudo: cita ? null : citaCrudaTexto,
+    meetUrl,
+    choque,
+    urlPanel: urlPanel(),
+  };
+  await avisarSeguro(avisar, construirAviso(datosAviso), "normal", {
+    nombre: PLANTILLA_AVISO_SOLICITUD,
+    variables: variablesAviso(datosAviso),
+  });
 
   return { estado: "creada", solicitudId, agendada };
 }

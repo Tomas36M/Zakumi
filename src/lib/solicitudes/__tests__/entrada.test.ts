@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import { registrarSolicitudEntrante, type EntradaSolicitud } from "../entrada";
 import type { Calendario } from "@/lib/agenda/tipos";
+import type { PlantillaAviso } from "@/lib/portal/avisos";
+
+type Avisar = (texto: string, plantilla?: PlantillaAviso) => Promise<void>;
 
 const AHORA = new Date("2026-09-01T15:00:00Z");
 
@@ -69,7 +72,7 @@ const calendarioOk: Calendario = {
 describe("registrarSolicitudEntrante", () => {
   it("inserta la solicitud con el slug del catálogo y avisa", async () => {
     const { cliente, insertado } = supabaseFalso();
-    const avisar = vi.fn<(texto: string) => Promise<void>>(async () => {});
+    const avisar = vi.fn<Avisar>(async () => {});
 
     const r = await registrarSolicitudEntrante(cliente, BASE, { avisar, calendario: null, ahora: AHORA });
 
@@ -86,6 +89,10 @@ describe("registrarSolicitudEntrante", () => {
     });
     expect(avisar).toHaveBeenCalledOnce();
     expect(avisar.mock.calls[0][0]).toContain("María");
+    // El aviso viaja con su plantilla de Meta: fuera de la ventana de 24h el
+    // texto libre no llega (error 131047), la plantilla sí.
+    expect(avisar.mock.calls[0][1]).toMatchObject({ nombre: "aviso_solicitud" });
+    expect(avisar.mock.calls[0][1]?.variables[1]).toContain("María");
   });
 
   it("agenda y guarda el Meet cuando la fecha es buena", async () => {
@@ -293,6 +300,7 @@ describe("registrarSolicitudEntrante", () => {
     expect(avisar).toHaveBeenCalledOnce();
     expect(avisar.mock.calls[0][0]).toContain("NO quedó en la bandeja");
     expect(avisar.mock.calls[0][0]).toContain("María");
+    expect((avisar.mock.calls[0] as unknown[])[1]).toMatchObject({ nombre: "aviso_prospecto_perdido" });
   });
 
   it("un detalle de más de 2000 caracteres llega truncado (lo exige el check de mensaje)", async () => {
