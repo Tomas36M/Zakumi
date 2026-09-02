@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   CUOTA_GRATIS_MENSUAL,
+  continuacionPideMonto,
   estadoDeCuota,
   llamadasCobradas,
+  pagadasConfirmadas,
   permisoDeBarrido,
   restanteDeCuota,
 } from "../barrido";
@@ -121,5 +123,49 @@ describe("permisoDeBarrido", () => {
       gratis: 0,
       tope: 600,
     });
+  });
+});
+
+describe("continuacionPideMonto", () => {
+  // Los tres caminos que llegan a la pausa, con la cuota mensual de 1.000.
+  const gratisEntero = permisoDeBarrido(700, 1_000); // tope 1.000, 0 de pago
+  const pagoEntero = permisoDeBarrido(500, 0); // tope 1.000, 1.000 de pago
+  const mixto = permisoDeBarrido(700, 699); // tope 701, 2 de pago
+
+  it("el barrido que arrancó gratis pide monto: no ha confirmado ni un peso", () => {
+    expect(pagadasConfirmadas(gratisEntero, 1)).toBe(0);
+    expect(continuacionPideMonto(gratisEntero, 1)).toBe(true);
+  });
+
+  it("el barrido que arrancó pagando NO pide monto: el tramo es lo ya autorizado", () => {
+    // La exención de la spec, intacta: un peaje en cada tramo se vuelve
+    // memoria muscular y deja de proteger.
+    expect(pagadasConfirmadas(pagoEntero, 1)).toBe(1_000);
+    expect(continuacionPideMonto(pagoEntero, 1)).toBe(false);
+  });
+
+  it("el mixto pide monto: US$ 0,04 escritos no confirman US$ 24,54", () => {
+    expect(pagadasConfirmadas(mixto, 1)).toBe(2);
+    expect(continuacionPideMonto(mixto, 1)).toBe(true);
+  });
+
+  it("igualdad exacta entre lo concedido y lo confirmado: no pide monto", () => {
+    // pagoEntero concede 1.000 de pago y lleva 1.000 confirmadas.
+    expect(pagadasConfirmadas(pagoEntero, 1)).toBe(pagoEntero.tope);
+    expect(continuacionPideMonto(pagoEntero, 1)).toBe(false);
+  });
+
+  it("lo confirmado se acumula: tras teclear un monto no se cobra peaje por otro igual", () => {
+    // El barrido gratis paga peaje una vez; su segundo tramo ya no.
+    expect(continuacionPideMonto(gratisEntero, 2)).toBe(false);
+    expect(pagadasConfirmadas(gratisEntero, 2)).toBe(1_000);
+    // El mixto igual: 2 + 701 confirmadas contra 701 del tramo siguiente.
+    expect(continuacionPideMonto(mixto, 2)).toBe(false);
+    expect(pagadasConfirmadas(mixto, 2)).toBe(703);
+  });
+
+  it("un contador de permisos absurdo no regala la exención", () => {
+    expect(continuacionPideMonto(gratisEntero, 0)).toBe(true);
+    expect(continuacionPideMonto(gratisEntero, Number.NaN)).toBe(true);
   });
 });

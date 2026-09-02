@@ -117,6 +117,49 @@ export function permisoDeBarrido(
   return { llamadas: pedidas, gratis, tope: gratis + pagadas * FACTOR_TOPE_APROBADO };
 }
 
+/** Las llamadas de PAGO que autoriza un permiso: su techo, menos lo que la
+ * cuota cubre. Es lo que el usuario confirmó al aceptarlo — para el botón que
+ * cobró, el gasto que aprobó con su margen; para los dos que prometieron
+ * gratis, cero. */
+export function pagadasDelPermiso(permiso: PermisoBarrido): number {
+  return llamadasCobradas(permiso.tope, permiso.gratis);
+}
+
+/** Las llamadas de pago que el usuario lleva confirmadas tras `permisos`
+ * concesiones: la del diálogo más cada "Continuar" que se le concedió. Cada
+ * tramo nuevo se paga entero —el barrido solo se frena cuando lo emitido llegó
+ * al techo, y el techo nunca queda por debajo de la cuota gratis—, así que cada
+ * concesión posterior suma `tope` llamadas de pago. */
+export function pagadasConfirmadas(permiso: PermisoBarrido, permisos: number): number {
+  const tramos = Number.isFinite(permisos) && permisos > 1 ? Math.floor(permisos) - 1 : 0;
+  return pagadasDelPermiso(permiso) + permiso.tope * tramos;
+}
+
+/** ¿La continuación tiene que pedir el monto escrito? Sí cuando el tramo que
+ * concede se paga MÁS de lo que el usuario lleva confirmado.
+ *
+ * La spec exime de repetir el peaje a los barridos que ya lo pagaron, y su
+ * argumento es que una confirmación que se teclea siempre se vuelve memoria
+ * muscular y deja de proteger. Ese argumento se apoya en una premisa tácita:
+ * que el monto ya tecleado demostró que la persona entendía la magnitud. Con
+ * 699 gratis y una tanda de 700 la premisa se cae — se escriben US$ 0,04 y el
+ * "Continuar" siguiente concede ~701 de pago ≈ US$ 24,54. Cuatro centavos no
+ * confirman veinticuatro dólares, así que la exención no alcanza a ese caso.
+ *
+ * La misma regla cubre los tres caminos sin números mágicos ni umbrales:
+ * - Arrancó gratis: 0 confirmadas, el tramo se paga ⇒ pide monto.
+ * - Arrancó pagando: el tramo concede lo mismo que ya se autorizó ⇒ no pide
+ *   (es la exención de la spec, intacta: nada de memoria muscular).
+ * - Mixto: 2 confirmadas contra 701 del tramo ⇒ pide monto.
+ * Y como lo confirmado se ACUMULA, a quien sí tecleó un monto grande no se le
+ * vuelve a cobrar peaje por otro parecido justo después. */
+export function continuacionPideMonto(
+  permiso: PermisoBarrido,
+  permisos: number,
+): boolean {
+  return permiso.tope > pagadasConfirmadas(permiso, permisos);
+}
+
 /** Margen sobre la estimación base por la subdivisión adaptativa. */
 export const FACTOR_DENSIDAD = 1.4;
 

@@ -5,6 +5,7 @@ import { X } from "lucide-react";
 import {
   poligonoSeCruza,
   PRECIO_POR_LLAMADA_USD,
+  continuacionPideMonto,
   llamadasCobradas,
   type PermisoBarrido,
 } from "@/lib/admin/barrido";
@@ -247,14 +248,16 @@ export function BarridoProgreso({
   const porCuotaGratis = capado && arrancoGratis;
 
   // ---- El peaje escrito de la continuación ---------------------------------
-  // Continuar desde la pausa gasta dinero de verdad con UN clic. En un barrido
-  // que arrancó pagando eso está bien: el usuario ya escribió un monto en el
-  // diálogo, y una confirmación que se teclea en cada tramo se vuelve memoria
-  // muscular y deja de proteger (la spec lo argumenta). Pero a esta pausa se
-  // puede llegar desde un botón rotulado "gratis" —el escenario del que no
-  // conoce la pantalla, textualmente el motivo de esta rama—, y ahí el primer
-  // peso que se gasta no lo ha confirmado nadie. Solo en ese caso se pide el
-  // monto, y sale de la MISMA cifra que rotula el botón.
+  // Continuar desde la pausa gasta dinero de verdad con UN clic. Quién tiene
+  // que teclear el monto lo decide `continuacionPideMonto` (puro y con tests):
+  // se pide cuando el tramo que se concede se paga MÁS de lo que el usuario
+  // lleva confirmado. Eso cubre de una sola regla al barrido que arrancó gratis
+  // (no ha confirmado nada), deja intacta la exención de la spec para el que
+  // arrancó pagando (un peaje en cada tramo se vuelve memoria muscular) y cierra
+  // el hueco del mixto: con 699 gratis y una tanda de 700 se escriben US$ 0,04
+  // y el tramo siguiente concede ~701 de pago ≈ US$ 24,54. El monto sale de la
+  // MISMA cifra que rotula el botón.
+  const exigeMontoContinuar = capado && continuacionPideMonto(permiso, ampliaciones);
   const [escritoContinuar, setEscritoContinuar] = useState("");
   // El tramo siguiente se paga ENTERO: `capado` implica que lo emitido ya llegó
   // al techo, y el techo nunca es menor que la cuota gratis del permiso.
@@ -546,14 +549,14 @@ export function BarridoProgreso({
         </Banner>
       )}
 
-      {/* El peaje escrito de la continuación: solo tras una pausa de un barrido
-          que arrancó como gratis. Ver el comentario junto a `escritoContinuar`. */}
-      {porCuotaGratis && (
+      {/* El peaje escrito de la continuación. Ver el comentario junto a
+          `exigeMontoContinuar`. */}
+      {exigeMontoContinuar && (
         <div className="flex flex-col gap-1.5">
           <p id="monto-continuar-ayuda" className="text-xs text-tinta-40">
-            Este barrido arrancó sin costo y de acá en adelante todo se paga:
-            escribe el monto exacto del botón de abajo para confirmar que lo
-            viste antes de seguir.
+            De acá en adelante todo se paga, y este tramo cuesta más de lo que
+            llevas confirmado: escribe el monto exacto del botón de abajo para
+            confirmar que lo viste antes de seguir.
           </p>
           <Field
             label="Monto a confirmar"
@@ -593,8 +596,8 @@ export function BarridoProgreso({
         {!corriendo && !termino && capado && (
           <Button
             variante="primaria"
-            disabled={porCuotaGratis && !coincideContinuar}
-            aria-describedby={porCuotaGratis ? "monto-continuar-ayuda" : undefined}
+            disabled={exigeMontoContinuar && !coincideContinuar}
+            aria-describedby={exigeMontoContinuar ? "monto-continuar-ayuda" : undefined}
             onClick={() => reanudar(true)}
           >
             Continuar por otras {formatoNumero(otorga)} consultas ≈ {montoContinuar}
