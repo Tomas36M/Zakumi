@@ -52,6 +52,11 @@ type Props = {
   territorios: Territorio[];
   /** La consulta de territorios falló: la lista vacía no es "no hay". */
   fallaTerritorios: boolean;
+  /** Consultas a Google Places que este panel lleva registradas en el mes
+   * calendario en curso. `null` = no se pudo leer, y NO es lo mismo que cero:
+   * el diálogo de barrer no puede afirmar cuota gratis sobre un dato que no
+   * tiene. Baja tal cual hasta `DialogoBarrer`. */
+  consultasMes: number | null;
   /** El barrido abierto vive en el shell (las caras lo marcan). */
   barrido: BarridoAbierto | null;
   onBarrido: (barrido: BarridoAbierto | null) => void;
@@ -72,6 +77,7 @@ export function TerritorioView({
   negocios,
   territorios,
   fallaTerritorios,
+  consultasMes,
   barrido,
   onBarrido,
   onAvisoBarrido,
@@ -415,6 +421,7 @@ export function TerritorioView({
       {aEstimar && (
         <DialogoBarrer
           territorio={aEstimar}
+          consultasMes={consultasMes}
           onCerrar={() => setAEstimarId(null)}
           onConfirmar={(verticales, llamadasAprobadas) => {
             onBarrido({ territorioId: aEstimar.id, verticales, llamadasAprobadas });

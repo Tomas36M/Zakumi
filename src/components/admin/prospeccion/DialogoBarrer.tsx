@@ -4,16 +4,19 @@ import { useMemo, useState } from "react";
 import {
   poligonoSeCruza,
   PRECIO_POR_LLAMADA_USD,
+  CUOTA_GRATIS_MENSUAL,
   estimarBarrido,
+  estadoDeCuota,
   teselar,
 } from "@/lib/admin/barrido";
-import { planDeBarrido } from "@/lib/admin/plan-barrido";
+import { planDeBarrido, recortarACuota } from "@/lib/admin/plan-barrido";
 import { formatoUsd } from "@/lib/admin/formato";
 import type { Territorio } from "@/lib/admin/territorios";
 import { VERTICALES_PROSPECCION } from "@/lib/admin/zak";
 import { tiposDeVertical } from "@/lib/admin/verticales-places";
 import { Banner } from "@/components/admin/ui/Banner";
 import { Button } from "@/components/admin/ui/Button";
+import { Field, Input } from "@/components/admin/ui/Field";
 import { Modal } from "@/components/admin/ui/Modal";
 import { cn } from "@/lib/cn";
 
@@ -25,21 +28,31 @@ const VERTICALES = VERTICALES_PROSPECCION.filter(
 
 type Props = {
   territorio: Territorio;
+  /** Consultas a Google Places que este panel lleva registradas en el mes
+   * calendario en curso. `null` = no se pudo leer, y NO es lo mismo que cero:
+   * no se puede afirmar cuota gratis sobre un dato que no se tiene. */
+  consultasMes: number | null;
   onCerrar: () => void;
   /** `llamadasAprobadas` es la cifra que el usuario está aceptando gastar: el
    * barrido se frena solo al doblarla en vez de seguir comprando. */
   onConfirmar: (verticales: string[], llamadasAprobadas: number) => void;
 };
 
+const METRICAS_GOOGLE_URL = "https://console.cloud.google.com/google/maps-apis/metrics";
+
 /**
  * La última pantalla antes de gastar. Todo lo que se ve aquí es dinero: las
  * teselas que se van a comprar, lo que cuestan, hasta dónde puede subir si hay
  * zonas densas, y lo que este territorio lleva gastado.
  */
-export function DialogoBarrer({ territorio, onCerrar, onConfirmar }: Props) {
+export function DialogoBarrer({ territorio, consultasMes, onCerrar, onConfirmar }: Props) {
   const [marcadas, setMarcadas] = useState<ReadonlySet<string>>(
     () => new Set(VERTICALES.map((v) => v.slug)),
   );
+  // El monto que la persona teclea para confirmar que va a pagar. Solo se
+  // exige (y solo se pinta el campo) cuando la tanda se pasa de lo gratis —
+  // ver `requiereMonto` más abajo.
+  const [escrito, setEscrito] = useState("");
 
   // La rejilla NO depende de las verticales: se calcula una vez y el resto son
   // multiplicaciones. `teselar` recorre la caja entera celda por celda.
@@ -72,6 +85,28 @@ export function DialogoBarrer({ territorio, onCerrar, onConfirmar }: Props) {
   // "pendientes × 1" es exactamente la cuenta de esta tanda.
   const tanda = estimarBarrido(pendientes, 1);
   const gastado = territorio.llamadas ?? 0;
+
+  // null = "no pudimos leerlo", que NO es lo mismo que cero. Si se colapsan,
+  // un fallo de lectura se presenta como cuota intacta y el usuario gasta
+  // creyendo que no cuesta.
+  const cuota = consultasMes === null ? null : estadoDeCuota(consultasMes);
+
+  const planGratis = cuota ? recortarACuota(plan, cuota.restantes) : [];
+  // Se ofrece solo si hay dato, queda algo gratis, Y la tanda se pasa. Si el
+  // plan entero cabe, este botón haría lo mismo que el principal.
+  const ofrecerGratis = cuota !== null && planGratis.length > 0 && planGratis.length < plan.length;
+
+  // Sin dato de cuota no se puede afirmar que la tanda cabe entera gratis:
+  // se trata igual que si de verdad se pasara, y se pide el monto escrito.
+  const cabeEntero = cuota !== null && tanda.llamadas <= cuota.restantes;
+  const requiereMonto = pendientes > 0 && !cabeEntero;
+
+  /** Lo que hay que teclear: el monto sin moneda ni espacios. Se compara así
+   * —y no contra una palabra fija— porque un monto hay que ir a buscarlo al
+   * botón: para copiarlo, hay que mirarlo. Una palabra se teclea de memoria. */
+  const esperado = formatoUsd(tanda.costoUsd).replace(/[^\d.,]/g, "");
+  const coincide = escrito.replace(/[^\d.,]/g, "") === esperado;
+  const primarioDeshabilitado = pendientes === 0 || (requiereMonto && !coincide);
 
   function alternar(slug: string) {
     setMarcadas((prev) => {
@@ -141,23 +176,38 @@ export function DialogoBarrer({ territorio, onCerrar, onConfirmar }: Props) {
               <> — las otras {bruto.llamadas - pendientes} ya están barridas y no se pagan.</>
             )}
           </p>
-          {/* La cifra de arriba es el precio de lista. Google regala las primeras
-              1.000 consultas de cada mes, y desde acá no hay forma de saber
-              cuántas llevas gastadas — así que el diálogo dice el bruto y avisa
-              del descuento, en vez de prometer un neto que no puede calcular. */}
-          <p className="mt-1 text-tinta-40">
-            Es el precio de lista: Google no cobra las primeras 1.000 consultas
-            de cada mes. Tu consumo real está en{" "}
-            <a
-              href="https://console.cloud.google.com/google/maps-apis/metrics"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline underline-offset-2 hover:text-tinta-60"
-            >
-              las métricas de Google Cloud
-            </a>
-            .
-          </p>
+          {/* La cifra de arriba es SIEMPRE precio de lista: lo que este panel
+              sabe del consumo del mes (cuando lo sabe) es una anotación aparte,
+              no un descuento sobre esa cifra — no hay forma de calcular un neto
+              exacto (otro consumidor de la key lo movería sin avisar). */}
+          {cuota === null ? (
+            <p className="mt-1 text-tinta-40">
+              No se pudo leer cuánto llevas gastado este mes. La cifra de
+              abajo es el precio de lista.
+            </p>
+          ) : (
+            <p className="mt-1 text-tinta-40">
+              Este mes llevas <strong className="text-tinta-60">{cuota.consumidas}</strong>{" "}
+              de {CUOTA_GRATIS_MENSUAL} consultas gratis, según lo que este
+              panel lleva registrado.
+              {cuota.agotada && (
+                <>
+                  {" "}
+                  Ya se agotaron: de aquí en adelante todo se paga. Puedes
+                  verificarlo en{" "}
+                  <a
+                    href={METRICAS_GOOGLE_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline underline-offset-2 hover:text-tinta-60"
+                  >
+                    las métricas de Google Cloud
+                  </a>
+                  .
+                </>
+              )}
+            </p>
+          )}
           {hijasPendientes > 0 && (
             <p className="mt-1">
               Incluye <strong className="text-tinta">{hijasPendientes}</strong>{" "}
@@ -212,15 +262,53 @@ export function DialogoBarrer({ territorio, onCerrar, onConfirmar }: Props) {
           </Banner>
         )}
 
-        <div className="flex justify-end gap-2">
-          <Button onClick={onCerrar}>Cancelar</Button>
-          <Button
-            variante="primaria"
-            disabled={pendientes === 0}
-            onClick={() => onConfirmar(slugs, tanda.llamadas)}
-          >
-            Barrer y gastar {formatoUsd(tanda.costoUsd)}
-          </Button>
+        {requiereMonto && (
+          <div className="flex flex-col gap-1.5">
+            <p id="monto-confirmar-ayuda" className="text-xs text-tinta-40">
+              Esta tanda se pasa de lo gratis: escribe el monto exacto del
+              botón de abajo para confirmar que lo viste antes de barrer.
+            </p>
+            <Field
+              label="Monto a confirmar"
+              error={
+                escrito.length > 0 && !coincide
+                  ? "No coincide con el monto de «Barrer y gastar» de abajo."
+                  : undefined
+              }
+            >
+              <Input
+                value={escrito}
+                onChange={(e) => setEscrito(e.target.value)}
+                placeholder="US$ 0,00"
+                inputMode="decimal"
+              />
+            </Field>
+          </div>
+        )}
+
+        <div className="flex flex-col gap-2">
+          {ofrecerGratis && (
+            <p className="text-xs text-tinta-40">
+              El territorio queda a medias: lo que falte se puede barrer el
+              mes que viene sin volver a pagar lo que ya se barrió acá.
+            </p>
+          )}
+          <div className="flex flex-wrap justify-end gap-2">
+            <Button onClick={onCerrar}>Cancelar</Button>
+            {ofrecerGratis && (
+              <Button onClick={() => onConfirmar(slugs, planGratis.length)}>
+                Barrer las {planGratis.length} gratis
+              </Button>
+            )}
+            <Button
+              variante="primaria"
+              disabled={primarioDeshabilitado}
+              aria-describedby={requiereMonto ? "monto-confirmar-ayuda" : undefined}
+              onClick={() => onConfirmar(slugs, tanda.llamadas)}
+            >
+              Barrer y gastar {formatoUsd(tanda.costoUsd)}
+            </Button>
+          </div>
         </div>
       </div>
     </Modal>
