@@ -92,6 +92,11 @@ grant execute on function public.anotar_tesela(uuid, text, text, boolean) to aut
 create index if not exists negocios_created_at_idx on public.negocios (created_at desc);
 
 -- ---- Parche 3 · 2026-09-01, cuota: tabla consultas_places y RPC de 6 args --
+-- ⚠️ Pegá el ARCHIVO COMPLETO, no solo esta sección: el begin/commit que la
+-- protege está al principio del archivo (línea 24), no acá. Los tres parches
+-- se ven como secciones paralelas y separadas — es tentador copiar solo la
+-- nueva — pero suelta, esta sección corre statement por statement sin
+-- transacción, y un fallo a mitad deja la migración partida.
 -- `territorios.llamadas` es un contador acumulado sin fecha: sirve para decir
 -- cuánto costó UN territorio, no para responder "¿cuánto va del mes?" ni "¿por
 -- qué gasté US$40 el martes?". La tabla consultas_places es ese registro.
@@ -202,7 +207,11 @@ commit;
 --    por aridad, y cualquier código que siga llamando con cuatro argumentos
 --    activa la vieja — que no escribe en consultas_places — en vez de fallar
 --    ruidosamente. Si devuelve CERO filas, ninguna versión existe: el barrido
---    entero se cae al primer llamado.
+--    entero se cae al primer llamado. Y si devuelve UNA fila pero es
+--    anotar_tesela(uuid,text,text,boolean) — la de CUATRO, no la de seis —
+--    esta sección no corrió en absoluto (base equivocada, transacción que
+--    hizo rollback, o el paste no incluyó el Parche 3): la comprobación 2 lo
+--    confirma, porque en ese caso consultas_places tampoco existe.
 --
 -- 2) Debe existir y estar vacía (todavía no se desplegó el código que le
 --    inserta filas):
