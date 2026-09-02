@@ -72,9 +72,12 @@ tienda, de una llamada o de un chat. Espec y runbook:
 `docs/superpowers/specs/2026-09-01-solicitudes-agenda-design.md`.
 
 - **Una sola bandeja**: `solicitudes` tiene `user_id` nullable + contacto
-  propio (`supabase/solicitudes-entrada.sql`). La RLS del portal NO se tocó y
-  no hay que tocarla: `user_id = auth.uid()` con NULL filtra la fila. Si
-  alguien "arregla" esa política con un IS NULL, abre la bandeja entera.
+  propio (`supabase/solicitudes-entrada.sql`). La política de LECTURA del
+  portal NO se tocó y no hay que tocarla: `user_id = auth.uid()` con NULL
+  filtra la fila. Si alguien "arregla" esa política con un IS NULL, abre la
+  bandeja entera. La de INSERT sí se reforzó en ese mismo SQL: el cliente solo
+  puede crear filas con `origen = 'portal'` y todo lo de voz/WhatsApp en NULL
+  (si se vuelve a correr `portal.sql` después, hay que re-correr este script).
 - **Un solo camino de entrada**: `src/lib/solicitudes/entrada.ts`
   (`registrarSolicitudEntrante`) — insertar → agendar → avisar, degradando por
   pasos y sin lanzar nunca. Lo llaman `/api/voz/webhook` y

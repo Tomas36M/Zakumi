@@ -15,15 +15,14 @@
 -- lead nuestro. Si algún día alguien "arregla" esa política con un IS NULL,
 -- estaría abriendo la bandeja entera: no hacerlo.
 --
--- ⚠️ OTRO PENDIENTE PARA CUANDO SE ABRA EL SIGNUP: la política de INSERT del
--- cliente (solicitudes_crea_propia, portal.sql:97-107) solo exige
--- user_id = auth.uid() + estado 'nueva' + cotización vacía — NO restringe
--- origen, contacto_telefono, cita_inicio ni el resto de columnas de este
--- script. Mientras el portal esté apagado no importa, pero el día que se
--- habilite el signup, cualquier usuario autenticado podría insertarse una
--- fila con origen='voz' y su propia cita, colándose en la agenda como si
--- viniera de Zak. Si eso llega a importar, la política necesita un `check`
--- adicional (ej. origen = 'portal') antes de abrir el signup.
+-- La política de INSERT del cliente (solicitudes_crea_propia, portal.sql) SÍ se
+-- reescribe abajo: la original solo exigía user_id = auth.uid() + estado
+-- 'nueva' + cotización vacía, y no conocía las columnas de este script. Sin el
+-- refuerzo, el día que se abra el signup cualquier usuario autenticado podría
+-- insertarse una fila con origen='voz' y su propia cita, colándose en la
+-- agenda como si viniera de Zak. La versión de abajo solo deja pasar lo que la
+-- tienda escribe de verdad (src/lib/portal/actions.ts: user_id, servicio_slug,
+-- mensaje) y obliga a que todo lo de voz/WhatsApp venga en blanco.
 
 alter table public.solicitudes
   alter column user_id drop not null;
@@ -65,3 +64,36 @@ create unique index if not exists solicitudes_clave_origen_uq
 
 create index if not exists solicitudes_agenda_idx
   on public.solicitudes (cita_inicio) where cita_inicio is not null;
+
+-- ---- Política de INSERT del cliente, reforzada -------------------------------
+-- Mismas condiciones que en portal.sql, más: origen 'portal' (el default) y
+-- TODAS las columnas de este script en NULL. Las solicitudes de voz/WhatsApp
+-- entran por service-role (src/lib/solicitudes/entrada.ts) y no pasan por esta
+-- política, así que no pierden nada. Correr portal.sql después de este archivo
+-- vuelve a dejar la política laxa: si eso pasa, re-correr este script.
+drop policy if exists solicitudes_crea_propia on public.solicitudes;
+create policy solicitudes_crea_propia on public.solicitudes
+  for insert to authenticated
+  with check (
+    user_id = (select auth.uid())
+    and estado = 'nueva'
+    and cotizacion_monto is null
+    and cotizacion_ciclo is null
+    and cotizacion_nota is null
+    and link_pago is null
+    and producto_id is null
+    -- lo que solo Zak (service-role) puede escribir
+    and origen = 'portal'
+    and contacto_nombre is null
+    and contacto_telefono is null
+    and contacto_email is null
+    and llamada_id is null
+    and conversacion is null
+    and clave_origen is null
+    and cita_inicio is null
+    and cita_fin is null
+    and cita_meet_url is null
+    and cita_evento_id is null
+    and cita_link_google is null
+    and cita_texto_crudo is null
+  );
