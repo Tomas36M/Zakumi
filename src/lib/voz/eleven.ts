@@ -86,6 +86,11 @@ export function payloadAgente(c: ConfigAgente): Record<string, unknown> {
       overrides: {
         conversation_config_override: { tts: { voice_id: true } },
       },
+      // El resumen post-llamada (transcript_summary) sale en inglés si no se
+      // pide idioma. El webhook lo usa como `detalle` de la solicitud cuando el
+      // agente no extrajo lead_detalle (llamada cortada), y ese texto llega al
+      // WhatsApp del equipo y a la bandeja: tiene que ir en español.
+      summary_language: "es",
       data_collection: dataCollection,
       evaluation: {
         criteria: [
