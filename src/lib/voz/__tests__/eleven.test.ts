@@ -25,6 +25,7 @@ type ShapeAgente = {
   platform_settings: {
     overrides: { conversation_config_override: { tts: { voice_id: boolean } } };
     data_collection: Record<string, { type: string; description: string }>;
+    summary_language: string;
   };
 };
 type ShapeLlamada = {
@@ -56,6 +57,14 @@ describe("payloadAgente", () => {
       p.conversation_config.agent.dynamic_variables.dynamic_variable_placeholders,
     ).toHaveProperty("telefono");
     expect(p.platform_settings.overrides.conversation_config_override.tts.voice_id).toBe(true);
+  });
+
+  it("el resumen de la llamada se pide en español: sin summary_language Eleven lo escribe en inglés", () => {
+    // El webhook usa transcript_summary como `detalle` cuando el agente no
+    // extrajo lead_detalle (llamada cortada): ese texto llega al WhatsApp de
+    // Tomás y Pau y a la bandeja, así que tiene que venir en el idioma del agente.
+    const p = payloadAgente(CONFIG) as unknown as ShapeAgente;
+    expect(p.platform_settings.summary_language).toBe("es");
   });
 
   it("la extracción tipada viaja como data_collection {clave: {type, description}}", () => {
