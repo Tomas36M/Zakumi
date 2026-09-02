@@ -12,7 +12,7 @@ import {
   teselar,
 } from "@/lib/admin/barrido";
 import { planDeBarrido, recortarACuota } from "@/lib/admin/plan-barrido";
-import { formatoUsd } from "@/lib/admin/formato";
+import { formatoNumero, formatoUsd } from "@/lib/admin/formato";
 import type { Territorio } from "@/lib/admin/territorios";
 import { VERTICALES_PROSPECCION } from "@/lib/admin/zak";
 import { tiposDeVertical } from "@/lib/admin/verticales-places";
@@ -35,11 +35,19 @@ type Props = {
    * no se puede afirmar cuota gratis sobre un dato que no se tiene. */
   consultasMes: number | null;
   onCerrar: () => void;
-  /** `llamadasAprobadas` es la cifra que el usuario está aceptando gastar.
-   * `factorTope` decide cuánto margen tiene el barrido antes de frenarse solo
-   * y volver a preguntar: `FACTOR_TOPE_APROBADO` (2×) para la confirmación
-   * normal, `FACTOR_TOPE_GRATIS` (1×, sin margen) para el botón de solo lo
-   * gratis — ese botón promete un tope exacto, no un estimado. */
+  /** `llamadasAprobadas` × `factorTope` es el techo de llamadas EMITIDAS que
+   * concede este permiso: al llegar ahí el barrido se frena solo y vuelve a
+   * preguntar. Salen así de los dos caminos del diálogo:
+   *
+   * - **Se paga** (la tanda se pasa de la cuota, o no hay dato de cuota):
+   *   `tanda.llamadas` × `FACTOR_TOPE_APROBADO` (2×). La estimación es un
+   *   estimado, no un techo, y el margen deja correr la subdivisión de zonas
+   *   densas sin interrumpir por cada celda.
+   * - **No se paga** (el botón de solo lo gratis, o la tanda que cabe entera en
+   *   la cuota): lo que QUEDA de cuota × `FACTOR_TOPE_GRATIS` (1×, sin margen).
+   *   Los dos botones prometieron que la tanda no cuesta, así que el techo es
+   *   la línea de lo gratis exacta — con el margen del 2× el barrido cruzaría a
+   *   pagado sin que nadie escribiera un monto. */
   onConfirmar: (verticales: string[], llamadasAprobadas: number, factorTope: number) => void;
 };
 
@@ -106,12 +114,34 @@ export function DialogoBarrer({ territorio, consultasMes, onCerrar, onConfirmar 
   const cabeEntero = cuota !== null && tanda.llamadas <= cuota.restantes;
   const requiereMonto = pendientes > 0 && !cabeEntero;
 
+  // Las consultas de esta tanda que Google SÍ va a cobrar: las que no caben en
+  // lo que queda de cuota. Sin dato de cuota se cobran todas — no se puede
+  // descontar de un número que no se tiene.
+  const llamadasPagadas =
+    cuota === null ? tanda.llamadas : tanda.llamadas - planGratis.length;
+  /** El monto de esta tanda, UNA sola vez. De acá salen a la vez el rótulo del
+   * botón, la línea de gratis/pagado y lo que hay que teclear: si el botón y la
+   * comprobación se calcularan por separado, el día que una cambie el campo
+   * pide un número que la pantalla no muestra en ninguna parte. */
+  const montoPagado = formatoUsd(llamadasPagadas * PRECIO_POR_LLAMADA_USD);
+
   /** Lo que hay que teclear: el monto sin moneda ni espacios. Se compara así
    * —y no contra una palabra fija— porque un monto hay que ir a buscarlo al
    * botón: para copiarlo, hay que mirarlo. Una palabra se teclea de memoria. */
-  const esperado = formatoUsd(tanda.costoUsd).replace(/[^\d.,]/g, "");
+  const esperado = montoPagado.replace(/[^\d.,]/g, "");
   const coincide = escrito.replace(/[^\d.,]/g, "") === esperado;
   const primarioDeshabilitado = pendientes === 0 || (requiereMonto && !coincide);
+
+  const enlaceMetricas = (
+    <a
+      href={METRICAS_GOOGLE_URL}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="underline underline-offset-2 hover:text-tinta-60"
+    >
+      las métricas de Google Cloud
+    </a>
+  );
 
   function alternar(slug: string) {
     setMarcadas((prev) => {
@@ -168,54 +198,58 @@ export function DialogoBarrer({ territorio, consultasMes, onCerrar, onConfirmar 
 
         <div className="rounded-fila bg-isla-alta p-4 text-sm leading-relaxed text-tinta-60">
           <p>
-            <strong className="text-tinta">{teselas.length}</strong> teselas ×{" "}
+            <strong className="text-tinta">{formatoNumero(teselas.length)}</strong> teselas ×{" "}
             <strong className="text-tinta">{slugs.length}</strong>{" "}
             {slugs.length === 1 ? "vertical" : "verticales"} ={" "}
-            <strong className="text-tinta">{bruto.llamadas}</strong> consultas a Google.
+            <strong className="text-tinta">{formatoNumero(bruto.llamadas)}</strong> consultas
+            a Google.
           </p>
           <p className="mt-1">
             Esta tanda compra{" "}
-            <strong className="text-acento">{tanda.llamadas} consultas</strong> ≈{" "}
-            <strong className="text-acento">{formatoUsd(tanda.costoUsd)}</strong>
+            <strong className="text-acento">
+              {formatoNumero(tanda.llamadas)} consultas
+            </strong>{" "}
+            ≈ <strong className="text-acento">{formatoUsd(tanda.costoUsd)}</strong> a
+            precio de lista
             {pendientes < bruto.llamadas && (
-              <> — las otras {bruto.llamadas - pendientes} ya están barridas y no se pagan.</>
+              <>
+                {" "}
+                — las otras {formatoNumero(bruto.llamadas - pendientes)} ya están
+                barridas y no se pagan
+              </>
             )}
+            .
           </p>
-          {/* La cifra de arriba es SIEMPRE precio de lista: lo que este panel
-              sabe del consumo del mes (cuando lo sabe) es una anotación aparte,
-              no un descuento sobre esa cifra — no hay forma de calcular un neto
-              exacto (otro consumidor de la key lo movería sin avisar). */}
-          {cuota === null ? (
-            <p className="mt-1 text-tinta-40">
-              No se pudo leer cuánto llevas gastado este mes. La cifra de
-              abajo es el precio de lista.
-            </p>
-          ) : (
-            <p className="mt-1 text-tinta-40">
-              Este mes llevas <strong className="text-tinta-60">{cuota.consumidas}</strong>{" "}
-              de {CUOTA_GRATIS_MENSUAL} consultas gratis, según lo que este
-              panel lleva registrado.
-              {cuota.agotada && (
-                <>
-                  {" "}
-                  Ya se agotaron: de aquí en adelante todo se paga. Puedes
-                  verificarlo en{" "}
-                  <a
-                    href={METRICAS_GOOGLE_URL}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="underline underline-offset-2 hover:text-tinta-60"
-                  >
-                    las métricas de Google Cloud
-                  </a>
-                  .
-                </>
-              )}
-            </p>
-          )}
+          {/* La cifra de arriba es precio de LISTA: la tanda entera al precio
+              por consulta, sin descontar cuota. Lo que se cobra de verdad es la
+              parte que no cabe en lo gratis, y esa es la que dicen la línea de
+              abajo y el botón — la de lista se queda visible porque es la única
+              que no depende de un conteo que puede quedarse corto. */}
+          {/* El enlace a Google va en los TRES estados, no solo en el de cuota
+              agotada: la cifra de acá es un piso (ver consultasDelMes) y quien
+              más necesita contrastarla es justo el que lee "te quedan 800
+              gratis" y va a gastar creyendo que no cuesta. */}
+          <p className="mt-1 text-tinta-40">
+            {cuota === null ? (
+              <>
+                No se pudo leer cuánto llevas gastado este mes. Sin ese dato no
+                se puede afirmar que algo entre en lo gratis, así que esta tanda
+                se trata como pagada entera.
+              </>
+            ) : (
+              <>
+                Este mes llevas <strong className="text-tinta-60">{formatoNumero(cuota.consumidas)}</strong>{" "}
+                de {formatoNumero(CUOTA_GRATIS_MENSUAL)} consultas de barrido
+                gratis, según lo que este panel lleva registrado.
+                {cuota.agotada && <> Ya se agotaron: de aquí en adelante todo se paga.</>}
+              </>
+            )}{" "}
+            La cuenta que factura es la de Google: puedes contrastarla en{" "}
+            {enlaceMetricas}.
+          </p>
           {hijasPendientes > 0 && (
             <p className="mt-1">
-              Incluye <strong className="text-tinta">{hijasPendientes}</strong>{" "}
+              Incluye <strong className="text-tinta">{formatoNumero(hijasPendientes)}</strong>{" "}
               {hijasPendientes === 1 ? "sub-tesela" : "sub-teselas"} de zonas densas
               que quedaron a medias en un barrido anterior. Son teselas que nadie le
               ha comprado a Google todavía: es gasto nuevo, no gasto repetido.
@@ -234,15 +268,17 @@ export function DialogoBarrer({ territorio, consultasMes, onCerrar, onConfirmar 
             cuatro y se vuelve a consultar (hasta dos veces), así que cada zona
             densa multiplica sus llamadas. En densidad típica esto termina cerca
             de {formatoUsd(tanda.costoMaxUsd)}; en un centro muy denso, bastante
-            más. El barrido se frena solo al doblar lo aprobado y te vuelve a
-            preguntar.
+            más.{" "}
+            {cabeEntero
+              ? "El barrido se frena solo al llegar al final de la cuota gratis y te vuelve a preguntar."
+              : "El barrido se frena solo al doblar lo aprobado y te vuelve a preguntar."}
           </p>
           <p className="mt-2 border-t border-hairline pt-2 text-tinta-40">
             Barrer solo le pregunta a Google qué negocios hay y los guarda acá.
             No contacta a nadie: escribirles o llamarlos es aparte, desde Zak.
           </p>
           <p className="mt-1">
-            Este territorio lleva <strong className="text-tinta">{gastado}</strong>{" "}
+            Este territorio lleva <strong className="text-tinta">{formatoNumero(gastado)}</strong>{" "}
             {gastado === 1 ? "consulta gastada" : "consultas gastadas"} ≈{" "}
             {formatoUsd(gastado * PRECIO_POR_LLAMADA_USD)}.
           </p>
@@ -269,9 +305,26 @@ export function DialogoBarrer({ territorio, consultasMes, onCerrar, onConfirmar 
 
         {requiereMonto && (
           <div className="flex flex-col gap-1.5">
+            {/* Con `cuota === null` el peaje escrito se cobra igual —es el lado
+                seguro—, pero el motivo NO puede ser "esta tanda se pasa de lo
+                gratis": arriba acabamos de decir que no sabemos cuánto llevas
+                gastado. Afirmar como hecho lo que se acaba de declarar ignorado
+                es justo lo que esta pantalla no se permite. */}
             <p id="monto-confirmar-ayuda" className="text-xs text-tinta-40">
-              Esta tanda se pasa de lo gratis: escribe el monto exacto del
-              botón de abajo para confirmar que lo viste antes de barrer.
+              {cuota === null ? (
+                <>
+                  No sabemos cuánto llevas gastado este mes, así que esta tanda
+                  se trata como pagada entera: escribe el monto exacto del botón
+                  de abajo para confirmar que lo viste antes de barrer.
+                </>
+              ) : (
+                <>
+                  Esta tanda se pasa de lo gratis: {formatoNumero(llamadasPagadas)}{" "}
+                  de sus {formatoNumero(tanda.llamadas)} consultas se pagan.
+                  Escribe el monto exacto del botón de abajo para confirmar que
+                  lo viste antes de barrer.
+                </>
+              )}
             </p>
             <Field
               label="Monto a confirmar"
@@ -291,6 +344,38 @@ export function DialogoBarrer({ territorio, consultasMes, onCerrar, onConfirmar 
           </div>
         )}
 
+        {/* La línea que parte la tanda en gratis y pagado. Va SIEMPRE que haya
+            dato de cuota —no solo cuando aparece el botón de "solo lo gratis"—
+            porque es la única que dice cuánto de esto cuesta de verdad: sin
+            ella el botón nombraba el precio de lista de la tanda entera y
+            sobrestimaba la factura en todo lo que la cuota cubre. */}
+        {cuota !== null && pendientes > 0 && (
+          <p className="text-xs text-tinta-40">
+            {llamadasPagadas === 0 ? (
+              <>
+                Las {formatoNumero(tanda.llamadas)} consultas de esta tanda
+                caben en lo que queda de la cuota gratis, así que Google no
+                debería cobrar nada por ella — según lo que este panel lleva
+                registrado.
+              </>
+            ) : planGratis.length === 0 ? (
+              <>
+                No queda cuota gratis este mes: se pagan las{" "}
+                {formatoNumero(tanda.llamadas)} consultas de esta tanda ≈{" "}
+                <strong className="text-tinta-60">{montoPagado}</strong>.
+              </>
+            ) : (
+              <>
+                De las {formatoNumero(tanda.llamadas)} consultas de esta tanda,{" "}
+                {formatoNumero(planGratis.length)} caben en lo que queda de la
+                cuota gratis y {formatoNumero(llamadasPagadas)} se pagan ≈{" "}
+                <strong className="text-tinta-60">{montoPagado}</strong> — según
+                lo que este panel lleva registrado.
+              </>
+            )}
+          </p>
+        )}
+
         <div className="flex flex-col gap-2">
           {ofrecerGratis && (
             <p className="text-xs text-tinta-40">
@@ -304,16 +389,33 @@ export function DialogoBarrer({ territorio, consultasMes, onCerrar, onConfirmar 
               <Button
                 onClick={() => onConfirmar(slugs, planGratis.length, FACTOR_TOPE_GRATIS)}
               >
-                Barrer las {planGratis.length} gratis
+                Barrer las {formatoNumero(planGratis.length)} gratis
               </Button>
             )}
+            {/* Cuando la tanda cabe entera en la cuota NO se pide monto escrito
+                —correcto, no cuesta— pero con el tope de 2× la subdivisión de
+                zonas densas podía llevar el barrido muy por encima de la línea
+                de lo gratis: 700 pendientes con 1.000 libres llegaban a 1.400
+                emitidas, 400 facturadas ≈ US$14, sin que nadie escribiera un
+                monto en ninguna parte. El permiso que se concede es entonces
+                "hasta el final de lo gratis" (`cuota.restantes` × 1): el
+                barrido frena en la línea y vuelve a preguntar, que es el flujo
+                diseñado, en vez de cruzarla en silencio. */}
             <Button
               variante="primaria"
               disabled={primarioDeshabilitado}
               aria-describedby={requiereMonto ? "monto-confirmar-ayuda" : undefined}
-              onClick={() => onConfirmar(slugs, tanda.llamadas, FACTOR_TOPE_APROBADO)}
+              onClick={() =>
+                cabeEntero && cuota !== null
+                  ? onConfirmar(slugs, cuota.restantes, FACTOR_TOPE_GRATIS)
+                  : onConfirmar(slugs, tanda.llamadas, FACTOR_TOPE_APROBADO)
+              }
             >
-              Barrer y gastar {formatoUsd(tanda.costoUsd)}
+              {pendientes === 0
+                ? "Barrer"
+                : llamadasPagadas > 0
+                  ? `Barrer y gastar ${montoPagado}`
+                  : `Barrer las ${formatoNumero(tanda.llamadas)} gratis`}
             </Button>
           </div>
         </div>
