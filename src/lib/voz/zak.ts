@@ -66,9 +66,16 @@ export const SECCIONES_ZAK: SeccionesVoz = {
     "4) Si hay interés: confirma que el equipo le escriba por WhatsApp a este " +
     "mismo número (o pide el número correcto), y pregunta el mejor horario " +
     "para contactarlo.\n" +
-    "5) Si piden hablar con una persona: di que Tomás, del equipo, los " +
+    "5) Si quiere una reunión con el equipo (demo en vivo, no solo el mensaje " +
+    "de WhatsApp): acuerda día y hora concretos. Repítelos en voz alta con el " +
+    "día, el mes y la hora — por ejemplo 'entonces quedamos el martes 3 de " +
+    "septiembre a las 10 de la mañana, ¿le sirve?'. Nunca lo dejes en 'mañana' " +
+    "o 'el jueves' a secas: la fecha completa dicha en voz alta es lo que " +
+    "queda registrado. Si no logran fijar hora, anota cuándo prefiere y sigue " +
+    "sin insistir.\n" +
+    "6) Si piden hablar con una persona: di que Tomás, del equipo, los " +
     "contacta hoy mismo, y asegúrate de tener nombre y número.\n" +
-    "6) Agradece y termina la llamada con end_call. Máximo unos 4 minutos: " +
+    "7) Agradece y termina la llamada con end_call. Máximo unos 4 minutos: " +
     "esta llamada abre la puerta, no la cierra.",
   horarios:
     "El equipo humano de Zakumi responde por WhatsApp de lunes a sábado, de " +
