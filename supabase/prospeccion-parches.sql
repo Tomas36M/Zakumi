@@ -151,6 +151,7 @@ begin
          teselas_hechas = case when teselas_hechas ? p_clave
                                 then teselas_hechas
                                 else teselas_hechas || to_jsonb(p_clave) end,
+         -- Idéntico a teselas_hechas: append idempotente, y solo si saturó.
          teselas_saturadas = case
                                when not p_saturada then teselas_saturadas
                                when teselas_saturadas ? p_clave then teselas_saturadas
@@ -161,6 +162,14 @@ begin
          ultimo_barrido = now()
    where id = p_territorio;
 
+  -- Sin esto, un territorio borrado entre el SELECT del handler y esta llamada
+  -- hace que el UPDATE no toque ninguna fila, la función devuelva éxito y el
+  -- handler reporte `contabilizada: true` para una llamada que se cobró y NO
+  -- se contabilizó — exactamente lo que ese flag existe para no callar.
+  --
+  -- No filtra nada: con security invoker + RLS, un no-admin también ve 0 filas
+  -- y recibe EXACTAMENTE este mismo error, así que no puede distinguir "no
+  -- existe" de "existe y no es tuyo".
   if not found then
     raise exception 'territorio % no existe', p_territorio
       using errcode = 'no_data_found';
@@ -178,8 +187,29 @@ grant execute on function public.anotar_tesela(uuid, text, text, boolean, int, i
 
 commit;
 
--- Comprobación posterior: debe quedar UNA sola versión de la función.
---   select p.oid::regprocedure
---     from pg_proc p join pg_namespace n on n.oid = p.pronamespace
---    where n.nspname = 'public' and p.proname = 'anotar_tesela';
---   -- esperado: anotar_tesela(uuid,text,text,boolean,integer,integer)
+-- Comprobación posterior — correr las dos ANTES de desplegar el código nuevo.
+--
+-- 1) Debe devolver EXACTAMENTE UNA fila:
+--      anotar_tesela(uuid,text,text,boolean,integer,integer)
+--
+--      select p.oid::regprocedure
+--        from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+--       where n.nspname = 'public' and p.proname = 'anotar_tesela';
+--
+--    Si devuelve DOS filas (la de arriba y una
+--    anotar_tesela(uuid,text,text,boolean)), el `drop function` de la firma
+--    de cuatro no corrió: las dos versiones quedan vivas, Postgres resuelve
+--    por aridad, y cualquier código que siga llamando con cuatro argumentos
+--    activa la vieja — que no escribe en consultas_places — en vez de fallar
+--    ruidosamente. Si devuelve CERO filas, ninguna versión existe: el barrido
+--    entero se cae al primer llamado.
+--
+-- 2) Debe existir y estar vacía (todavía no se desplegó el código que le
+--    inserta filas):
+--
+--      select count(*) from public.consultas_places;
+--
+--    Si el `select` da error de "relation … does not exist", el `create
+--    table` no corrió. Un count > 0 acá (antes de desplegar) no es
+--    destructivo, pero sí es una señal de que el orden de encendido no se
+--    respetó — el código nuevo ya estaba corriendo contra esta base.
