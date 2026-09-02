@@ -133,14 +133,13 @@ export function hijasDe(t: Trabajo): Trabajo[] {
 
 /** El plan recortado a lo que quepa en la cuota gratuita que queda.
  *
- * Corta por el final y respeta el orden, que importa: `expandir` recorre en
- * profundidad, así que las hijas pendientes de una celda saturada salen JUNTO A
- * SU MADRE, repartidas por todo el plan en vez de agrupadas al principio.
- * Recortar por el final se lleva menos de esas hijas que recortar por el
- * principio, y son lo más caro de aplazar: cada una es una manzana densa cuya
- * madre ya se pagó y que sigue sin censar. Aplazar, no perder — desde que la
- * saturación queda anotada en `teselas_saturadas`, el plan del mes que viene
- * vuelve a bajar a ellas. */
+ * Corta por el final: se queda con el PRINCIPIO del plan tal como lo ordenó
+ * `planDeBarrido` —las teselas en el orden de la rejilla, y las hijas de una
+ * celda saturada junto a su madre, porque `expandir` recorre en profundidad—,
+ * así que lo que entra en la tanda es un tramo contiguo del recorrido y lo que
+ * queda fuera es la cola. Nada se pierde por recortar: lo saltado sigue
+ * pendiente y, desde que la saturación queda anotada en `teselas_saturadas`, el
+ * plan del mes que viene vuelve a bajar a las hijas que quedaron afuera. */
 export function recortarACuota(
   plan: readonly Trabajo[],
   restantes: number,
