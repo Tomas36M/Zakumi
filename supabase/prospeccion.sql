@@ -103,10 +103,13 @@ create trigger territorios_updated_at
 -- es un elemento del array. p_clave es la clave de TRABAJO (tesela#vertical,
 -- claveTrabajo() en barrido.ts), no solo la de la tesela — una tesela se
 -- barre una vez POR VERTICAL.
--- La firma cambió (entró p_saturada), y `create or replace` NO reemplaza una
--- función de aridad distinta: crearía una SEGUNDA anotar_tesela y dejaría dos
--- versiones vivas en las bases que ya corrieron este archivo. El drop explícito
--- de la firma vieja garantiza que quede exactamente una.
+-- La firma volvió a cambiar (entraron p_resultados y p_insertados, para la fila
+-- de consultas_places), y `create or replace` NO reemplaza una función de aridad
+-- distinta: crearía una SEGUNDA anotar_tesela y dejaría dos versiones vivas en
+-- las bases que ya corrieron este archivo — con el riesgo de que la activada sea
+-- la que NO registra el gasto. Este drop es el de la versión anterior, la de
+-- cuatro argumentos (la que ya traía p_saturada); el de la de tres, anterior a
+-- ella, está en prospeccion-parches.sql para las bases que se quedaron ahí.
 drop function if exists public.anotar_tesela(uuid, text, text, boolean);
 
 -- Sube de 4 a 6 argumentos: ahora también registra la fila en consultas_places.
