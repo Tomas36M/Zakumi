@@ -787,11 +787,17 @@ export async function lanzarTandaVoz(
  * lo re-sincroniza con ElevenLabs. Preserva lo escrito a mano (ver
  * fusionarExtraccion). Idempotente: correrlo dos veces no cambia nada.
  */
-export async function ponerAlDiaCamposZak(): Promise<{ error: string | null; anadidos: number }> {
+export async function ponerAlDiaCamposZak(): Promise<{
+  error: string | null;
+  aviso: string | null;
+  anadidos: number;
+}> {
   const { supabase } = await verifySession();
 
   const agente = await agenteZakVoz(supabase);
-  if (!agente) return { error: "Zak no tiene voz todavía — créala en /admin/voz.", anadidos: 0 };
+  if (!agente) {
+    return { error: "Zak no tiene voz todavía — créala en /admin/voz.", aviso: null, anadidos: 0 };
+  }
 
   const fusionada = fusionarExtraccion(agente.extraccion, EXTRACCION_ZAK);
   const anadidos = fusionada.length - agente.extraccion.length;
@@ -803,13 +809,20 @@ export async function ponerAlDiaCamposZak(): Promise<{ error: string | null; ana
       .eq("id", agente.id);
     if (error) {
       console.error("[ponerAlDiaCamposZak] update:", error.message);
-      return { error: "No se pudieron guardar los campos.", anadidos: 0 };
+      return { error: "No se pudieron guardar los campos.", aviso: null, anadidos: 0 };
     }
   }
 
   // Sincronizar SIEMPRE, aunque no se haya añadido nada: puede que la fila ya
-  // estuviera al día pero ElevenLabs no.
+  // estuviera al día pero ElevenLabs no. Un fallo aquí NO es error: los campos
+  // ya quedaron guardados en Supabase — mismo patrón que guardarConfigVoz,
+  // que separa "no se guardó" (error) de "se guardó pero sin sincronizar"
+  // (aviso), para que el llamador nunca confunda las dos cosas.
   const r = await sincronizarAgenteVoz(agente.id);
   revalidarVoz(agente.id);
-  return { error: r.error, anadidos };
+  return {
+    error: null,
+    aviso: r.error ? `Guardado aquí, pero sin sincronizar: ${r.error}` : null,
+    anadidos,
+  };
 }

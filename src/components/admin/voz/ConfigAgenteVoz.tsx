@@ -87,14 +87,18 @@ export function ConfigAgenteVoz({
           setError(r.error);
           return;
         }
-        // Refleja en el formulario los mismos campos que se guardaron en el
-        // servidor: si no se hace, "Guardar y sincronizar" pisaría los campos
-        // nuevos con esta lista, que quedó desactualizada.
-        setExtraccion((prev) => fusionarExtraccion(prev, EXTRACCION_ZAK));
+        // r.anadidos > 0 ya implica que el UPDATE en Supabase tuvo éxito,
+        // aunque la sincronización con ElevenLabs (r.aviso) haya fallado: sin
+        // esto, "Guardar y sincronizar" pisaría con la lista vieja del
+        // formulario los campos que el servidor ya escribió.
+        if (r.anadidos > 0) {
+          setExtraccion((prev) => fusionarExtraccion(prev, EXTRACCION_ZAK));
+        }
         setMensaje(
-          r.anadidos > 0
-            ? `Listo: ${r.anadidos} campo(s) nuevo(s) y sincronizado con ElevenLabs.`
-            : "Ya estaba al día; se re-sincronizó igual.",
+          r.aviso ??
+            (r.anadidos > 0
+              ? `Listo: ${r.anadidos} campo(s) nuevo(s) y sincronizado con ElevenLabs.`
+              : "Ya estaba al día; se re-sincronizó igual."),
         );
       } catch {
         setError("Se perdió la conexión — recarga para ver si quedó al día.");
