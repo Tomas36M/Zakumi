@@ -59,4 +59,18 @@ describe("agruparPorDia", () => {
   it("sin citas, sin grupos", () => {
     expect(agruparPorDia([], AHORA)).toEqual([]);
   });
+
+  it("una cita de ayer no aparece en la agenda", () => {
+    // 2026-08-31T19:00Z = ayer a las 14:00 en Bogotá
+    const g = agruparPorDia([cita("2026-08-31T19:00:00Z", "ayer")], AHORA);
+    expect(g).toHaveLength(0);
+  });
+
+  it("una cita de hoy muy temprano sigue siendo de hoy", () => {
+    // 2026-09-01T12:00Z = hoy a las 07:00 en Bogotá (consultado a las 10:00)
+    const g = agruparPorDia([cita("2026-09-01T12:00:00Z", "temprano")], AHORA);
+    expect(g).toHaveLength(1);
+    expect(g[0].titulo).toBe("Hoy");
+    expect(g[0].citas[0].id).toBe("temprano");
+  });
 });

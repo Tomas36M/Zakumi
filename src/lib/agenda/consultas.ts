@@ -42,6 +42,10 @@ export function agruparPorDia(citas: Cita360[], ahora: Date = new Date()): Grupo
 
   for (const c of [...citas].sort((a, b) => a.inicio.localeCompare(b.inicio))) {
     const dia = diaBogota(new Date(c.inicio));
+
+    // Descarta citas de días anteriores a hoy (defensa contra bugs en la consulta)
+    if (dia < hoy) continue;
+
     if (dia === hoy) grupos[0].citas.push(c);
     else if (dia === manana) grupos[1].citas.push(c);
     else if (dia < finDeSemana) grupos[2].citas.push(c);
@@ -59,7 +63,9 @@ function aCita(f: Partial<Solicitud>): Cita360 {
   return {
     id: String(f.id),
     solicitudId: String(f.id),
-    inicio: f.cita_inicio ?? "",
+    // cita_inicio es garantizado por el filtro en proximasCitas; typeof check es defensa
+    // adicional contra reutilización accidental sin ese filtro.
+    inicio: f.cita_inicio!,
     fin: f.cita_fin ?? "",
     nombre: f.contacto_nombre ?? null,
     telefono: f.contacto_telefono ?? null,
@@ -73,22 +79,24 @@ function aCita(f: Partial<Solicitud>): Cita360 {
 }
 
 /**
- * Las citas de hoy en adelante. Se corta en el inicio del día de Bogotá para
- * que una reunión de esta mañana siga visible hasta que termine la jornada.
+ * Las citas a partir del inicio del día de Bogotá (00:00 zona Bogotá).
+ * Una reunión de hoy temprano sigue visible toda la jornada.
  */
 export async function proximasCitas(
   supabase: SupabaseClient,
   limite = 100,
 ): Promise<Cita360[]> {
-  const desde = new Date();
-  desde.setUTCHours(desde.getUTCHours() - 24);
+  const ahora = new Date();
+  const diaEnBogota = diaBogota(ahora);
+  // Inicio del día en Bogotá (00:00 en zona -05:00) convertido a ISO UTC
+  const inicioDelDia = new Date(`${diaEnBogota}T00:00:00-05:00`);
 
   const { data, error } = await supabase
     .from("solicitudes")
     .select(CAMPOS)
     .not("cita_inicio", "is", null)
     .neq("estado", "rechazada")
-    .gte("cita_inicio", desde.toISOString())
+    .gte("cita_inicio", inicioDelDia.toISOString())
     .order("cita_inicio", { ascending: true })
     .limit(limite);
 
@@ -96,5 +104,9 @@ export async function proximasCitas(
     console.error("[agenda] proximasCitas:", error.message);
     return [];
   }
-  return (data ?? []).map((f) => aCita(f as Partial<Solicitud>));
+  // Filtra filas sin cita_inicio como defensa contra cambios futuros en la consulta
+  const filas = (data ?? []) as Partial<Solicitud>[];
+  return filas
+    .filter((f) => f.cita_inicio != null)
+    .map((f) => aCita(f));
 }
