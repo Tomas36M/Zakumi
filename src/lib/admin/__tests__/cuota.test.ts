@@ -149,23 +149,30 @@ describe("continuacionPideMonto", () => {
     expect(continuacionPideMonto(mixto, 1)).toBe(true);
   });
 
-  it("igualdad exacta entre lo concedido y lo confirmado: no pide monto", () => {
-    // pagoEntero concede 1.000 de pago y lleva 1.000 confirmadas.
-    expect(pagadasConfirmadas(pagoEntero, 1)).toBe(pagoEntero.tope);
-    expect(continuacionPideMonto(pagoEntero, 1)).toBe(false);
+  it("igualdad exacta por acumulación: el segundo tramo del gratis no pide monto", () => {
+    // El borde por un camino distinto al del pago entero: el barrido gratis
+    // arranca con CERO confirmadas y su primer "Continuar" (que sí pagó peaje)
+    // le suma exactamente un tope. Ahí lo concedido iguala a lo confirmado —
+    // si la comparación fuera `>=` en vez de `>`, este tramo pediría monto y
+    // el peaje se volvería la rutina que la spec quiere evitar.
+    expect(pagadasConfirmadas(gratisEntero, 2)).toBe(gratisEntero.tope);
+    expect(continuacionPideMonto(gratisEntero, 2)).toBe(false);
   });
 
   it("lo confirmado se acumula: tras teclear un monto no se cobra peaje por otro igual", () => {
-    // El barrido gratis paga peaje una vez; su segundo tramo ya no.
-    expect(continuacionPideMonto(gratisEntero, 2)).toBe(false);
-    expect(pagadasConfirmadas(gratisEntero, 2)).toBe(1_000);
-    // El mixto igual: 2 + 701 confirmadas contra 701 del tramo siguiente.
-    expect(continuacionPideMonto(mixto, 2)).toBe(false);
+    // El mixto pagó peaje por 701 de pago; su tramo siguiente concede otras
+    // 701 contra 703 confirmadas, así que ya no lo pide.
     expect(pagadasConfirmadas(mixto, 2)).toBe(703);
+    expect(continuacionPideMonto(mixto, 2)).toBe(false);
   });
 
-  it("un contador de permisos absurdo no regala la exención", () => {
-    expect(continuacionPideMonto(gratisEntero, 0)).toBe(true);
-    expect(continuacionPideMonto(gratisEntero, Number.NaN)).toBe(true);
+  it("un contador de permisos absurdo no inventa tramos ni peajes", () => {
+    // Con un permiso de PAGO discrimina: sin la guarda de `permisos > 1`, un
+    // cero restaría un tramo, dejaría lo confirmado en cero y este barrido
+    // pediría peaje justo donde la spec lo exime.
+    expect(pagadasConfirmadas(pagoEntero, 0)).toBe(1_000);
+    expect(continuacionPideMonto(pagoEntero, 0)).toBe(false);
+    expect(pagadasConfirmadas(pagoEntero, Number.NaN)).toBe(1_000);
+    expect(continuacionPideMonto(pagoEntero, Number.NaN)).toBe(false);
   });
 });

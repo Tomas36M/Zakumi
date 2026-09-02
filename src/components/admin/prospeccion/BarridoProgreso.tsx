@@ -459,7 +459,11 @@ export function BarridoProgreso({
           ) : (
             // Lo aprobado también se valora por lo que se COBRA: con 699 gratis
             // y una tanda de 700, el usuario escribió US$ 0,04 en el diálogo y
-            // este banner tiene que decir ese mismo número, no US$ 24,50.
+            // este banner tiene que decir ese mismo número, no US$ 24,50. Y no
+            // se le atribuye la pausa a la densidad: en el caso mixto el techo
+            // queda dos llamadas por encima de la línea del gratis, así que se
+            // llega ahí sin ninguna zona densa. La banda sabe QUE se llegó al
+            // techo; por qué, no.
             <>
               Aprobaste {formatoNumero(permiso.llamadas)} consultas ≈{" "}
               {formatoUsd(
@@ -468,10 +472,11 @@ export function BarridoProgreso({
               )}{" "}
               y ya van <strong>{formatoNumero(gastadas)}</strong> emitidas,{" "}
               <strong>{formatoNumero(cobradas)}</strong> de pago ≈{" "}
-              <strong>{formatoUsd(cobradas * PRECIO_POR_LLAMADA_USD)}</strong>: hubo más
-              zonas densas de las que cabía suponer y cada una se partió en cuatro. El
-              barrido se frenó solo con {formatoNumero(faltan)} teselas en la cola — nada
-              se perdió.
+              <strong>{formatoUsd(cobradas * PRECIO_POR_LLAMADA_USD)}</strong>: el
+              barrido llegó al techo de ese permiso. Puede que se hayan partido en
+              cuatro más zonas densas de las previstas, o que el techo quedara
+              justo encima de lo aprobado. Se frenó solo con{" "}
+              {formatoNumero(faltan)} teselas en la cola — nada se perdió.
             </>
           )}
         </Banner>
@@ -553,10 +558,19 @@ export function BarridoProgreso({
           `exigeMontoContinuar`. */}
       {exigeMontoContinuar && (
         <div className="flex flex-col gap-1.5">
+          {/* La cifra se NOMBRA, no se deja en una comparación: "más de lo que
+              llevas confirmado" obliga a restar contra un número que nadie
+              recuerda (y que en el camino gratis es cero) para enterarse de una
+              magnitud que la frase puede decir sola — el salto real del caso
+              mixto es de US$ 0,04 a US$ 24,54. Sale de `montoContinuar`, el
+              mismo valor que rotula el botón y contra el que se compara lo
+              tecleado: una cuarta derivación sería una cuarta cosa que puede
+              desincronizarse. */}
           <p id="monto-continuar-ayuda" className="text-xs text-tinta-40">
-            De acá en adelante todo se paga, y este tramo cuesta más de lo que
-            llevas confirmado: escribe el monto exacto del botón de abajo para
-            confirmar que lo viste antes de seguir.
+            De acá en adelante todo se paga: este tramo cuesta{" "}
+            <strong className="text-tinta-60">{montoContinuar}</strong>, más de
+            lo que llevas confirmado hasta ahora. Escribe ese mismo monto acá
+            para confirmar que lo viste antes de seguir.
           </p>
           <Field
             label="Monto a confirmar"
