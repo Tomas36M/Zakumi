@@ -99,7 +99,12 @@ function normalizar(texto: string): string {
   return texto
     .toLowerCase()
     .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "");
+    // Marcas diacríticas combinantes: lo que "NFD" separa de la letra base
+    // (á → a + ´). El rango va escapado con \u a propósito: la versión
+    // anterior traía esos mismos caracteres incrustados LITERALES en el
+    // regex — invisibles en el editor y un riesgo si alguien copia/pega mal
+    // el archivo.
+    .replace(/[\u0300-\u036f]/g, "");
 }
 
 /**

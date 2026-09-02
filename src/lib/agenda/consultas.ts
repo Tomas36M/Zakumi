@@ -63,8 +63,10 @@ function aCita(f: Partial<Solicitud>): Cita360 {
   return {
     id: String(f.id),
     solicitudId: String(f.id),
-    // cita_inicio es garantizado por el filtro en proximasCitas; typeof check es defensa
-    // adicional contra reutilización accidental sin ese filtro.
+    // cita_inicio es garantizado por el `.filter(f => f.cita_inicio != null)`
+    // de proximasCitas antes de llamar aCita; la aserción `!` de abajo confía
+    // en ese filtro y NO es una guarda por sí sola — si algún día se llama a
+    // aCita() sin pasar por ese filtro, esto puede reventar en runtime.
     inicio: f.cita_inicio!,
     fin: f.cita_fin ?? "",
     nombre: f.contacto_nombre ?? null,

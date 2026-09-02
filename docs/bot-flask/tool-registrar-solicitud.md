@@ -33,7 +33,7 @@ WhatsApp a Tomás y a Paula. Es idempotente: repetir la llamada con el mismo
 
 | Código | Cuerpo | Qué significa |
 |---|---|---|
-| 200 | `{"status":"creada"}` | Quedó en la bandeja y salió el aviso |
+| 200 | `{"status":"creada"}` | Quedó en la bandeja (el aviso por WhatsApp es "mejor esfuerzo": si falla, esto igual responde 200) |
 | 200 | `{"status":"duplicada"}` | Ya estaba registrada; no se hace nada |
 | 400 | `{"error":"falta_telefono"}` \| `{"error":"json_invalido"}` | Body malo |
 | 401 | `{"error":"no_autorizado"}` | Token malo |
@@ -58,10 +58,15 @@ curl -X POST "$SITE_URL/api/zak/solicitud" \
   -H "Content-Type: application/json" \
   -d '{
     "telefono": "+573001112233",
-    "ref": "573001112233-20260903",
+    "ref": "+573001112233:2026-09-03",
     "nombre": "María Pérez",
     "servicio": "bot de WhatsApp",
     "detalle": "Quiere un bot para su restaurante, 3 sedes",
     "cita": "2026-09-03T10:00"
   }'
 ```
+
+<!-- El `ref` de arriba calca el formato que el endpoint arma solo cuando el
+     bot no manda ninguno (`telefono:fecha-en-Bogotá`) — es solo para que el
+     ejemplo se vea real, el bot puede mandar cualquier id de conversación
+     como `ref`; no tiene que coincidir con ese formato. -->

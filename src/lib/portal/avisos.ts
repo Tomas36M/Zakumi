@@ -1,4 +1,5 @@
-// Avisos a Tomás por WhatsApp usando el bot ya desplegado — cero infra nueva.
+// Avisos por WhatsApp a uno o varios destinatarios (AVISOS_WHATSAPP_TO) usando
+// el bot ya desplegado — cero infra nueva.
 // SOLO SERVIDOR (envuelve lib/bots/api). Fire-and-forget: el contrato
 // Resultado nunca lanza, así que un Railway caído jamás tumba la operación
 // que originó el aviso (la solicitud igual queda en la bandeja del admin).
