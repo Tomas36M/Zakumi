@@ -65,6 +65,33 @@ Tienda de servicios + autogestión del cliente. Spec y **runbook de encendido**:
 - Envs del portal: `AVISOS_BOT_INSTANCIA_ID` + `AVISOS_WHATSAPP_TO` (aviso de
   solicitud por WhatsApp; si faltan solo se pierde el aviso).
 
+## Solicitudes entrantes y agenda (2026-09-01, rama `feat/solicitudes-agenda`)
+
+Todo el que quiere contratarnos cae en `/admin/solicitudes`, venga de la
+tienda, de una llamada o de un chat. Espec y runbook:
+`docs/superpowers/specs/2026-09-01-solicitudes-agenda-design.md`.
+
+- **Una sola bandeja**: `solicitudes` tiene `user_id` nullable + contacto
+  propio (`supabase/solicitudes-entrada.sql`). La RLS del portal NO se tocó y
+  no hay que tocarla: `user_id = auth.uid()` con NULL filtra la fila. Si
+  alguien "arregla" esa política con un IS NULL, abre la bandeja entera.
+- **Un solo camino de entrada**: `src/lib/solicitudes/entrada.ts`
+  (`registrarSolicitudEntrante`) — insertar → agendar → avisar, degradando por
+  pasos y sin lanzar nunca. Lo llaman `/api/voz/webhook` y
+  `/api/zak/solicitud`.
+- **Idempotencia** por `clave_origen` (`voz:<conversation_id>` / `wa:<ref>`),
+  índice único parcial. Un reintento devuelve 'duplicada' y no vuelve a avisar.
+- **Google Calendar** por `fetch` en `src/lib/agenda/google.ts` (sin SDK).
+  ⚠️ La pantalla de consentimiento tiene que estar PUBLICADA EN PRODUCCIÓN: en
+  "Testing" el refresh token caduca a los 7 días.
+- **El choque de horario avisa, no bloquea** — perder una cita conseguida es
+  peor que solapar dos eventos.
+- **Campos de Zak**: `EXTRACCION_ZAK` solo se aplica al CREAR el agente. Para
+  un agente ya existente, el botón «Poner al día los campos» de su ficha
+  (`ponerAlDiaCamposZak`) fusiona los estándar sin pisar lo escrito a mano.
+- **Pendiente fuera de este repo**: la tool del bot Flask
+  (`docs/bot-flask/tool-registrar-solicitud.md`).
+
 ## Agentes de voz /admin/voz — ElevenLabs (2026-08-30, PR #3 sobre `main`)
 
 Spec + **runbook de encendido en 8 pasos** (leerlo antes de tocar voz):
