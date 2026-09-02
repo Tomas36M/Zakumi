@@ -20,7 +20,9 @@ export default async function SolicitudesAdminPage() {
 
   // perfiles y solicitudes no tienen FK directa entre sí (ambas cuelgan de
   // auth.users), así que PostgREST no puede embeber: dos queries y un mapa.
-  const userIds = [...new Set(solicitudes.map((s) => s.user_id))];
+  const userIds = [
+    ...new Set(solicitudes.map((s) => s.user_id).filter((id): id is string => id !== null)),
+  ];
   const perfiles: Record<string, PerfilResumen> = {};
   if (userIds.length > 0) {
     const { data: filas } = await supabase
@@ -39,10 +41,11 @@ export default async function SolicitudesAdminPage() {
   return (
     <section>
       <header className="border-b border-hairline px-5 py-4">
-        <h1 className="text-lg font-semibold text-tinta">Solicitudes del portal</h1>
+        <h1 className="text-lg font-semibold text-tinta">Solicitudes</h1>
         <p className="text-xs text-tinta-60">
-          Lo que los clientes piden en la tienda: cotiza, manda el link de pago y
-          activa. Cada activación crea el cliente y su producto en la cartera.
+          Todo el que quiere contratarnos: lo que piden en la tienda y lo que
+          Zak consigue por llamada o por WhatsApp. Cotiza, manda el link de pago
+          y activa.
         </p>
       </header>
       <div className="px-5 py-4">
