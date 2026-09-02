@@ -263,4 +263,50 @@ describe("registrarSolicitudEntrante", () => {
 
     expect(r).toMatchObject({ estado: "creada", agendada: true });
   });
+
+  // --- Regresión: el aviso NO puede callarse cuando la fila no queda -------
+
+  it("si el insert falla (no un reintento), igual avisa que el prospecto se perdió", async () => {
+    const { cliente, insertado } = supabaseFalso({ errorInsert: { code: "42501" } });
+    const avisar = vi.fn<(texto: string) => Promise<void>>(async () => {});
+
+    const r = await registrarSolicitudEntrante(cliente, BASE, { avisar, calendario: null, ahora: AHORA });
+
+    expect(r).toEqual({ estado: "error", motivo: "db" });
+    expect(insertado).toHaveLength(1); // se intentó insertar, solo que no cuajó
+    expect(avisar).toHaveBeenCalledOnce();
+    expect(avisar.mock.calls[0][0]).toContain("NO quedó en la bandeja");
+    expect(avisar.mock.calls[0][0]).toContain("María");
+  });
+
+  it("sin teléfono, igual avisa que el prospecto se perdió (antes se quedaba callado)", async () => {
+    const { cliente } = supabaseFalso();
+    const avisar = vi.fn<(texto: string) => Promise<void>>(async () => {});
+
+    const r = await registrarSolicitudEntrante(
+      cliente,
+      { ...BASE, contacto: { nombre: "María", telefono: null, email: null } },
+      { avisar, calendario: null, ahora: AHORA },
+    );
+
+    expect(r).toMatchObject({ estado: "error", motivo: "sin_contacto" });
+    expect(avisar).toHaveBeenCalledOnce();
+    expect(avisar.mock.calls[0][0]).toContain("NO quedó en la bandeja");
+    expect(avisar.mock.calls[0][0]).toContain("María");
+  });
+
+  it("un detalle de más de 2000 caracteres llega truncado (lo exige el check de mensaje)", async () => {
+    const { cliente, insertado } = supabaseFalso();
+    const avisar = vi.fn<(texto: string) => Promise<void>>(async () => {});
+    const detalleLargo = "x".repeat(2500);
+
+    const r = await registrarSolicitudEntrante(
+      cliente,
+      { ...BASE, detalle: detalleLargo },
+      { avisar, calendario: null, ahora: AHORA },
+    );
+
+    expect(r).toMatchObject({ estado: "creada" });
+    expect((insertado[0].mensaje as string).length).toBe(2000);
+  });
 });

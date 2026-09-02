@@ -14,7 +14,22 @@ import { avisarAdmin } from "@/lib/portal/avisos";
 import { calendarioGoogle } from "@/lib/agenda/google";
 import type { Calendario } from "@/lib/agenda/tipos";
 import { parsearCita, type Cita } from "./fecha";
-import { construirAviso } from "./mensaje";
+import { construirAviso, construirAvisoRescate } from "./mensaje";
+
+// Topes de los textos libres que llegan por el endpoint público del bot (le
+// aceptamos lo que nos manden, así que hay que acotarlo antes de guardarlo):
+// `mensaje` (donde cae `detalle`) tiene `check (length <= 2000)` en
+// supabase/portal.sql — la RPC de voz ya asume resúmenes largos
+// (`left(p_resumen, 4000)`), así que sin este tope un resumen de más de 2000
+// caracteres revienta el insert entero. Los demás campos no tienen check en
+// la tabla, pero tampoco hay motivo para guardar un nombre o un teléfono de
+// miles de caracteres.
+const TOPE_MENSAJE = 2000;
+const TOPE_NOMBRE = 200;
+const TOPE_TELEFONO = 40;
+const TOPE_EMAIL = 200;
+const TOPE_CONVERSACION = 200;
+const TOPE_CITA_CRUDA = 500;
 
 export type EntradaSolicitud = {
   origen: "voz" | "whatsapp";
@@ -48,8 +63,25 @@ function urlPanel(): string {
   return `${base.replace(/\/$/, "")}/admin/solicitudes`;
 }
 
-function limpio(v: unknown): string | null {
-  return typeof v === "string" && v.trim() !== "" ? v.trim() : null;
+function limpio(v: unknown, tope = 2000): string | null {
+  if (typeof v !== "string") return null;
+  const t = v.trim();
+  return t === "" ? null : t.slice(0, tope);
+}
+
+/** El aviso de rescate no puede tumbar nada más que el aviso normal: mismo
+ *  try/catch, mismo `avisar` inyectable. Se factoriza porque hacen falta dos
+ *  veces (sin teléfono, insert fallido) además de la vez del camino feliz. */
+async function avisarSeguro(
+  avisar: (texto: string) => Promise<void>,
+  texto: string,
+  contexto: string,
+): Promise<void> {
+  try {
+    await avisar(texto);
+  } catch (e) {
+    console.error(`[solicitud entrante] aviso (${contexto}):`, e);
+  }
 }
 
 export async function registrarSolicitudEntrante(
@@ -58,23 +90,27 @@ export async function registrarSolicitudEntrante(
   deps: DepsEntrada = {},
 ): Promise<ResultadoEntrada> {
   const avisar = deps.avisar ?? avisarAdmin;
-  // `deps.calendario` puede ser null a propósito (los tests, y la fase 1 antes
-  // de que existiera google.ts): solo cuando NO se pasa nada se usa el real.
-  const calendario = deps.calendario === undefined ? calendarioGoogle() : deps.calendario;
 
-  const telefono = limpio(entrada.contacto.telefono);
-  const nombre = limpio(entrada.contacto.nombre);
-  const email = limpio(entrada.contacto.email);
+  const telefono = limpio(entrada.contacto.telefono, TOPE_TELEFONO);
+  const nombre = limpio(entrada.contacto.nombre, TOPE_NOMBRE);
+  const email = limpio(entrada.contacto.email, TOPE_EMAIL);
+  const detalle = limpio(entrada.detalle, TOPE_MENSAJE);
   // El check solicitudes_identifica_chk lo exige; comprobarlo aquí evita
-  // gastar un round-trip para recibir un 23514 ilegible.
+  // gastar un round-trip para recibir un 23514 ilegible. Que la solicitud NO
+  // vaya a quedar en la bandeja no significa que el prospecto se pierda: el
+  // aviso de rescate lleva lo poco que sí se supo de él.
   if (!telefono) {
     console.error("[solicitud entrante] sin teléfono de contacto:", entrada.claveOrigen);
+    await avisarSeguro(
+      avisar,
+      construirAvisoRescate({ origen: entrada.origen, motivo: "sin_contacto", nombre, telefono: null, detalle }),
+      "sin contacto",
+    );
     return { estado: "error", motivo: "sin_contacto" };
   }
 
   const slug = slugDeInteres(entrada.servicioInteres);
-  const detalle = limpio(entrada.detalle);
-  const citaCrudaTexto = limpio(entrada.citaCruda);
+  const citaCrudaTexto = limpio(entrada.citaCruda, TOPE_CITA_CRUDA);
   const duracionMin = Number(process.env.AGENDA_DURACION_MIN ?? "");
   const cita: Cita | null = parsearCita(entrada.citaCruda, {
     ahora: deps.ahora,
@@ -91,7 +127,7 @@ export async function registrarSolicitudEntrante(
     contacto_telefono: telefono,
     contacto_email: email,
     llamada_id: entrada.llamadaId ?? null,
-    conversacion: entrada.conversacion ?? null,
+    conversacion: limpio(entrada.conversacion, TOPE_CONVERSACION),
     clave_origen: entrada.claveOrigen,
     cita_inicio: cita?.inicio ?? null,
     cita_fin: cita?.fin ?? null,
@@ -111,6 +147,13 @@ export async function registrarSolicitudEntrante(
     // reintento del webhook, no un fallo. Cortar sin volver a avisar.
     if (error.code === "23505") return { estado: "duplicada" };
     console.error("[solicitud entrante] insert:", error.message);
+    // La fila no quedó, pero el prospecto sí existió: mismo aviso de rescate
+    // que cuando falta el teléfono, para que se pueda recuperar a mano.
+    await avisarSeguro(
+      avisar,
+      construirAvisoRescate({ origen: entrada.origen, motivo: "db", nombre, telefono, detalle }),
+      "insert fallido",
+    );
     return { estado: "error", motivo: "db" };
   }
   const solicitudId = String((data as { id: string }).id);
@@ -118,6 +161,17 @@ export async function registrarSolicitudEntrante(
   let meetUrl: string | null = null;
   let choque = false;
   let agendada = false;
+  // `calendarioGoogle()` se resuelve SOLO cuando hay cita que agendar: sin
+  // credenciales de Google escribe un console.error, y la mayoría de las
+  // solicitudes no traen fecha — llamarlo siempre ensuciaba el log por nada.
+  // `deps.calendario` puede ser null a propósito (los tests, y la fase 1
+  // antes de que existiera google.ts): solo cuando NO se pasa nada se usa el
+  // real.
+  const calendario = cita
+    ? deps.calendario === undefined
+      ? calendarioGoogle()
+      : deps.calendario
+    : null;
   if (cita && calendario) {
     // `Calendario` es inyectable (hoy el falso de los tests, mañana
     // google.ts) y nada en el tipo obliga a que resuelva en vez de lanzar —
@@ -162,29 +216,28 @@ export async function registrarSolicitudEntrante(
     }
   }
 
-  try {
-    // El aviso es lo último y lo menos crítico de los tres pasos: que
-    // `avisar` (inyectable — el `avisarAdmin` real ya es fire-and-forget,
-    // pero nada lo garantiza aquí) reviente no puede borrar que la solicitud
-    // (y su cita, si la hubo) ya quedaron en pie.
-    await avisar(
-      construirAviso({
-        origen: entrada.origen,
-        nombre,
-        telefono,
-        servicio: servicioDelSlug(slug)?.nombre ?? null,
-        detalle,
-        mejorHorario: limpio(entrada.mejorHorario),
-        cita,
-        citaTextoCrudo: cita ? null : citaCrudaTexto,
-        meetUrl,
-        choque,
-        urlPanel: urlPanel(),
-      }),
-    );
-  } catch (e) {
-    console.error("[solicitud entrante] aviso:", e);
-  }
+  // El aviso es lo último y lo menos crítico de los tres pasos: que `avisar`
+  // (inyectable — el `avisarAdmin` real ya es fire-and-forget, pero nada lo
+  // garantiza aquí) reviente no puede borrar que la solicitud (y su cita, si
+  // la hubo) ya quedaron en pie. `avisarSeguro` es el mismo try/catch que
+  // usan los dos avisos de rescate de arriba.
+  await avisarSeguro(
+    avisar,
+    construirAviso({
+      origen: entrada.origen,
+      nombre,
+      telefono,
+      servicio: servicioDelSlug(slug)?.nombre ?? null,
+      detalle,
+      mejorHorario: limpio(entrada.mejorHorario),
+      cita,
+      citaTextoCrudo: cita ? null : citaCrudaTexto,
+      meetUrl,
+      choque,
+      urlPanel: urlPanel(),
+    }),
+    "normal",
+  );
 
   return { estado: "creada", solicitudId, agendada };
 }

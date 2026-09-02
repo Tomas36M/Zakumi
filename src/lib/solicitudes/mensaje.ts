@@ -57,3 +57,37 @@ export function construirAviso(d: DatosAviso): string {
   lineas.push(`→ ${d.urlPanel}`);
   return lineas.join("\n");
 }
+
+export type DatosAvisoRescate = {
+  origen: "voz" | "whatsapp";
+  /** Por qué no quedó la fila: sin teléfono (viola el check de la tabla) o
+   *  falló el insert (red, Supabase caído, etc). */
+  motivo: "sin_contacto" | "db";
+  nombre: string | null;
+  telefono: string | null;
+  detalle: string | null;
+};
+
+const MOTIVO_RESCATE: Record<DatosAvisoRescate["motivo"], string> = {
+  sin_contacto: "no dejó teléfono de contacto",
+  db: "la base de datos no lo guardó",
+};
+
+/**
+ * El aviso de "esto se hubiera perdido": cuando `registrarSolicitudEntrante`
+ * no pudo insertar la fila, este es el ÚNICO rastro que le queda a alguien
+ * que sí quería contratarnos. Por eso lleva todo lo que se alcanzó a
+ * capturar, en vez de solo decir que algo falló.
+ */
+export function construirAvisoRescate(d: DatosAvisoRescate): string {
+  const lineas: string[] = [
+    `🔴 Prospecto perdido — ${CANAL[d.origen]}`,
+    `NO quedó en la bandeja: ${MOTIVO_RESCATE[d.motivo]}. Rescátalo a mano.`,
+  ];
+
+  const quien = [d.nombre, d.telefono].filter((x) => x).join(" · ");
+  lineas.push(quien || "sin datos de contacto");
+  if (d.detalle) lineas.push(`«${d.detalle}»`);
+
+  return lineas.join("\n");
+}
