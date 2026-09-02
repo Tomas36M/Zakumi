@@ -1,5 +1,7 @@
 -- Solicitudes entrantes: la bandeja deja de ser "del portal" y pasa a ser
--- TODO el que quiere contratarnos. Correr DESPUÉS de portal.sql.
+-- TODO el que quiere contratarnos. Correr DESPUÉS de portal.sql Y de voz.sql
+-- (la columna llamada_id de abajo referencia public.llamadas_voz(id), que
+-- crea voz.sql — sin esa tabla, este script revienta).
 --
 -- Por qué se amplía en vez de crear tabla nueva: duplicar la máquina de
 -- estados (src/lib/portal/solicitudes.ts), la bandeja y la vista para separar
@@ -12,6 +14,16 @@
 -- comparación da NULL → la fila se filtra. Ningún cliente del portal verá un
 -- lead nuestro. Si algún día alguien "arregla" esa política con un IS NULL,
 -- estaría abriendo la bandeja entera: no hacerlo.
+--
+-- ⚠️ OTRO PENDIENTE PARA CUANDO SE ABRA EL SIGNUP: la política de INSERT del
+-- cliente (solicitudes_crea_propia, portal.sql:97-107) solo exige
+-- user_id = auth.uid() + estado 'nueva' + cotización vacía — NO restringe
+-- origen, contacto_telefono, cita_inicio ni el resto de columnas de este
+-- script. Mientras el portal esté apagado no importa, pero el día que se
+-- habilite el signup, cualquier usuario autenticado podría insertarse una
+-- fila con origen='voz' y su propia cita, colándose en la agenda como si
+-- viniera de Zak. Si eso llega a importar, la política necesita un `check`
+-- adicional (ej. origen = 'portal') antes de abrir el signup.
 
 alter table public.solicitudes
   alter column user_id drop not null;

@@ -237,21 +237,32 @@ function TarjetaSolicitud({
         {(s.estado === "link_enviado" || s.estado === "pagada") && (
           <div className="flex flex-wrap items-center gap-2">
             {dialogo}
-            <Button
-              variante="primaria"
-              disabled={ocupado}
-              onClick={async () => {
-                const ok = await confirmar({
-                  titulo: "¿Confirmas que el pago llegó?",
-                  mensaje:
-                    "Esto crea el cliente y su producto, registra el primer pago y activa el servicio.",
-                  accion: "Confirmar y activar",
-                });
-                if (ok) correr(() => activarSolicitud(s.id));
-              }}
-            >
-              {ocupado ? "Activando…" : "Confirmar pago y activar"}
-            </Button>
+            {s.user_id === null ? (
+              // activarSolicitud busca el perfil por user_id: en una solicitud
+              // de voz o WhatsApp no hay cuenta que buscar, así que el botón
+              // fallaría siempre. Crear el cliente y darle acceso al portal es
+              // un paso aparte que hoy no hace esta pantalla.
+              <p className="text-xs text-tinta-60">
+                Para activar, primero crea el cliente y dale acceso al portal —
+                esta solicitud no tiene cuenta que vincular.
+              </p>
+            ) : (
+              <Button
+                variante="primaria"
+                disabled={ocupado}
+                onClick={async () => {
+                  const ok = await confirmar({
+                    titulo: "¿Confirmas que el pago llegó?",
+                    mensaje:
+                      "Esto crea el cliente y su producto, registra el primer pago y activa el servicio.",
+                    accion: "Confirmar y activar",
+                  });
+                  if (ok) correr(() => activarSolicitud(s.id));
+                }}
+              >
+                {ocupado ? "Activando…" : "Confirmar pago y activar"}
+              </Button>
+            )}
             <BotonRechazar
               ocupado={ocupado}
               onRechazar={(motivo) => correr(() => rechazarSolicitud(s.id, motivo))}
