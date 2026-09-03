@@ -246,6 +246,8 @@ export function ZakView({
       <CockpitBody>
         {tab === "bandeja" && (
           <Conversaciones
+            // Otro deep-link = otra bandeja: remontar en vez de sincronizar props→estado.
+            key={telefonoInicial ?? "bandeja"}
             instanciaId={ID_ZAK}
             esZak
             abrirInicial={telefonoInicial}

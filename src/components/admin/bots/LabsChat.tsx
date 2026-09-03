@@ -37,23 +37,29 @@ export function LabsChat({ instanciaId, prompt, onEditarPrompt }: Props) {
   const [verPrompt, setVerPrompt] = useState(false);
   const contRef = useRef<HTMLDivElement>(null);
 
-  // Sesión estable por instancia + carga del historial previo.
+  // Sesión estable por instancia + carga del historial previo. La sesión se
+  // publica junto con el historial (tras el fetch), no de forma síncrona en el
+  // efecto: hasta entonces el compositor sigue deshabilitado, que es lo correcto
+  // porque sin historial cargado no hay contra qué escribir.
   useEffect(() => {
     const guardada = window.localStorage.getItem(claveStorage);
     const s = guardada && /^[a-z0-9-]{4,40}$/.test(guardada) ? guardada : nuevaSession();
     window.localStorage.setItem(claveStorage, s);
-    setSession(s);
 
     let activo = true;
     void (async () => {
+      let previo: { messages: MensajeChat[]; paused: boolean } | null = null;
       try {
         const res = await fetch(`/admin/api/bots/${instanciaId}/labs?session=${s}`);
-        if (!res.ok || !activo) return;
-        const data = (await res.json()) as { messages: MensajeChat[]; paused: boolean };
-        setMensajes(data.messages);
-        setPausado(data.paused);
+        if (res.ok) previo = (await res.json()) as { messages: MensajeChat[]; paused: boolean };
       } catch {
         // sin historial previo no pasa nada: se arranca en limpio
+      }
+      if (!activo) return;
+      setSession(s);
+      if (previo) {
+        setMensajes(previo.messages);
+        setPausado(previo.paused);
       }
     })();
     return () => {

@@ -47,7 +47,7 @@ export default function PrivacidadPage() {
           recientes del chat para responder con contexto.
         </li>
         <li>
-          Registrar tu interés comercial (un "lead") cuando pides información
+          Registrar tu interés comercial (un «lead») cuando pides información
           sobre un producto o servicio, para que una persona pueda contactarte.
         </li>
       </ul>
@@ -65,7 +65,7 @@ export default function PrivacidadPage() {
       </p>
       <ul>
         <li>
-          Escribe <strong>"eliminar mis datos"</strong> en el mismo chat de
+          Escribe <strong>«eliminar mis datos»</strong> en el mismo chat de
           WhatsApp donde hablaste con el agente, o
         </li>
         <li>

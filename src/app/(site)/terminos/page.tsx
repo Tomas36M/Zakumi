@@ -61,7 +61,7 @@ export default function TerminosPage() {
 
       <h2>Responsabilidad</h2>
       <p>
-        El servicio se presta "tal cual". En la medida permitida por la ley
+        El servicio se presta «tal cual». En la medida permitida por la ley
         colombiana, ZAKUMI no responde por daños indirectos derivados del uso
         del sitio o de los agentes, ni por indisponibilidades causadas por
         terceros (proveedores de mensajería, hosting o modelos de IA).

@@ -82,8 +82,14 @@ export function Conversaciones({
   const [offset, setOffset] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
-  const [telefono, setTelefono] = useState<string | null>(null);
+  // El deep-link del CRM arranca ya seleccionado (estado inicial, no un efecto):
+  // el efecto de montaje solo trae su historial. Si el teléfono del enlace
+  // cambia, el padre remonta el componente con `key`.
+  const [telefono, setTelefono] = useState<string | null>(abrirInicial);
   const [historial, setHistorial] = useState<Historial | null>(null);
+  // Ventana de 24h de Meta, recalculada en cada carga/tick del historial (no
+  // en el render: Date.now() ahí no es puro). Se usa solo con historial cargado.
+  const [ventanaVencida, setVentanaVencida] = useState(false);
   const [mensaje, setMensaje] = useState("");
   const [avisoChat, setAvisoChat] = useState<string | null>(null);
   const [operando, startOperar] = useTransition();
@@ -112,7 +118,7 @@ export function Conversaciones({
   const historialRef = useRef<Historial | null>(null);
   const conversacionesRef = useRef<Conversacion[] | null>(null);
   const offsetRef = useRef(0);
-  const telefonoRef = useRef<string | null>(null);
+  const telefonoRef = useRef<string | null>(abrirInicial);
 
   const marcarVisto = useCallback(
     (tel: string) => {
@@ -172,15 +178,17 @@ export function Conversaciones({
     [esZak],
   );
 
+  // Sin setState antes del primer await (lo llama el efecto de montaje): el
+  // error anterior se limpia cuando la lista llega bien, no al arrancar.
   const cargarLista = useCallback(
     async (off: number): Promise<boolean> => {
-      setError(null);
       try {
         const res = await fetch(
           `/admin/api/bots/${instanciaId}/conversaciones?offset=${off}`,
         );
         if (!res.ok) throw new Error(String(res.status));
         const data = (await res.json()) as { conversaciones: Conversacion[] };
+        setError(null);
         conversacionesRef.current = data.conversaciones;
         setConversaciones(data.conversaciones);
         offsetRef.current = off;
@@ -220,15 +228,10 @@ export function Conversaciones({
     }
   }, [instanciaId, cruzarConCrm]);
 
-  const cargarHistorial = useCallback(
+  // Solo la parte asíncrona de abrir un chat: nada de estado hasta que llega
+  // la respuesta, así el efecto del deep-link puede llamarla directamente.
+  const traerHistorial = useCallback(
     async (tel: string) => {
-      setAvisoChat(null);
-      historialRef.current = null;
-      setHistorial(null);
-      telefonoRef.current = tel;
-      setTelefono(tel);
-      setSlugReabrir(null);
-      bajarRef.current = true; // chat recién abierto: scroll al último mensaje
       void cruzarConCrm([tel]);
       try {
         const res = await fetch(
@@ -239,12 +242,28 @@ export function Conversaciones({
         if (telefonoRef.current !== tel) return; // ya abrió otro chat
         historialRef.current = data;
         setHistorial(data);
+        setVentanaVencida(fueraDeVentana(data.ultimo_del_cliente, Date.now()));
         marcarVisto(tel);
       } catch {
         setAvisoChat("No se pudo cargar el historial.");
       }
     },
     [instanciaId, cruzarConCrm, marcarVisto],
+  );
+
+  // Abrir un chat desde la lista: selección inmediata + historial.
+  const cargarHistorial = useCallback(
+    (tel: string) => {
+      setAvisoChat(null);
+      historialRef.current = null;
+      setHistorial(null);
+      telefonoRef.current = tel;
+      setTelefono(tel);
+      setSlugReabrir(null);
+      bajarRef.current = true; // chat recién abierto: scroll al último mensaje
+      return traerHistorial(tel);
+    },
+    [traerHistorial],
   );
 
   // Tick del chat abierto (~3.5s): solo hace setState si algo cambió, y mide
@@ -259,6 +278,9 @@ export function Conversaciones({
       if (!res.ok) return;
       const data = (await res.json()) as Historial;
       if (telefonoRef.current !== tel) return; // cambió de chat en pleno vuelo
+      // La ventana de 24h puede vencer sin que llegue ningún mensaje: se
+      // recalcula en cada tick (mismo valor = React no re-renderiza).
+      setVentanaVencida(fueraDeVentana(data.ultimo_del_cliente, Date.now()));
       if (mismoJson(historialRef.current, data)) return;
       const c = contRef.current;
       bajarRef.current =
@@ -272,14 +294,20 @@ export function Conversaciones({
   }, [instanciaId, marcarVisto]);
 
   useEffect(() => {
-    void cargarLista(0);
+    void (async () => {
+      await cargarLista(0);
+    })();
   }, [cargarLista]);
 
-  // Deep-link del CRM: abrir ese chat aunque no exista todavía en la lista —
-  // el historial vacío + ventana cerrada ofrece «Reabrir con plantilla».
+  // Deep-link del CRM: el chat ya nació seleccionado (estado inicial); aquí
+  // solo se trae su historial aunque no exista todavía en la lista — el
+  // historial vacío + ventana cerrada ofrece «Reabrir con plantilla».
   useEffect(() => {
-    if (abrirInicial) void cargarHistorial(abrirInicial);
-  }, [abrirInicial, cargarHistorial]);
+    if (!abrirInicial) return;
+    void (async () => {
+      await traerHistorial(abrirInicial);
+    })();
+  }, [abrirInicial, traerHistorial]);
 
   function alternarPausa() {
     if (!telefono || !historial) return;
@@ -367,8 +395,7 @@ export function Conversaciones({
   });
 
   const ventanaCerrada =
-    esZak && historial !== null && !esLabs(historial.phone) &&
-    fueraDeVentana(historial.ultimo_del_cliente, Date.now());
+    esZak && historial !== null && !esLabs(historial.phone) && ventanaVencida;
 
   const fichaActual = telefono ? fichas[telefono] : undefined;
   const slugParaReabrir = slugReabrir ?? fichaActual?.verticalSlug ?? "generico";
@@ -387,8 +414,8 @@ export function Conversaciones({
               verticales={verticales}
               onAbierto={() => {
                 setAbriendoChat(false);
-                // El aviso va DESPUÉS de recargar: cargarLista arranca con
-                // setError(null) y se comería la confirmación del envío.
+                // El aviso va DESPUÉS de recargar: cargarLista limpia `error`
+                // al recibir la lista y se comería la confirmación del envío.
                 void cargarLista(0).then((ok) => {
                   if (ok) {
                     setError("Saludo enviado ✓ — la conversación ya está en la bandeja.");

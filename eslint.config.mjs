@@ -15,6 +15,14 @@ const eslintConfig = defineConfig([
     // Assets estáticos: incluye bundles de terceros vendorizados (public/voz) —
     // un `eslint --fix` aquí reescribiría código auditado byte a byte.
     "public/**",
+    // Fuera del app: worktrees de otras sesiones (traen su propio .next),
+    // el bot Flask (repo aparte), material de curso/marketing y SQL/docs.
+    ".claude/**",
+    "whatsapp-bot/**",
+    "cursos/**",
+    "marketing/**",
+    "supabase/**",
+    "docs/**",
   ]),
 ]);
 

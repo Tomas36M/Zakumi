@@ -24,6 +24,8 @@ type Datos = {
   leads: Lead[];
 };
 
+const ERROR_CARGA = "No se pudo cargar la actividad. ¿Railway está arriba?";
+
 function resumenLead(datos: Record<string, unknown>): string {
   const partes = Object.entries(datos)
     .filter(([, v]) => typeof v === "string" || typeof v === "number")
@@ -38,20 +40,40 @@ export function Actividad({ instanciaId }: Props) {
   const [avisoJob, setAvisoJob] = useState<string | null>(null);
   const [operando, startOperar] = useTransition();
 
-  const cargar = useCallback(async () => {
-    setError(null);
-    try {
-      const res = await fetch(`/admin/api/bots/${instanciaId}/actividad`);
-      if (!res.ok) throw new Error(String(res.status));
-      setDatos((await res.json()) as Datos);
-    } catch {
-      setError("No se pudo cargar la actividad. ¿Railway está arriba?");
-    }
+  // El fetch no toca estado: así el efecto de montaje puede llamarlo y aplicar
+  // el resultado en su propia continuación (con guarda de desmontaje), y
+  // `cargar` reutiliza lo mismo tras reintentar un job.
+  const pedirDatos = useCallback(async (): Promise<Datos> => {
+    const res = await fetch(`/admin/api/bots/${instanciaId}/actividad`);
+    if (!res.ok) throw new Error(String(res.status));
+    return (await res.json()) as Datos;
   }, [instanciaId]);
 
+  const cargar = useCallback(async () => {
+    try {
+      setDatos(await pedirDatos());
+      setError(null);
+    } catch {
+      setError(ERROR_CARGA);
+    }
+  }, [pedirDatos]);
+
   useEffect(() => {
-    void cargar();
-  }, [cargar]);
+    let activo = true;
+    void (async () => {
+      try {
+        const nuevos = await pedirDatos();
+        if (!activo) return;
+        setDatos(nuevos);
+        setError(null);
+      } catch {
+        if (activo) setError(ERROR_CARGA);
+      }
+    })();
+    return () => {
+      activo = false;
+    };
+  }, [pedirDatos]);
 
   function reintentar(jobId: number) {
     setAvisoJob(null);
