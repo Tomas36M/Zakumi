@@ -4,6 +4,7 @@ import React, { useEffect, useLayoutEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import gsap from "gsap";
+import { LogoZakumi } from "@/components/brand/LogoZakumi";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import ScrollToPlugin from "gsap/ScrollToPlugin";
 import { INSTAGRAM_HANDLE, INSTAGRAM_URL } from "@/components/zakumi/contact";
@@ -254,7 +255,7 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
 
         <nav className={menuOpen ? "nav-menu-open" : undefined}>
           <div className="nav-logo">
-            <Link href="/">ZAKUMI<span style={{ color: "var(--orange)" }}>.</span></Link>
+            <Link href="/" aria-label="Zakumi — inicio"><LogoZakumi decorativo /></Link>
           </div>
           <div className="nav-links">
             {NAV_ITEMS.map(({ href, label }) => (

@@ -117,14 +117,15 @@
     background: rgba(10, 12, 18, 0.92);
     border-bottom-color: rgba(118, 130, 142, 0.15);
   }
+  /* Logotipo vectorial (src/components/brand/LogoZakumi.tsx). El overflow
+     hidden es la máscara del slide-up de entrada (GSAP mueve el <a>). */
   .nav-logo {
-    font-family: var(--font-playfair), 'Playfair Display', serif;
-    font-size: 1.4rem;
-    letter-spacing: 0.2em;
-    font-weight: 500;
+    --logo-punto: var(--orange);
     overflow: hidden;
+    color: var(--paper);
   }
-  .nav-logo > span { display: inline-block; }
+  .nav-logo a { display: block; color: inherit; }
+  .nav-logo svg { display: block; height: 1.5rem; width: auto; }
   .nav-links {
     display: flex; gap: 2.5rem;
     font-size: 0.75rem;
@@ -150,7 +151,10 @@
   }
   .nav-links a:hover { color: var(--paper); }
   .nav-links a:hover::after { transform: scaleX(1); }
-  @media (max-width: 720px) { .nav-links { display: none; } }
+  @media (max-width: 720px) {
+    .nav-links { display: none; }
+    .nav-logo svg { height: 1.25rem; }
+  }
 
   /* ——— Nav móvil (complemento responsive) ——— */
   .nav-toggle {

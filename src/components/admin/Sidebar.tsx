@@ -22,6 +22,7 @@ import { logout } from "@/lib/admin/actions";
 import type { StatusGlobal } from "@/lib/bots/tipos";
 import { cn } from "@/lib/cn";
 import { IconButton } from "@/components/admin/ui/IconButton";
+import { LogoZakumi } from "@/components/brand/LogoZakumi";
 import { alternarSidebar, useSidebarColapsado } from "@/components/admin/ui/sidebar-store";
 
 const SECCIONES = [
@@ -128,19 +129,17 @@ function ContenidoSidebar({
 
   return (
     <div className="flex h-full flex-col gap-aire">
-      <div className="flex items-center justify-between rounded-isla bg-isla px-3 py-3">
-        {!colapsado && (
-          <Link href="/admin/prospeccion" className="pl-1 text-sm font-bold tracking-wide text-tinta">
-            ZAKUMI <span className="font-editorial text-acento italic">Panel</span>
-          </Link>
-        )}
-        <IconButton
-          etiqueta={colapsado ? "Expandir menú" : "Colapsar menú"}
-          onClick={alternarSidebar}
-          className="max-[899px]:hidden"
+      {/* Marca: solo el logotipo, centrado. Al colapsar, la palabra se pliega
+          hasta dejar la Z (animación en admin-theme.css, .adm-logo). */}
+      <div className="flex items-center justify-center overflow-hidden rounded-isla bg-isla px-3 py-3.5">
+        <Link
+          href="/admin/prospeccion"
+          aria-label="Zakumi — inicio del panel"
+          className="adm-logo text-tinta"
+          data-colapsado={colapsado || undefined}
         >
-          {colapsado ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
-        </IconButton>
+          <LogoZakumi decorativo />
+        </Link>
       </div>
 
       <nav className="flex flex-1 flex-col gap-1 rounded-isla bg-isla p-2">
@@ -188,8 +187,8 @@ function ContenidoSidebar({
         })}
       </nav>
 
-      <div className="rounded-isla bg-isla p-2">
-        <form action={logout}>
+      <div className={cn("flex items-center gap-1 rounded-isla bg-isla p-2", colapsado && "flex-col")}>
+        <form action={logout} className={cn("min-w-0", colapsado ? "w-full" : "flex-1")}>
           <button
             type="submit"
             title="Salir"
@@ -202,6 +201,13 @@ function ContenidoSidebar({
             {!colapsado && <span>Salir</span>}
           </button>
         </form>
+        <IconButton
+          etiqueta={colapsado ? "Expandir menú" : "Colapsar menú"}
+          onClick={alternarSidebar}
+          className="max-[899px]:hidden"
+        >
+          {colapsado ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+        </IconButton>
       </div>
     </div>
   );
@@ -209,13 +215,13 @@ function ContenidoSidebar({
 
 export function Sidebar() {
   const colapsado = useSidebarColapsado();
-  const [movilAbierto, setMovilAbierto] = useState(false);
   const pathname = usePathname();
-
-  // Cerrar el overlay móvil al navegar.
-  useEffect(() => {
-    setMovilAbierto(false);
-  }, [pathname]);
+  // El overlay móvil recuerda en qué ruta se abrió: al navegar (también con
+  // atrás/adelante) deja de coincidir y se cierra solo, sin setState en un efecto.
+  const [abiertoEn, setAbiertoEn] = useState<string | null>(null);
+  const movilAbierto = abiertoEn === pathname;
+  const abrirMovil = () => setAbiertoEn(pathname);
+  const cerrarMovil = () => setAbiertoEn(null);
 
   return (
     <>
@@ -232,7 +238,7 @@ export function Sidebar() {
       {/* Móvil: botón flotante + overlay con velo */}
       <IconButton
         etiqueta="Abrir menú"
-        onClick={() => setMovilAbierto(true)}
+        onClick={abrirMovil}
         className="fixed bottom-4 left-4 z-40 bg-isla-alta backdrop-blur min-[900px]:hidden"
       >
         <Menu className="h-4 w-4" />
@@ -242,17 +248,17 @@ export function Sidebar() {
           <button
             type="button"
             aria-label="Cerrar menú"
-            onClick={() => setMovilAbierto(false)}
+            onClick={cerrarMovil}
             className="absolute inset-0 bg-black/50"
           />
           <div className="absolute inset-y-0 left-0 flex w-64 flex-col p-aire">
             <div className="mb-aire self-end">
-              <IconButton etiqueta="Cerrar menú" onClick={() => setMovilAbierto(false)}>
+              <IconButton etiqueta="Cerrar menú" onClick={cerrarMovil}>
                 <X className="h-4 w-4" />
               </IconButton>
             </div>
             <div className="min-h-0 flex-1">
-              <ContenidoSidebar colapsado={false} onNavegar={() => setMovilAbierto(false)} />
+              <ContenidoSidebar colapsado={false} onNavegar={cerrarMovil} />
             </div>
           </div>
         </div>

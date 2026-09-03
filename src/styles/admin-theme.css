@@ -88,3 +88,48 @@
   background: rgb(238 238 240 / 0.15);
   border-radius: 999px;
 }
+
+/* ——— Logotipo del sidebar (.adm-logo envuelve <LogoZakumi>) ———
+   Expandido: la palabra completa, centrada en su isla. Colapsado: solo la Z.
+   Las demás letras se pliegan sobre la Z (de la I a la A) mientras el envolvente
+   estrecha su ancho; al expandir vuelven a salir de la Z, de la A a la I.
+   Las traslaciones van en unidades del viewBox (1537×235): en SVG, 1px = 1 unidad. */
+.panel { --logo-punto: var(--color-acento); }
+.adm-logo {
+  --logo-alto: 22px;
+  display: block;
+  height: var(--logo-alto);
+  width: calc(var(--logo-alto) * 1537 / 235);
+  overflow: hidden;
+  transition: width 0.35s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.adm-logo svg {
+  display: block;
+  height: var(--logo-alto);
+  width: calc(var(--logo-alto) * 1537 / 235);
+  overflow: visible;
+}
+.adm-logo [data-letra],
+.adm-logo [data-punto] {
+  transition: transform 0.3s cubic-bezier(0.2, 0.7, 0.2, 1), opacity 0.2s ease;
+}
+.adm-logo [data-letra="a"] { transition-delay: 0ms; }
+.adm-logo [data-letra="k"] { transition-delay: 40ms; }
+.adm-logo [data-punto]     { transition-delay: 60ms; }
+.adm-logo [data-letra="u"] { transition-delay: 80ms; }
+.adm-logo [data-letra="m"] { transition-delay: 120ms; }
+.adm-logo [data-letra="i"] { transition-delay: 160ms; }
+
+.adm-logo[data-colapsado] { width: calc(var(--logo-alto) * 223 / 235); }
+.adm-logo[data-colapsado] [data-letra="i"] { transform: translateX(-1463px); opacity: 0; transition-delay: 0ms; }
+.adm-logo[data-colapsado] [data-letra="m"] { transform: translateX(-1125px); opacity: 0; transition-delay: 40ms; }
+.adm-logo[data-colapsado] [data-letra="u"] { transform: translateX(-833px); opacity: 0; transition-delay: 80ms; }
+.adm-logo[data-colapsado] [data-punto]     { transform: translateX(-803px); opacity: 0; transition-delay: 80ms; }
+.adm-logo[data-colapsado] [data-letra="k"] { transform: translateX(-543px); opacity: 0; transition-delay: 120ms; }
+.adm-logo[data-colapsado] [data-letra="a"] { transform: translateX(-250px); opacity: 0; transition-delay: 160ms; }
+
+@media (prefers-reduced-motion: reduce) {
+  .adm-logo,
+  .adm-logo [data-letra],
+  .adm-logo [data-punto] { transition-delay: 0ms !important; }
+}
