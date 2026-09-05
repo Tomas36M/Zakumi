@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="es-CO">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=1080, initial-scale=1" />
+  <title>Zakumi — Folletos de venta (Rediseño Impacto)</title>
+  <style>
+    @font-face { font-family: 'Playfair Display'; src: url('fonts/PlayfairDisplay.ttf') format('truetype'); font-style: normal; font-weight: 400; font-display: swap; }
+    @font-face { font-family: 'Playfair Display'; src: url('fonts/PlayfairDisplayItalic.ttf') format('truetype'); font-style: italic; font-weight: 400; font-display: swap; }
+    @font-face { font-family: 'Instrument Sans'; src: url('fonts/InstrumentSans.ttf') format('truetype'); font-style: normal; font-weight: 400; font-display: swap; }
+    :root {
+      --ink: #0A0C12;
+      --paper: #f5efe3;
+      --muted: #98A3AE;
+      --orange: #DB5227;
+      --rule: rgba(118,130,142,0.25);
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; width: 1080px; height: 1350px; background: var(--ink); }
+    body { font-family: 'Instrument Sans', Arial, sans-serif; color: var(--paper); overflow: hidden; }
+    
+    .flyer { position: relative; width: 1080px; height: 1350px; padding: 64px 72px 54px; background: var(--ink); overflow: hidden; }
+    
+    /* Human scene layer: the visual hook for WhatsApp */
+    .scene { position:absolute; z-index:1; top:168px; right:-10px; width:600px; height:670px; object-fit:cover; object-position:82% center; clip-path:polygon(18% 0,100% 0,100% 100%,0 100%); pointer-events:none; }
+    .copy-panel { position:absolute; z-index:1.5; left:0; top:118px; bottom:110px; width:74%; background:var(--ink); pointer-events:none; }
+    
+    .flyer::before { content: ''; position: absolute; left: 72px; right: 72px; top: 118px; height: 1px; background: var(--rule); z-index: 1; }
+    .flyer::after { content: ''; position: absolute; left: 72px; right: 72px; bottom: 109px; height: 1px; background: var(--rule); z-index: 1; }
+    
+    .header { position: relative; z-index: 2; display:flex; justify-content:space-between; align-items: baseline; }
+    .brand { font-family:'Playfair Display', Georgia, serif; font-size: 25px; letter-spacing: .42em; color:var(--paper); white-space:nowrap; }
+    .descriptor { font-size: 15px; letter-spacing:.28em; color:var(--muted); white-space:nowrap; }
+    
+    .content { position: relative; z-index: 2; margin-top: 60px; width: 780px; }
+    .sector { display:flex; align-items:center; gap: 16px; color:var(--orange); font-size: 17px; letter-spacing:.26em; white-space:nowrap; }
+    .sector .short-rule { width: 112px; height:1px; background:var(--orange); opacity:.9; }
+    
+    /* Larger, more aggressive typography */
+    h1 { width: 780px; margin: 24px 0 0; font-family:'Playfair Display', Georgia, serif; font-size: 76px; line-height: .98; font-weight:400; letter-spacing:-.02em; color:var(--paper); }
+    h1 em { font-style:italic; color:var(--orange); }
+    
+    .subtitle { width: 690px; margin: 34px 0 0; color:var(--muted); font-size: 26px; line-height:1.3; letter-spacing:-.01em; }
+    
+    .benefits-wrapper { position: relative; z-index: 2; margin-top: 52px; padding-left: 28px; border-left: 1px solid var(--rule); }
+    .benefits { display:grid; gap: 22px; width: 690px; }
+    .benefit { display:grid; grid-template-columns: 32px 1fr; column-gap: 16px; align-items:start; color:var(--paper); font-size: 24px; line-height:1.2; }
+    .check { position:relative; margin-top: 6px; width:24px; height:24px; }
+    .check::before { content:''; position:absolute; left:4px; top:11px; width:9px; height:1.5px; background:var(--orange); transform:rotate(45deg); transform-origin:left center; }
+    .check::after { content:''; position:absolute; left:10px; top:16px; width:15px; height:1.5px; background:var(--orange); transform:rotate(-48deg); transform-origin:left center; }
+    
+    /* Price block designed for maximum conversion focus */
+    .price-block { position:absolute; left:72px; right:72px; top: 880px; border-top:1px solid var(--rule); border-bottom:1px solid var(--rule); padding: 28px 0 32px; z-index: 3; background: rgba(10,12,18,0.96); }
+    .price-label { color:var(--muted); letter-spacing:.25em; font-size: 15px; margin-bottom: 20px; }
+    .price-row { display:grid; grid-template-columns: 1fr auto auto; align-items:baseline; column-gap: 20px; }
+    .price-row + .price-row { margin-top: 12px; }
+    .price-name { color:var(--paper); font-size:26px; }
+    .price-value { font-family:'Playfair Display', Georgia, serif; font-size: 46px; line-height:1; color:var(--paper); white-space:nowrap; }
+    .price-row.monthly .price-value { font-size: 78px; color:var(--orange); }
+    .price-note { color:var(--muted); font-size: 18px; white-space:nowrap; }
+    .price-foot { margin-top: 24px; color:var(--muted); font-size:18px; letter-spacing:.02em; }
+    
+    .services-block { position:absolute; left:72px; right:72px; top: 700px; border-top:1px solid var(--rule); border-bottom:1px solid var(--rule); padding: 24px 0 24px; z-index: 3; background: rgba(10,12,18,0.96); }
+    .services-label { color:var(--muted); letter-spacing:.25em; font-size: 15px; margin-bottom: 16px; }
+    .service-row { display:grid; grid-template-columns: 1fr auto; align-items:baseline; gap: 20px; padding: 16px 0; border-top:1px solid var(--rule); }
+    .service-row:first-of-type { border-top:none; }
+    .service-name { color:var(--paper); font-size: 24px; line-height:1.15; }
+    .service-price { font-family:'Playfair Display', Georgia, serif; font-size: 28px; color:var(--paper); text-align:right; white-space:nowrap; }
+    .service-price.orange { color:var(--orange); }
+    .service-foot { margin-top: 20px; color:var(--muted); font-size:18px; }
+    
+    .footer { position:absolute; z-index:2; left:72px; right:72px; bottom: 46px; display:flex; justify-content:space-between; align-items:center; }
+    .contact { display:flex; align-items:center; gap: 16px; color:var(--paper); font-size: 22px; letter-spacing:.02em; }
+    .chat { width:24px; height:20px; border:1.5px solid var(--orange); border-radius:50%; position:relative; }
+    .chat::after { content:''; position:absolute; bottom:-6px; left:4px; width:8px; height:8px; border-left:1.5px solid var(--orange); transform:skew(-30deg); }
+    .url { color:var(--muted); font-size:20px; letter-spacing:.05em; }
+    
+    .corner-note { position:absolute; z-index:1; left:72px; top: 118px; transform:translateY(-8px); width: 6px; height:6px; background:var(--orange); }
+    
+    .services .scene { top:155px; height:520px; object-position:78% center; }
+    .services h1 { width: 760px; }
+    .services .subtitle { width: 680px; }
+    .services .price-block, .services .benefits-wrapper { display:none; }
+    
+    @media print { html, body { print-color-adjust: exact; -webkit-print-color-adjust: exact; } }
+  </style>
+</head>
+<body>
+  <main id="root"></main>
+  <script>
+    const brochures = [
+      { id:'01-generico', sector:'PARA TU NEGOCIO', title:'Tu mejor vendedor es inteligencia artificial.', key:'inteligencia artificial', subtitle:'Un agente de IA que atiende tu WhatsApp 24/7: responde, vende y agenda como tu mejor empleado.', benefits:['Atiende a tus clientes a toda hora, con IA real','Toma pedidos, agenda citas y registra clientes','Lo entregamos funcionando y hablando como tu negocio'], art:'generic' },
+      { id:'02-restaurantes', sector:'RESTAURANTES', title:'Tu WhatsApp toma los pedidos solo.', key:'pedidos', subtitle:'Zak toma el pedido con dirección y forma de pago mientras la cocina trabaja. Ni una llamada perdida en hora pico.', benefits:['Pedidos completos: plato, dirección y forma de pago','Reservas sin ocupar el teléfono del local','Responde el menú al instante, 24/7'], art:'restaurant' },
+      { id:'03-panaderias', sector:'PANADERÍAS', title:'Los encargos de torta se toman solos.', key:'toman solos', subtitle:'Zak confirma sabores, porciones y fecha de entrega sin ocupar el mostrador.', benefits:['Encargos de tortas con todos los detalles','Vende el surtido del día por chat','Atiende desde antes de abrir el local'], art:'bakery' },
+      { id:'04-ferreterias', sector:'FERRETERÍAS', title:'Precios y pedidos sin filas en el mostrador.', key:'sin filas', subtitle:'Zak responde los «¿tienen y a cómo?» al instante y deja el pedido listo para recoger o despachar a obra.', benefits:['Disponibilidad y precios respondidos al momento','Pedidos listos para recoger o enviar a obra','Atiende mientras el mostrador despacha'], art:'hardware' },
+      { id:'05-veterinarias', sector:'VETERINARIAS', title:'Las citas se agendan solas, a toda hora.', key:'agendan solas', subtitle:'Los dueños escriben a cualquier hora; Zak responde y deja la cita agendada.', benefits:['Agenda citas sin sacar al veterinario de consulta','Responde las dudas de los dueños de mascotas','Recuerda vacunas y controles'], art:'vet' },
+      { id:'06-droguerias', sector:'DROGUERÍAS', title:'Domicilios por WhatsApp sin ocupar el teléfono.', key:'sin ocupar', subtitle:'Zak toma el domicilio completo y responde si hay el producto, mientras el local atiende a los de la fila.', benefits:['Pedidos a domicilio completos, por chat','Disponibilidad de productos al instante','Atiende 24/7, también festivos'], art:'pharmacy' },
+      { id:'07-salones-barberias', sector:'SALONES Y BARBERÍAS', title:'La agenda se llena sin soltar las tijeras.', key:'sin soltar', subtitle:'Zak da citas, reagenda y manda recordatorios mientras el salón atiende.', benefits:['Da y reagenda citas por chat','Recordatorios que evitan plantones','Responde precios y horarios al instante'], art:'salon' },
+      { id:'08-talleres', sector:'TALLERES', title:'El taller cotiza y agenda mientras trabaja.', key:'agenda', subtitle:'Zak agenda revisiones y cotiza repuestos mientras el equipo trabaja, sin soltar la herramienta.', benefits:['Citas de revisión sin parar el trabajo','Cotización de repuestos por chat','El cliente sabe cuándo traer el carro'], art:'workshop' },
+      { id:'09-hogar-muebles', sector:'HOGAR Y MUEBLES', title:'Cotiza con medidas y fotos, por chat.', key:'medidas y fotos', subtitle:'El cliente manda lo que busca y Zak responde con la cotización lista para cerrar la venta.', benefits:['Cotizaciones con medidas y fotos del cliente','Coordina entregas sin llamadas cruzadas','Responde existencias al instante'], art:'home' },
+      { id:'10-ropa-calzado', sector:'ROPA Y CALZADO', title:'Tallas y novedades vendidas por chat.', key:'vendidas por chat', subtitle:'Zak atiende el chat como una vendedora más: la clienta pregunta y sale con la prenda apartada.', benefits:['Muestra novedades y responde tallas','Aparta prendas mientras la tienda atiende','Vende 24/7, también domingos'], art:'clothing' },
+      { id:'11-tiendas-comercios', sector:'TIENDAS Y COMERCIOS', title:'Tu tienda responde al momento, 24/7.', key:'al momento', subtitle:'Cada mensaje se contesta de una: el cliente compra sin esperar a que abras.', benefits:['Toma pedidos y responde preguntas frecuentes','La venta no se enfría esperando respuesta','Atiende a toda hora, sin descanso'], art:'store' },
+      { id:'12-servicios', services:true, sector:'SERVICIOS ZAKUMI', title:'Un solo equipo para tu negocio digital.', key:'un solo equipo', subtitle:'Empieza por el agente y crece por partes: cada servicio se contrata por separado.', art:'services', serviceList:[['Agente de WhatsApp con IA','$300.000 pago único + $129.900/mes'],['CRM con IA','$120.000/mes'],['Página web','$900.000 pago único'],['Mantenimiento web','$80.000/mes'],['Agente de voz con IA','Próximamente']] }
+    ];
+
+    function esc(value) { return value.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+    function titleHTML(title, key) {
+      const idx = title.indexOf(key);
+      if (idx < 0) return esc(title);
+      return esc(title.slice(0, idx)) + '<em>' + esc(key) + '</em>' + esc(title.slice(idx + key.length));
+    }
+    
+    /* Monumental background SVG generators */
+    function art(type) {
+      const map = {
+        generic: `<circle class="line" cx="450" cy="450" r="300"/><circle class="soft" cx="450" cy="450" r="400"/><path class="line" d="M150 450 L750 450 M450 150 L450 750"/>`,
+        restaurant: `<path class="line" d="M100 500 C100 200 800 200 800 500 C800 800 100 800 100 500 Z"/><ellipse class="soft" cx="450" cy="400" rx="250" ry="100"/><path class="line" d="M300 400 C350 250 550 250 600 400"/>`,
+        bakery: `<path class="line" d="M200 600 C150 400 300 250 450 250 C600 250 750 400 700 600 Z"/><path class="soft" d="M250 350 C400 250 500 250 650 350"/><circle class="line" cx="450" cy="450" r="50"/>`,
+        hardware: `<path class="line" d="M200 200 L700 700 M300 200 L800 700"/><path class="soft" d="M200 700 L700 200 M300 700 L800 200"/><rect class="line" x="350" y="350" width="200" height="200" transform="rotate(45 450 450)"/>`,
+        vet: `<path class="line" d="M250 550 C150 400 250 200 450 350 C650 200 750 400 650 550 C500 750 450 750 250 550 Z"/><circle class="soft" cx="350" cy="350" r="80"/><circle class="soft" cx="550" cy="350" r="80"/>`,
+        pharmacy: `<path class="line" d="M300 200 L600 200 L600 700 L300 700 Z"/><path class="soft" d="M200 450 L700 450 M450 200 L450 700"/><rect class="line" x="350" y="350" width="200" height="200"/>`,
+        salon: `<path class="line" d="M300 700 C400 500 500 300 600 100 M200 500 C350 400 550 400 700 500"/><circle class="soft" cx="450" cy="450" r="250"/>`,
+        workshop: `<circle class="line" cx="450" cy="450" r="250"/><circle class="soft" cx="450" cy="450" r="150"/><path class="line" d="M200 450 L700 450 M450 200 L450 700 M273 273 L627 627 M273 627 L627 273"/>`,
+        home: `<path class="line" d="M100 500 L450 200 L800 500"/><path class="soft" d="M250 400 L250 700 L650 700 L650 400"/><rect class="line" x="350" y="450" width="200" height="250"/>`,
+        clothing: `<path class="line" d="M250 300 L450 150 L650 300 L750 600 L600 750 L300 750 L150 600 Z"/><path class="soft" d="M350 150 C350 250 550 250 550 150"/><circle class="line" cx="450" cy="450" r="100"/>`,
+        store: `<path class="line" d="M150 300 L750 300 L650 700 L250 700 Z"/><path class="soft" d="M200 300 L150 150 L750 150 L700 300"/><rect class="line" x="350" y="400" width="200" height="200"/>`,
+        services: `<circle class="line" cx="450" cy="450" r="300"/><path class="soft" d="M250 450 L450 250 L650 450 M450 250 L450 650"/>`
+      };
+      return `<svg viewBox="0 0 900 900" aria-hidden="true">${map[type] || map.generic}</svg>`;
+    }
+
+    function renderBrochure(b) {
+      const root = document.getElementById('root');
+      const section = document.createElement('section');
+      section.className = 'flyer' + (b.services ? ' services' : '');
+      section.dataset.id = b.id;
+      section.innerHTML = `
+        <div class="copy-panel"></div>
+        <img class="scene" src="human_assets_v2/${b.id}.png" alt="" aria-hidden="true" />
+        <span class="corner-note"></span>
+        <header class="header"><div class="brand">ZAKUMI</div><div class="descriptor">AGENTES DE IA</div></header>
+        <div class="content">
+          <div class="sector"><span>— ${esc(b.sector)}</span><span class="short-rule"></span></div>
+          <h1>${titleHTML(b.title, b.key)}</h1>
+          <p class="subtitle">${esc(b.subtitle)}</p>
+          ${b.services ? '' : `<div class="benefits-wrapper"><div class="benefits">${b.benefits.map(x => `<div class="benefit"><span class="check"></span><span>${esc(x)}</span></div>`).join('')}</div></div>`}
+        </div>
+        ${b.services ? `<div class="services-block"><div class="services-label">PLANES Y SERVICIOS</div>${b.serviceList.map((row, i) => `<div class="service-row"><span class="service-name">${esc(row[0])}</span><span class="service-price ${i===0 ? 'orange':''}">${esc(row[1])}</span></div>`).join('')}<div class="service-foot">Sin permanencia · Precios de lanzamiento</div></div>` : `<div class="price-block"><div class="price-label">PLAN AGENTE ZAK</div><div class="price-row"><span class="price-name">Construcción y entrega</span><span class="price-value">$300.000</span><span class="price-note">pago único</span></div><div class="price-row monthly"><span class="price-name">Mensualidad</span><span class="price-value">$129.900</span><span class="price-note">COP / mes</span></div><div class="price-foot">Hasta 150 conversaciones al mes · Sin permanencia</div></div>`}
+        <footer class="footer"><div class="contact"><span class="chat"></span><span>+57 318 0889780</span></div><div class="url">zakumistudio.com</div></footer>
+      `;
+      root.appendChild(section);
+    }
+    brochures.forEach(renderBrochure);
+    const selected = new URLSearchParams(location.search).get('i');
+    if (selected) {
+      const wanted = document.querySelector(`[data-id="${selected}"]`);
+      if (wanted) document.querySelectorAll('.flyer').forEach(el => el.style.display = el === wanted ? 'block' : 'none');
+    }
+    document.fonts.ready.then(() => { document.documentElement.dataset.ready = 'true'; });
+  </script>
+</body>
+</html>

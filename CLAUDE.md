@@ -33,7 +33,7 @@ El repo sirve TRES apps que no deben contaminarse entre sí:
 | Superficie | Rutas | CSS (prefijo) | Estética |
 |---|---|---|---|
 | Landing pública | `src/app/(site)/` | `zakumi-design.css` | Editorial, radius 0, GSAP |
-| Panel interno | `src/app/admin/` | `admin.css` (`adm-`) | Editorial densa, radius 0 |
+| Panel interno | `src/app/admin/` | `admin-theme.css` (tokens `@theme`, vía `globals.css`) | Islas oscuras redondeadas, un acento naranja |
 | Portal de clientes | `src/app/app/` | `portal.css` (`app-`) | Islas redondeadas tipo Scribe |
 
 Regla dura: cada CSS es global una vez cargado — **todo selector va prefijado**
@@ -197,6 +197,20 @@ Ledger de decisiones (37 rulings, leerlo antes de "arreglar" algo que parece rar
   `src/app/admin/(panel)/prospeccion/page.tsx` y se avisa en pantalla cuando
   hay más de las que se muestran.
 
+## Dónde vive cada cosa (reorganizado 2026-08-30)
+
+- `marketing/` — TODO el material de marca/venta que antes estaba regado en la
+  raíz: folletos (`marketing/folletos/`), video de 70s (`marketing/video-70s/`),
+  prompts de imágenes. **Leer `marketing/README.md`** antes de buscar o crear
+  material ahí; los binarios pesados están gitignored.
+- `assets/masters/` — masters de imagen fuera de git (incluye
+  `zakumi-icon-1024.png` y `zaku_tech_render.png`).
+- `docs/empresa/` — documentos legales/administrativos (cámara de comercio…),
+  gitignored por datos personales.
+- `cursos/` — material del curso de IA; sus PDF son derivados regenerables.
+- Regla: **no dejar archivos sueltos en la raíz del repo** — prompts y piezas de
+  marketing van en `marketing/`, documentos en `docs/`.
+
 ## Varias sesiones de Claude comparten este checkout
 
 - Los commits caen en **la rama que esté checked out** — antes de commitear,
@@ -204,11 +218,12 @@ Ledger de decisiones (37 rulings, leerlo antes de "arreglar" algo que parece rar
 - `git add -A` (incluso scoped a `src/`) puede barrer el working tree de OTRA
   sesión: agrega archivos explícitos, o trabaja en un **worktree**
   (`.claude/worktrees/`) como hace la rama del design system.
-- Ramas activas en paralelo (2026-08-30): `feat/folletos-prospeccion` (headers
-  de imagen en plantillas Meta; bloqueada por re-aprobación de plantillas) y
-  `feat/agentes-voz` (voz ElevenLabs, PR #3 **rebasada sobre main** el
-  2026-08-30; consola sobre el kit `ui/` + entrada Voz en `Sidebar.tsx`).
-  El portal y el design system del admin ya están mergeados en main.
+- Ramas (2026-08-30): `feat/admin-design-system` y `feat/agentes-voz` viven en
+  worktrees (`.claude/worktrees/`) — NO borrarlas aunque figuren mergeadas.
+  Las demás ramas locales ya mergeadas se limpiaron; quedan por borrar
+  `feat/folletos-prospeccion` y `fix/portal-nav-desnudo` (ambas mergeadas y
+  con copia en origin). El tema de folletos —headers de imagen en plantillas
+  Meta— sigue bloqueado por re-aprobación de plantillas.
 
 ## Repo y despliegue
 

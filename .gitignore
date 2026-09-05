@@ -55,13 +55,30 @@ next-env.d.ts
 /assets/masters/*
 !/assets/masters/README.md
 /cursos/img/originales/
-/zaku_tech_render.png
 
 # PDFs del curso: son derivados. El markdown es la fuente y
 # cursos/curso-ia/pdf/build-pdf.mjs los regenera.
-/Curso-Introduccion-IA-Zakumi-Academy.pdf
 /cursos/Curso-Introduccion-IA-Zakumi-Academy.pdf
 /cursos/curso-ia/pdf/*.pdf
+
+# Marketing (marketing/): guiones y prompts en texto sí se versionan;
+# el material pesado (renders, video, audio, fuentes) queda fuera de git.
+/marketing/**/*.png
+/marketing/**/*.jpg
+/marketing/**/*.mp4
+/marketing/**/*.mp3
+/marketing/**/*.m4a
+/marketing/**/*.ttf
+
+# Documentos legales/administrativos con datos personales (cámara de comercio,
+# etc.) — nunca al repo público.
+/docs/empresa/
+
+# Finanzas internas (costos, márgenes, precios en estudio) — el repo es público.
+/docs/finanzas/
+
+# Temporal del CLI de Supabase.
+/supabase/.temp/
 
 # whatsapp-bot tiene su propio repo git con su propia historia. Sin esto,
 # `git add .` lo metería aquí como gitlink y quedaría un submódulo roto.
