@@ -4,7 +4,7 @@ import {
   continuacionPideMonto,
   estadoDeCuota,
   llamadasCobradas,
-  pagadasConfirmadas,
+  pagadasAprobadas,
   permisoDeBarrido,
   restanteDeCuota,
 } from "../barrido";
@@ -126,53 +126,51 @@ describe("permisoDeBarrido", () => {
   });
 });
 
+describe("pagadasAprobadas", () => {
+  it("es lo que el usuario NOMBRÓ al confirmar: las llamadas de pago de la tanda, sin el margen", () => {
+    // 500 de pago con techo 1.000: aprobó 500 (US$ 17,50), no 1.000.
+    expect(pagadasAprobadas(permisoDeBarrido(500, 0))).toBe(500);
+  });
+
+  it("una tanda que cabe en lo gratis no aprobó ningún pago", () => {
+    expect(pagadasAprobadas(permisoDeBarrido(700, 1_000))).toBe(0);
+  });
+
+  it("en el mixto es solo lo que se pasa de la línea", () => {
+    expect(pagadasAprobadas(permisoDeBarrido(700, 699))).toBe(1);
+  });
+});
+
 describe("continuacionPideMonto", () => {
-  // Los tres caminos que llegan a la pausa, con la cuota mensual de 1.000.
-  const gratisEntero = permisoDeBarrido(700, 1_000); // tope 1.000, 0 de pago
-  const pagoEntero = permisoDeBarrido(500, 0); // tope 1.000, 1.000 de pago
-  const mixto = permisoDeBarrido(700, 699); // tope 701, 2 de pago
-
+  // Al frenarse un barrido, TODO lo que sigue se paga: el tramo de la
+  // continuación es una tanda de pago sobre lo que queda en la cola
+  // (`permisoDeBarrido(faltan, 0)`), y se compara contra lo que el usuario
+  // lleva confirmado con el monto escrito.
   it("el barrido que arrancó gratis pide monto: no ha confirmado ni un peso", () => {
-    expect(pagadasConfirmadas(gratisEntero, 1)).toBe(0);
-    expect(continuacionPideMonto(gratisEntero, 1)).toBe(true);
+    expect(continuacionPideMonto(permisoDeBarrido(300, 0), 0)).toBe(true);
   });
 
-  it("el barrido que arrancó pagando NO pide monto: el tramo es lo ya autorizado", () => {
-    // La exención de la spec, intacta: un peaje en cada tramo se vuelve
-    // memoria muscular y deja de proteger.
-    expect(pagadasConfirmadas(pagoEntero, 1)).toBe(1_000);
-    expect(continuacionPideMonto(pagoEntero, 1)).toBe(false);
+  it("un tramo que no supera lo confirmado sigue con un clic (la exención de la spec)", () => {
+    // Confirmó 500 de pago; quedan 400 en la cola.
+    expect(continuacionPideMonto(permisoDeBarrido(400, 0), 500)).toBe(false);
   });
 
-  it("el mixto pide monto: US$ 0,04 escritos no confirman US$ 24,54", () => {
-    expect(pagadasConfirmadas(mixto, 1)).toBe(2);
-    expect(continuacionPideMonto(mixto, 1)).toBe(true);
+  it("igual a lo confirmado tampoco pide", () => {
+    expect(continuacionPideMonto(permisoDeBarrido(500, 0), 500)).toBe(false);
   });
 
-  it("igualdad exacta por acumulación: el segundo tramo del gratis no pide monto", () => {
-    // El borde por un camino distinto al del pago entero: el barrido gratis
-    // arranca con CERO confirmadas y su primer "Continuar" (que sí pagó peaje)
-    // le suma exactamente un tope. Ahí lo concedido iguala a lo confirmado —
-    // si la comparación fuera `>=` en vez de `>`, este tramo pediría monto y
-    // el peaje se volvería la rutina que la spec quiere evitar.
-    expect(pagadasConfirmadas(gratisEntero, 2)).toBe(gratisEntero.tope);
-    expect(continuacionPideMonto(gratisEntero, 2)).toBe(false);
+  it("un tramo mayor que lo confirmado pide monto aunque ya se haya tecleado antes", () => {
+    // El margen del 2× NO cuenta como confirmado: aprobó 500, el tramo de 800 se teclea.
+    expect(continuacionPideMonto(permisoDeBarrido(800, 0), 500)).toBe(true);
   });
 
-  it("lo confirmado se acumula: tras teclear un monto no se cobra peaje por otro igual", () => {
-    // El mixto pagó peaje por 701 de pago; su tramo siguiente concede otras
-    // 701 contra 703 confirmadas, así que ya no lo pide.
-    expect(pagadasConfirmadas(mixto, 2)).toBe(703);
-    expect(continuacionPideMonto(mixto, 2)).toBe(false);
+  it("el mixto: US$ 0,04 escritos no confirman los 698 que quedan", () => {
+    const inicial = permisoDeBarrido(700, 699);
+    expect(continuacionPideMonto(permisoDeBarrido(698, 0), pagadasAprobadas(inicial))).toBe(true);
   });
 
-  it("un contador de permisos absurdo no inventa tramos ni peajes", () => {
-    // Con un permiso de PAGO discrimina: sin la guarda de `permisos > 1`, un
-    // cero restaría un tramo, dejaría lo confirmado en cero y este barrido
-    // pediría peaje justo donde la spec lo exime.
-    expect(pagadasConfirmadas(pagoEntero, 0)).toBe(1_000);
-    expect(continuacionPideMonto(pagoEntero, 0)).toBe(false);
-    expect(pagadasConfirmadas(pagoEntero, Number.NaN)).toBe(1_000);
-    expect(continuacionPideMonto(pagoEntero, Number.NaN)).toBe(false);
+  it("basura en lo confirmado se trata como cero", () => {
+    expect(continuacionPideMonto(permisoDeBarrido(1, 0), Number.NaN)).toBe(true);
+    expect(continuacionPideMonto(permisoDeBarrido(1, 0), -3)).toBe(true);
   });
 });

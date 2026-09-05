@@ -14,6 +14,7 @@ import {
 } from "@/lib/admin/barrido";
 import { planDeBarrido, recortarACuota } from "@/lib/admin/plan-barrido";
 import { formatoNumero, formatoUsd } from "@/lib/admin/formato";
+import { coincideMonto } from "@/lib/admin/monto";
 import type { Territorio } from "@/lib/admin/territorios";
 import { VERTICALES_PROSPECCION } from "@/lib/admin/zak";
 import { tiposDeVertical } from "@/lib/admin/verticales-places";
@@ -113,13 +114,16 @@ export function DialogoBarrer({ territorio, consultasMes, onCerrar, onConfirmar 
    * botón, la línea de gratis/pagado y lo que hay que teclear: si el botón y la
    * comprobación se calcularan por separado, el día que una cambie el campo
    * pide un número que la pantalla no muestra en ninguna parte. */
-  const montoPagado = formatoUsd(llamadasPagadas * PRECIO_POR_LLAMADA_USD);
+  const costoPagado = llamadasPagadas * PRECIO_POR_LLAMADA_USD;
+  const montoPagado = formatoUsd(costoPagado);
 
-  /** Lo que hay que teclear: el monto sin moneda ni espacios. Se compara así
-   * —y no contra una palabra fija— porque un monto hay que ir a buscarlo al
-   * botón: para copiarlo, hay que mirarlo. Una palabra se teclea de memoria. */
-  const esperado = montoPagado.replace(/[^\d.,]/g, "");
-  const coincide = escrito.replace(/[^\d.,]/g, "") === esperado;
+  /** Lo que hay que teclear es el monto del botón. Se compara en centavos y no
+   * byte a byte (`coincideMonto`): "24.50" vale tanto como "24,50", porque el
+   * teclado numérico de muchos celulares no trae coma y un peaje que no se
+   * puede pagar desde el celular no protege, bloquea. Se exige un monto —y no
+   * una palabra fija— porque un monto hay que ir a buscarlo al botón: para
+   * copiarlo, hay que mirarlo. Una palabra se teclea de memoria. */
+  const coincide = coincideMonto(escrito, costoPagado);
   const primarioDeshabilitado = pendientes === 0 || (requiereMonto && !coincide);
 
   const enlaceMetricas = (

@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { METROS_POR_GRADO_LAT } from "../barrido";
-import { circuloDentroDelTerritorio, recortarAlArea } from "../barrido-servidor";
+import {
+  circuloDentroDelTerritorio,
+  esErrorDeMigracion,
+  filaDeConsultaSinAnotar,
+  recortarAlArea,
+} from "../barrido-servidor";
 import type { Territorio } from "../territorios";
 import type { ResultadoPlace } from "../places";
 
@@ -96,5 +101,39 @@ describe("recortarAlArea", () => {
 
   it("sin resultados devuelve vacío", () => {
     expect(recortarAlArea([], TERRITORIO.poligono)).toEqual([]);
+  });
+});
+
+describe("esErrorDeMigracion", () => {
+  it("PGRST202 es la firma del RPC que no existe: el SQL no se corrió antes del deploy", () => {
+    expect(
+      esErrorDeMigracion({ code: "PGRST202", message: "Could not find the function" }),
+    ).toBe(true);
+  });
+
+  it("cualquier otro error del RPC no lo es", () => {
+    expect(esErrorDeMigracion({ code: "P0002", message: "territorio no existe" })).toBe(false);
+    expect(esErrorDeMigracion({ code: undefined, message: "x" })).toBe(false);
+  });
+
+  it("sin error no hay migración que falte", () => {
+    expect(esErrorDeMigracion(null)).toBe(false);
+  });
+});
+
+describe("filaDeConsultaSinAnotar", () => {
+  it("registra el cobro de una tesela que NO se pudo anotar como hecha", () => {
+    expect(filaDeConsultaSinAnotar("t1", "k#ferreteria", "ferreteria", 7)).toEqual({
+      territorio_id: "t1",
+      clave: "k#ferreteria",
+      vertical: "ferreteria",
+      resultados: 7,
+      insertados: null,
+      origen: "barrido",
+    });
+  });
+
+  it("cuando Google respondió ilegible no se sabe cuántos resultados hubo", () => {
+    expect(filaDeConsultaSinAnotar("t1", "k", "v", null).resultados).toBeNull();
   });
 });

@@ -117,47 +117,37 @@ export function permisoDeBarrido(
   return { llamadas: pedidas, gratis, tope: gratis + pagadas * FACTOR_TOPE_APROBADO };
 }
 
-/** Las llamadas de PAGO que autoriza un permiso: su techo, menos lo que la
- * cuota cubre. Es lo que el usuario confirmó al aceptarlo — para el botón que
- * cobró, el gasto que aprobó con su margen; para los dos que prometieron
- * gratis, cero. */
-export function pagadasDelPermiso(permiso: PermisoBarrido): number {
-  return llamadasCobradas(permiso.tope, permiso.gratis);
-}
-
-/** Las llamadas de pago que el usuario lleva confirmadas tras `permisos`
- * concesiones: la del diálogo más cada "Continuar" que se le concedió. Cada
- * tramo nuevo se paga entero —el barrido solo se frena cuando lo emitido llegó
- * al techo, y el techo nunca queda por debajo de la cuota gratis—, así que cada
- * concesión posterior suma `tope` llamadas de pago. */
-export function pagadasConfirmadas(permiso: PermisoBarrido, permisos: number): number {
-  const tramos = Number.isFinite(permisos) && permisos > 1 ? Math.floor(permisos) - 1 : 0;
-  return pagadasDelPermiso(permiso) + permiso.tope * tramos;
+/** Las llamadas de PAGO que el usuario NOMBRÓ al aceptar un permiso: las que
+ * rotulan el botón y las que tecleó. El margen del techo NO cuenta — aprobar
+ * 500 llamadas de pago (US$ 17,50) con techo 1.000 confirma US$ 17,50, no
+ * US$ 35. Contar el margen como confirmado fue el hueco por el que un barrido
+ * que arrancó pagando podía seguir "Continuando" a un clic sin límite. */
+export function pagadasAprobadas(permiso: PermisoBarrido): number {
+  return llamadasCobradas(permiso.llamadas, permiso.gratis);
 }
 
 /** ¿La continuación tiene que pedir el monto escrito? Sí cuando el tramo que
- * concede se paga MÁS de lo que el usuario lleva confirmado.
+ * concede se paga MÁS de lo que el usuario ya confirmó tecleando.
  *
- * La spec exime de repetir el peaje a los barridos que ya lo pagaron, y su
- * argumento es que una confirmación que se teclea siempre se vuelve memoria
- * muscular y deja de proteger. Ese argumento se apoya en una premisa tácita:
- * que el monto ya tecleado demostró que la persona entendía la magnitud. Con
- * 699 gratis y una tanda de 700 la premisa se cae — se escriben US$ 0,04 y el
- * "Continuar" siguiente concede ~701 de pago ≈ US$ 24,54. Cuatro centavos no
- * confirman veinticuatro dólares, así que la exención no alcanza a ese caso.
+ * `tramo` es la tanda de la continuación: lo que queda en la cola, todo de
+ * pago (`permisoDeBarrido(faltan, 0)` — al frenarse un barrido, la línea del
+ * gratis ya quedó atrás). `confirmadas` es el mayor número de llamadas de pago
+ * que la persona ha tecleado hasta ahora: en el diálogo y en cada "Continuar"
+ * que le pidió monto.
  *
- * La misma regla cubre los tres caminos sin números mágicos ni umbrales:
- * - Arrancó gratis: 0 confirmadas, el tramo se paga ⇒ pide monto.
- * - Arrancó pagando: el tramo concede lo mismo que ya se autorizó ⇒ no pide
- *   (es la exención de la spec, intacta: nada de memoria muscular).
- * - Mixto: 2 confirmadas contra 701 del tramo ⇒ pide monto.
- * Y como lo confirmado se ACUMULA, a quien sí tecleó un monto grande no se le
- * vuelve a cobrar peaje por otro parecido justo después. */
+ * La spec exime de repetir el peaje a quien ya lo pagó, porque un peaje en
+ * cada tramo se vuelve memoria muscular y deja de proteger. La exención vale
+ * exactamente hasta la magnitud que la persona demostró entender: un tramo
+ * igual o menor pasa con un clic; uno mayor se teclea. Así los tres caminos
+ * caen solos: el que arrancó gratis (0 confirmadas) teclea; el que arrancó
+ * pagando sigue a un clic mientras la cola no crezca por encima de lo que
+ * aprobó; y el mixto (US$ 0,04 tecleados, 698 de pago por delante) teclea. */
 export function continuacionPideMonto(
-  permiso: PermisoBarrido,
-  permisos: number,
+  tramo: PermisoBarrido,
+  confirmadas: number,
 ): boolean {
-  return permiso.tope > pagadasConfirmadas(permiso, permisos);
+  const ya = Number.isFinite(confirmadas) && confirmadas > 0 ? Math.floor(confirmadas) : 0;
+  return pagadasAprobadas(tramo) > ya;
 }
 
 /** Margen sobre la estimación base por la subdivisión adaptativa. */

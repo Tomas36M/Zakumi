@@ -3,6 +3,8 @@ import { getSesionAdmin } from "@/lib/admin/dal";
 import { claveTesela, claveTrabajo, esSaturada, type Punto } from "@/lib/admin/barrido";
 import {
   circuloDentroDelTerritorio,
+  esErrorDeMigracion,
+  filaDeConsultaSinAnotar,
   recortarAlArea,
   type ResumenTesela,
 } from "@/lib/admin/barrido-servidor";
@@ -130,6 +132,24 @@ export async function POST(
   }
   const territorio = fila as TerritorioBarrido;
 
+  /** Registra en `consultas_places` una llamada que Google COBRÓ y que no va a
+   * pasar por `anotar_tesela` — la tesela tiene que poder reintentarse, así
+   * que no se marca como hecha, pero el cobro sí queda en el conteo del mes.
+   * Best effort: si falla se loguea y la respuesta al cliente no cambia. Sin
+   * este intento, el contador de la cuota se quedaba corto justo en los caminos
+   * de fallo, que es donde nadie está mirando. */
+  const registrarCobroSinAnotar = async (resultados: number | null) => {
+    const { error } = await sesion.supabase
+      .from("consultas_places")
+      .insert(filaDeConsultaSinAnotar(territorio.id, clave, vertical, resultados));
+    if (error) {
+      console.error("[barrido] cobro sin anotar NO quedó registrado", {
+        ...ctx,
+        error: error.message,
+      });
+    }
+  };
+
   // El guardarraíl que evita barrer Colombia entera con un círculo cualquiera
   // a nombre del territorio de otro — sus pruebas viven en
   // barrido-servidor.test.ts y no se tocan.
@@ -189,6 +209,7 @@ export async function POST(
     data = (await respuesta.json()) as { places?: PlaceApi[] };
   } catch (error) {
     console.error("[barrido] respuesta de Google ilegible", { ...ctx, error });
+    await registrarCobroSinAnotar(null);
     return NextResponse.json({ error: "places_error", cobrada: true }, { status: 502 });
   }
 
@@ -220,6 +241,7 @@ export async function POST(
       // se lo dice al cliente, que lo suma al mismo contador de "cobrado y no
       // contabilizado". Un gasto invisible es la única cosa peor que un error.
       console.error("[barrido] error insertando negocios", { ...ctx, error: error.message });
+      await registrarCobroSinAnotar(crudos.length);
       return NextResponse.json({ error: "db_error", cobrada: true }, { status: 502 });
     }
     insertados = filas?.length ?? 0;
@@ -262,6 +284,17 @@ export async function POST(
       ...ctx,
       error: errorAnotar.message,
     });
+    // El RPC no corrió, así que su insert en consultas_places tampoco: el
+    // cobro se registra aparte para que el conteo del mes no se quede corto.
+    await registrarCobroSinAnotar(crudos.length);
+    if (esErrorDeMigracion(errorAnotar)) {
+      // No es esta tesela: es la base sin el parche 3 del SQL. Google ya
+      // cobró esta llamada y los negocios sí se guardaron, pero nada quedó
+      // anotado y las 309 siguientes correrían igual — cada una cobrada, y
+      // todas por volver a pagar al reanudar. Se frena al cliente con nombre
+      // propio (ver MORTALES en useBarrido), a la primera y no a la 310.
+      return NextResponse.json({ error: "sin_migracion", cobrada: true }, { status: 500 });
+    }
   }
 
   const resumen: ResumenTesela = {
