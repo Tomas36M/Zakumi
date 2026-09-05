@@ -12,6 +12,7 @@ import {
   type Trabajo,
 } from "@/lib/admin/plan-barrido";
 import type { ResumenTesela } from "@/lib/admin/barrido-servidor";
+import { presupuestoDeEmisiones } from "@/lib/admin/presupuesto-barrido";
 import type { Territorio } from "@/lib/admin/territorios";
 
 // Se re-exporta: `ResumenBarrido` vive en plan-barrido.ts (donde acumularResumen
@@ -39,7 +40,9 @@ export type EstadoBarrido = {
    * `hechos`: el handler le cobra a Google antes de responder, así que un
    * fallo de red posterior al cobro se reintenta y factura DOS veces sumando
    * un solo `hechos`; y al revés, un `!res.ok` suma un `hechos` que no costó
-   * nada. Quien cuente plata (el tope de gasto) tiene que contar esto. */
+   * nada. Quien cuente plata cuenta esto. El TOPE de la tanda ya no se mira
+   * acá afuera: lo cobra el propio worker antes de despachar (ver
+   * `presupuesto` en `arrancar`), así que nunca se emite una de más. */
   emitidas: number;
   corriendo: boolean;
   resumen: ResumenBarrido;
@@ -106,7 +109,11 @@ export function useBarrido(territorio: Territorio) {
   }, [refrescarUnaVez]);
 
   const arrancar = useCallback(
-    (verticales: string[]) => {
+    /** `presupuesto` = cuántas llamadas puede EMITIR esta tanda. Es el tope de
+     * gasto que el usuario aprobó, y se cobra dentro del worker en el mismo
+     * tick en que se despacha: exacto, sin las "unas pocas de más" que dejaba
+     * mirarlo en un efecto después de renderizar. `undefined` = sin tope. */
+    (verticales: string[], presupuesto?: number) => {
       // Reentrada: si ya hay un barrido corriendo, un segundo arranque
       // compartiría `cola.current` con el pool viejo (mismo ref, `.current`
       // reasignado) y duplicaría la concurrencia sin que nadie lo pida.
@@ -129,6 +136,10 @@ export function useBarrido(territorio: Territorio) {
       cola.current = [...pendientes, ...plan.filter((t) => !yaEnCola.has(t.clave))];
 
       if (cola.current.length === 0) return;
+
+      // Cero (o basura) no arranca nada: cuando se trata de plata, la duda frena.
+      const permiso = presupuestoDeEmisiones(presupuesto);
+      if (permiso.agotado()) return;
 
       const control = new AbortController();
       aborto.current = control;
@@ -160,6 +171,24 @@ export function useBarrido(territorio: Territorio) {
       }
 
       async function procesar(t: Trabajo, reintento = false): Promise<void> {
+        // El permiso se pide ACÁ, en el mismo tick síncrono del despacho — y
+        // por intento, porque un reintento es otra llamada que Google cobra.
+        // `trabajar` ya miró `agotado()` antes de sacar el trabajo de la cola,
+        // así que al primer intento esto no falla; al reintento sí puede: otro
+        // worker gastó la última mientras esperábamos, y la tesela queda como
+        // fallida (su primer intento ya falló) en vez de pasarse del tope.
+        if (!permiso.emitir()) {
+          if (!reintento) {
+            cola.current.unshift(t);
+            return;
+          }
+          siVigente((e) => ({
+            ...e,
+            hechos: e.hechos + 1,
+            resumen: acumularFallida(e.resumen),
+          }));
+          return;
+        }
         // Sin guardar por vigencia y ANTES del fetch: lo que se emite se cobra,
         // sea de la corrida que sea. Un contador de plata que descarta gasto
         // real miente en la dirección peligrosa.
@@ -236,6 +265,11 @@ export function useBarrido(territorio: Territorio) {
               "Falta la clave de Google Places en el servidor. Ninguna tesela se va a poder barrer hasta que se configure.",
             no_autorizado:
               "Se venció la sesión. Vuelve a entrar y reanuda: lo barrido quedó guardado.",
+            // El SQL de la cuota no se corrió antes del deploy: Google cobra
+            // cada tesela y ninguna queda anotada, así que reanudar las
+            // volvería a pagar. Se frena a la PRIMERA, no a la 310.
+            sin_migracion:
+              "La base de datos no tiene la migración de la cuota (supabase/prospeccion-parches.sql): Google cobra cada tesela y nada queda anotado. Se frenó el barrido; corre ese SQL entero y reanuda.",
           };
           const mortal = causa && MORTALES[causa];
           if (mortal) {
@@ -273,6 +307,9 @@ export function useBarrido(territorio: Territorio) {
       async function trabajar(): Promise<void> {
         try {
           while (!control.signal.aborted) {
+            // El tope, ANTES de sacar el trabajo de la cola: lo que no se
+            // despacha se queda esperando al próximo permiso, intacto.
+            if (permiso.agotado()) break;
             const t = cola.current.shift();
             if (!t) break;
             try {
