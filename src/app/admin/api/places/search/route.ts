@@ -91,6 +91,26 @@ export async function POST(request: Request) {
     (data.places ?? []).map((p) => placeANegocio(p)),
   );
 
+  // La búsqueda suelta también le paga a Google con la misma key, y hasta ahora
+  // no se contaba en ningún lado: el contador del mes se quedaba corto justo en
+  // lo que el usuario no ve.
+  //
+  // Si este insert falla, la búsqueda NO falla. Perder una anotación es malo;
+  // romper una búsqueda ya pagada es peor.
+  const { error: errorRegistro } = await sesion.supabase
+    .from("consultas_places")
+    .insert({
+      territorio_id: null,
+      clave: null,
+      vertical: null,
+      resultados: (data.places ?? []).length,
+      insertados: null,
+      origen: "busqueda",
+    });
+  if (errorRegistro) {
+    console.error("[places] no se registró la consulta:", errorRegistro.message);
+  }
+
   // Dedupe visual: marcar los que ya están en la base.
   if (resultados.length > 0) {
     const { data: existentes, error } = await sesion.supabase

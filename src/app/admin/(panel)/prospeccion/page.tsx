@@ -1,7 +1,7 @@
 import { ProspeccionView } from "@/components/admin/prospeccion/ProspeccionView";
 import { verifySession } from "@/lib/admin/dal";
 import { TOPE_LEADS, type Negocio } from "@/lib/admin/negocios";
-import type { Territorio } from "@/lib/admin/territorios";
+import { consultasDelMes, type Territorio } from "@/lib/admin/territorios";
 
 export const metadata = { title: "Encontrar clientes" };
 
@@ -14,7 +14,7 @@ export default async function ProspeccionPage({
   const { supabase } = await verifySession();
   const { tab } = await searchParams;
 
-  const [negocios, cuenta, territorios] = await Promise.all([
+  const [negocios, cuenta, territorios, consultasMes] = await Promise.all([
     supabase
       .from("negocios")
       .select("*")
@@ -22,6 +22,10 @@ export default async function ProspeccionPage({
       .limit(TOPE_LEADS),
     supabase.from("negocios").select("*", { count: "exact", head: true }),
     supabase.from("territorios").select("*").order("created_at", { ascending: false }),
+    // null = no se pudo leer el consumo del mes: llega tal cual hasta el
+    // diálogo de barrer, que no puede afirmar cuota gratis sobre un dato que
+    // no tiene.
+    consultasDelMes(supabase),
   ]);
 
   // El detalle del error va al log del servidor; a la vista solo baja el hecho
@@ -44,6 +48,7 @@ export default async function ProspeccionPage({
       negociosTotal={cuenta.error ? null : (cuenta.count ?? null)}
       fallaNegocios={negocios.error !== null}
       fallaTerritorios={territorios.error !== null}
+      consultasMes={consultasMes}
     />
   );
 }

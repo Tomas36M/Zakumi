@@ -24,6 +24,11 @@ type Props = {
   /** La consulta falló: la lista vacía NO significa que no haya nada. */
   fallaNegocios: boolean;
   fallaTerritorios: boolean;
+  /** Consultas a Google Places que este panel lleva registradas en el mes
+   * calendario en curso. `null` = no se pudo leer, y NO es lo mismo que cero:
+   * el diálogo de barrer no puede afirmar cuota gratis sobre un dato que no
+   * tiene. */
+  consultasMes: number | null;
 };
 
 // Dos cockpits anidados con altura fija de viewport se desbordan y devuelven
@@ -46,6 +51,7 @@ export function ProspeccionView({
   negociosTotal,
   fallaNegocios,
   fallaTerritorios,
+  consultasMes,
 }: Props) {
   const router = useRouter();
 
@@ -197,6 +203,7 @@ export function ProspeccionView({
         negocios={negocios}
         territorios={territorios}
         fallaTerritorios={fallaTerritorios}
+        consultasMes={consultasMes}
         barrido={barrido}
         onBarrido={setBarrido}
         onAvisoBarrido={setAviso}

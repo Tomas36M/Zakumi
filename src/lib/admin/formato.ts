@@ -15,6 +15,15 @@ export function formatoUsd(monto: number): string {
   return FORMATO_USD.format(monto);
 }
 
+const FORMATO_NUMERO = new Intl.NumberFormat("es-CO");
+
+/** Un entero con separador de miles es-CO: 1000 → "1.000". Para conteos que
+ * pasan de tres cifras (consultas de un barrido, cuota del mes) — "1000" al
+ * lado de un "US$ 35,00" formateado se lee como un descuido. */
+export function formatoNumero(n: number): string {
+  return FORMATO_NUMERO.format(n);
+}
+
 const FORMATO_CORTO = new Intl.DateTimeFormat("es-CO", {
   day: "numeric",
   month: "short",

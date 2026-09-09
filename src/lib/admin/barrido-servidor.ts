@@ -61,3 +61,39 @@ export function recortarAlArea(
 ): ResultadoPlace[] {
   return resultados.filter((r) => puntoEnPoligono({ lat: r.lat, lng: r.lng }, poligono));
 }
+
+/** PostgREST devuelve `PGRST202` cuando no existe un RPC con esa firma. Para
+ * este handler significa una sola cosa: el código llama a `anotar_tesela` con
+ * seis argumentos y la base sigue con la de cuatro — o sea que
+ * `supabase/prospeccion-parches.sql` no se corrió ANTES del deploy. No es el
+ * fallo de una tesela: fallarían las 310 igual, cada una cobrada por Google y
+ * ninguna anotada, y al reanudar se volverían a pagar. Se trata como un error
+ * de configuración, igual que la API key ausente: se dice una vez y se frena. */
+export function esErrorDeMigracion(
+  error: { code?: string; message?: string } | null,
+): boolean {
+  return error?.code === "PGRST202";
+}
+
+/** Una fila de `consultas_places` para una llamada que Google COBRÓ pero que
+ * no pasó por `anotar_tesela` — cuerpo ilegible, upsert reventado, RPC caído.
+ * La tesela NO se marca como hecha (tiene que poder reintentarse: los negocios
+ * no se guardaron), pero el cobro sí queda en el registro del mes. Sin esto,
+ * el contador de la cuota se quedaba corto justo en los caminos de fallo, que
+ * es donde nadie está mirando. `resultados` es null cuando ni siquiera se pudo
+ * leer la respuesta. */
+export function filaDeConsultaSinAnotar(
+  territorioId: string,
+  clave: string,
+  vertical: string,
+  resultados: number | null,
+) {
+  return {
+    territorio_id: territorioId,
+    clave,
+    vertical,
+    resultados,
+    insertados: null,
+    origen: "barrido" as const,
+  };
+}

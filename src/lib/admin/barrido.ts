@@ -26,6 +26,130 @@ export const PROFUNDIDAD_MAX = 2;
 /** Nearby Search Enterprise = US$35/1.000 llamadas (verificado 2026-08-31). */
 export const PRECIO_POR_LLAMADA_USD = 0.035;
 
+/** Consultas que Google no cobra cada mes en este SKU. Verificado el
+ * 2026-09-01 en la tabla de precios de Maps Platform: SKU "Places API Nearby
+ * Search Enterprise" (772E-9975-BE34), Free Usage Cap 1.000. Si Google la
+ * cambia, se cambia acá. */
+export const CUOTA_GRATIS_MENSUAL = 1_000;
+
+export type EstadoCuota = {
+  consumidas: number;
+  restantes: number;
+  agotada: boolean;
+};
+
+/** Lo que queda de cuota. Nunca negativo: pasarse no genera deuda, solo
+ * significa que a partir de ahí todo se paga. */
+export function restanteDeCuota(consumidas: number): number {
+  const usadas = Number.isFinite(consumidas) && consumidas > 0 ? consumidas : 0;
+  return Math.max(0, CUOTA_GRATIS_MENSUAL - usadas);
+}
+
+export function estadoDeCuota(consumidas: number): EstadoCuota {
+  const restantes = restanteDeCuota(consumidas);
+  const usadas = Number.isFinite(consumidas) && consumidas > 0 ? consumidas : 0;
+  return { consumidas: usadas, restantes, agotada: restantes === 0 };
+}
+
+/** El margen que se le deja al barrido POR ENCIMA de lo que se aprobó, antes de
+ * frenarse solo y volver a preguntar. Existe porque la estimación es un
+ * estimado y no un techo: una zona densa se subdivide y multiplica sus
+ * llamadas, y sin margen el barrido se interrumpiría en cada celda saturada.
+ *
+ * Multiplica SOLO las llamadas que se pagan (ver `permisoDeBarrido`). Aplicarlo
+ * a la tanda entera fue el bug de la primera ronda de arreglos: con 699 gratis
+ * restantes y una tanda de 700, el usuario escribía US$ 0,04 y el permiso
+ * autorizaba 1.400 emitidas ≈ US$ 24,54. El margen tiene que ser proporcional a
+ * la plata aprobada, nunca a la parte gratis. */
+export const FACTOR_TOPE_APROBADO = 2;
+
+/** El permiso de gasto que concede una confirmación del diálogo. Viaja entero
+ * hasta `BarridoProgreso`: los tres números tienen que llegar juntos o los
+ * contadores de la banda vuelven a valorar a precio de lista lo que es gratis. */
+export type PermisoBarrido = {
+  /** Las llamadas de la tanda que el usuario aprobó. */
+  llamadas: number;
+  /** Cuántas de las llamadas EMITIDAS no se pagan: lo que quedaba de cuota
+   * gratis cuando se concedió el permiso. Cero cuando no se pudo leer el
+   * consumo del mes — sin dato no se afirma que algo sea gratis. */
+  gratis: number;
+  /** Techo de llamadas emitidas. Al llegar, el barrido se frena y vuelve a
+   * preguntar. */
+  tope: number;
+};
+
+/** De unas llamadas emitidas, cuántas se cobran: las que no cabían en lo
+ * gratis. Es la única aritmética que convierte "consultas" en "plata" — el
+ * precio de lista de una llamada gratis no es un costo. */
+export function llamadasCobradas(emitidas: number, gratis: number): number {
+  const hechas = Number.isFinite(emitidas) && emitidas > 0 ? Math.floor(emitidas) : 0;
+  const libres = Number.isFinite(gratis) && gratis > 0 ? Math.floor(gratis) : 0;
+  return Math.max(0, hechas - libres);
+}
+
+/** El permiso que concede aprobar una tanda de `llamadas`, sabiendo que quedan
+ * `restantes` consultas gratis este mes (`null` = no se pudo leer el consumo).
+ *
+ * El techo es **toda la cuota gratis que queda, más el doble de las llamadas
+ * que se pagan**. Las dos mitades responden a cosas distintas: cruzar la línea
+ * de lo gratis exige una confirmación escrita (la pide el diálogo), así que
+ * ahí el barrido tiene que frenarse; por encima de esa línea el usuario ya
+ * autorizó un gasto y lo que hace falta es margen para la subdivisión.
+ *
+ * Casos que caen solos de esa fórmula, sin ramas especiales:
+ * - La tanda cabe entera en lo gratis ⇒ cero pagadas ⇒ el techo es `restantes`:
+ *   el barrido frena en la línea del gratis y ofrece continuar.
+ * - No queda nada gratis (o no se pudo leer el consumo) ⇒ todas se pagan ⇒ el
+ *   techo es `llamadas × FACTOR_TOPE_APROBADO`, como siempre.
+ * - `restantes` sin usar (una tanda chica con la cuota casi entera libre) deja
+ *   igualmente todo el gratis disponible: la subdivisión puede gastarlo sin
+ *   pedir permiso porque no cuesta. */
+export function permisoDeBarrido(
+  llamadas: number,
+  restantes: number | null,
+): PermisoBarrido {
+  const pedidas = Number.isFinite(llamadas) && llamadas > 0 ? Math.floor(llamadas) : 0;
+  const gratis =
+    restantes !== null && Number.isFinite(restantes) && restantes > 0
+      ? Math.floor(restantes)
+      : 0;
+  const pagadas = llamadasCobradas(pedidas, gratis);
+  return { llamadas: pedidas, gratis, tope: gratis + pagadas * FACTOR_TOPE_APROBADO };
+}
+
+/** Las llamadas de PAGO que el usuario NOMBRÓ al aceptar un permiso: las que
+ * rotulan el botón y las que tecleó. El margen del techo NO cuenta — aprobar
+ * 500 llamadas de pago (US$ 17,50) con techo 1.000 confirma US$ 17,50, no
+ * US$ 35. Contar el margen como confirmado fue el hueco por el que un barrido
+ * que arrancó pagando podía seguir "Continuando" a un clic sin límite. */
+export function pagadasAprobadas(permiso: PermisoBarrido): number {
+  return llamadasCobradas(permiso.llamadas, permiso.gratis);
+}
+
+/** ¿La continuación tiene que pedir el monto escrito? Sí cuando el tramo que
+ * concede se paga MÁS de lo que el usuario ya confirmó tecleando.
+ *
+ * `tramo` es la tanda de la continuación: lo que queda en la cola, todo de
+ * pago (`permisoDeBarrido(faltan, 0)` — al frenarse un barrido, la línea del
+ * gratis ya quedó atrás). `confirmadas` es el mayor número de llamadas de pago
+ * que la persona ha tecleado hasta ahora: en el diálogo y en cada "Continuar"
+ * que le pidió monto.
+ *
+ * La spec exime de repetir el peaje a quien ya lo pagó, porque un peaje en
+ * cada tramo se vuelve memoria muscular y deja de proteger. La exención vale
+ * exactamente hasta la magnitud que la persona demostró entender: un tramo
+ * igual o menor pasa con un clic; uno mayor se teclea. Así los tres caminos
+ * caen solos: el que arrancó gratis (0 confirmadas) teclea; el que arrancó
+ * pagando sigue a un clic mientras la cola no crezca por encima de lo que
+ * aprobó; y el mixto (US$ 0,04 tecleados, 698 de pago por delante) teclea. */
+export function continuacionPideMonto(
+  tramo: PermisoBarrido,
+  confirmadas: number,
+): boolean {
+  const ya = Number.isFinite(confirmadas) && confirmadas > 0 ? Math.floor(confirmadas) : 0;
+  return pagadasAprobadas(tramo) > ya;
+}
+
 /** Margen sobre la estimación base por la subdivisión adaptativa. */
 export const FACTOR_DENSIDAD = 1.4;
 

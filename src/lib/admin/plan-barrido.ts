@@ -130,3 +130,20 @@ export function hijasDe(t: Trabajo): Trabajo[] {
     clave: claveTrabajo(tesela, t.vertical),
   }));
 }
+
+/** El plan recortado a lo que quepa en la cuota gratuita que queda.
+ *
+ * Corta por el final: se queda con el PRINCIPIO del plan tal como lo ordenó
+ * `planDeBarrido` —las teselas en el orden de la rejilla, y las hijas de una
+ * celda saturada junto a su madre, porque `expandir` recorre en profundidad—,
+ * así que lo que entra en la tanda es un tramo contiguo del recorrido y lo que
+ * queda fuera es la cola. Nada se pierde por recortar: lo saltado sigue
+ * pendiente y, desde que la saturación queda anotada en `teselas_saturadas`, el
+ * plan del mes que viene vuelve a bajar a las hijas que quedaron afuera. */
+export function recortarACuota(
+  plan: readonly Trabajo[],
+  restantes: number,
+): Trabajo[] {
+  const cabe = Number.isFinite(restantes) && restantes > 0 ? Math.floor(restantes) : 0;
+  return plan.slice(0, cabe);
+}

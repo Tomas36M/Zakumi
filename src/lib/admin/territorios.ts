@@ -1,3 +1,4 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { cajaDe, PRECIO_POR_LLAMADA_USD, type Punto } from "./barrido";
 import { esSinWeb, type Negocio } from "./negocios";
 
@@ -133,4 +134,51 @@ export function resumenDeTerritorio(
     costoUsd: llamadas * PRECIO_POR_LLAMADA_USD,
     barrido: Boolean(territorio.ultimo_barrido),
   };
+}
+
+/** Consultas de BARRIDO facturadas en el mes calendario en curso, según la hora
+ * de Bogotá (UTC-5 fijo, sin horario de verano). Es el número que se compara
+ * contra `CUOTA_GRATIS_MENSUAL`.
+ *
+ * Solo `origen = 'barrido'` a propósito: el barrido llama a
+ * `places:searchNearby` y la búsqueda de texto suelta a `places:searchText`, y
+ * cada uno es un SKU distinto CON SU PROPIA cuota gratis de 1.000 al mes (los
+ * Free Usage Cap de Google se listan por fila de SKU, no agrupados). Contarlos
+ * juntos haría que 1.000 búsquedas de texto anunciaran "ya se agotaron" y
+ * exigieran escribir un monto por un barrido que Google no cobraría: decir "de
+ * pago" cuando es gratis miente igual que decir "gratis" cuando se paga. Las
+ * filas de `busqueda` se quedan en la tabla — están para la trazabilidad del
+ * gasto, y si algún día Google agrupa los cupos se recuentan sin migrar nada.
+ *
+ * OJO con lo que este número NO es:
+ * - Cuenta lo que ESTE panel registró desde que existe la tabla. No ve consumo
+ *   anterior a la migración, ni el de nada más que use la misma key de Google,
+ *   ni las llamadas que Google cobró pero cuya fila no se llegó a escribir
+ *   (cuerpo ilegible, fallo del upsert, fallo de `anotar_tesela`, timeout de
+ *   plataforma). O sea: es un PISO del consumo real, no la verdad. La pantalla
+ *   debe decir de dónde sale y dejar a mano las métricas de Google.
+ * - El mes de Bogotá no es el mes de Google: la fecha de reset de la cuota
+ *   gratis de Google está en UTC sin cambios estacionales, así que pasa a horas
+ *   distintas según la zona. El recuento es una aproximación, especialmente en
+ *   los bordes del mes. */
+export async function consultasDelMes(
+  supabase: SupabaseClient,
+): Promise<number | null> {
+  const ahora = new Date();
+  const bogota = new Date(ahora.getTime() - 5 * 3_600_000);
+  const desde = new Date(Date.UTC(
+    bogota.getUTCFullYear(), bogota.getUTCMonth(), 1, 5, 0, 0,
+  ));
+
+  const { count, error } = await supabase
+    .from("consultas_places")
+    .select("*", { count: "exact", head: true })
+    .eq("origen", "barrido")
+    .gte("creado_en", desde.toISOString());
+
+  if (error) {
+    console.error("[territorios] error contando consultas del mes:", error.message);
+    return null; // null = "no sé", que la vista debe distinguir de 0
+  }
+  return count ?? 0;
 }

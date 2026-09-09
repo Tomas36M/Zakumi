@@ -2,13 +2,23 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { X } from "lucide-react";
-import { poligonoSeCruza, PRECIO_POR_LLAMADA_USD } from "@/lib/admin/barrido";
-import { formatoUsd } from "@/lib/admin/formato";
+import {
+  poligonoSeCruza,
+  PRECIO_POR_LLAMADA_USD,
+  continuacionPideMonto,
+  llamadasCobradas,
+  pagadasAprobadas,
+  permisoDeBarrido,
+  type PermisoBarrido,
+} from "@/lib/admin/barrido";
+import { formatoNumero, formatoUsd } from "@/lib/admin/formato";
+import { coincideMonto } from "@/lib/admin/monto";
 import type { ResumenBarrido } from "@/lib/admin/plan-barrido";
 import type { Territorio } from "@/lib/admin/territorios";
 import { Banner } from "@/components/admin/ui/Banner";
 import { Button } from "@/components/admin/ui/Button";
 import { useConfirmar } from "@/components/admin/ui/Confirmar";
+import { Field, Input } from "@/components/admin/ui/Field";
 import { IconButton } from "@/components/admin/ui/IconButton";
 import { useBarrido } from "./useBarrido";
 
@@ -38,8 +48,13 @@ type Props = {
   territorio: Territorio;
   /** Las verticales que se confirmaron en el diálogo de estimación. */
   verticales: string[];
-  /** Las llamadas que el usuario aceptó gastar al confirmar. */
-  llamadasAprobadas: number;
+  /** Lo que se aprobó en el diálogo: las llamadas de la tanda, cuántas de las
+   * emitidas no se pagan (`gratis`, lo que quedaba de cuota; 0 si no se pudo
+   * leer) y el techo de emitidas. `gratis` es lo que le permite a esta banda
+   * decir cuánto se ha COBRADO en vez de valorar a precio de lista llamadas
+   * que Google regala — y `llamadas <= gratis` es la señal de que se llegó
+   * hasta acá desde un botón que decía que no costaba nada. */
+  permiso: PermisoBarrido;
   /** La consulta de territorios falló: el contador de gasto que trae el prop
    * `territorio` es viejo y no se puede presentar como si estuviera al día. */
   fallaTerritorios: boolean;
@@ -84,11 +99,6 @@ function esCero(r: ResumenBarrido): boolean {
   );
 }
 
-/** Cuánto se puede pasar el barrido de lo aprobado antes de frenarse solo y
- * volver a preguntar. La estimación es un estimado, no un techo: una zona
- * densa se subdivide y multiplica sus llamadas. */
-const FACTOR_TOPE = 2;
-
 /**
  * La barra de un barrido en curso y su resumen al final. Es el único
  * componente que llama a `useBarrido`, y el padre lo monta con
@@ -100,7 +110,7 @@ const FACTOR_TOPE = 2;
 export function BarridoProgreso({
   territorio,
   verticales,
-  llamadasAprobadas,
+  permiso,
   fallaTerritorios,
   onAviso,
   onCerrar,
@@ -125,9 +135,11 @@ export function BarridoProgreso({
   useEffect(() => {
     if (yaArranco.current) return;
     yaArranco.current = true;
-    arrancar(verticales);
+    // El techo del permiso viaja al hook como presupuesto: lo cobra el worker
+    // antes de despachar cada llamada, así que se emite exactamente eso.
+    arrancar(verticales, permiso.tope);
     setArranco(true);
-  }, [arrancar, verticales]);
+  }, [arrancar, verticales, permiso.tope]);
 
   // `useBarrido` no limpia nada al desmontarse: sus cuatro workers siguen
   // comprando teselas contra Google aunque React ya haya botado el componente
@@ -206,23 +218,58 @@ export function BarridoProgreso({
   const tandas = cerrado.tandas + 1;
 
   // ---- El tope de gasto ----------------------------------------------------
-  const [ampliaciones, setAmpliaciones] = useState(1);
-  /** Lo que concede cada permiso (el inicial y cada "Continuar"). */
-  const otorga = llamadasAprobadas * FACTOR_TOPE;
-  const tope = otorga * ampliaciones;
-
-  useEffect(() => {
-    // Frenar es exactamente lo que hace una cuota de Google: los workers paran,
-    // la cola se conserva y lo comprado ya está guardado. Reanudar desde acá es
-    // un permiso nuevo, no el mismo de antes estirado.
-    if (corriendo && tope > 0 && gastadas >= tope) pausar();
-  }, [corriendo, gastadas, tope, pausar]);
+  /** Techo ACUMULADO de llamadas emitidas en este barrido: el del diálogo más
+   * lo que concedió cada "Continuar". Lo cobra el hook antes de despachar cada
+   * llamada (`arrancar(…, presupuesto)`), así que `gastadas` nunca lo pasa:
+   * acá solo se lee para saber si el barrido se frenó por él. Antes se miraba
+   * en un efecto después de renderizar, y las cuatro llamadas que ya iban en
+   * vuelo se pasaban — sobre un botón que decía "gratis". */
+  const [tope, setTope] = useState(permiso.tope);
+  /** El mayor número de llamadas de PAGO que la persona ha confirmado
+   * tecleando un monto: lo del diálogo y cada "Continuar" que pidió peaje. El
+   * margen del techo NO cuenta (ver `pagadasAprobadas`): aprobar US$ 17,50 no
+   * confirma US$ 35. */
+  const [confirmadas, setConfirmadas] = useState(() => pagadasAprobadas(permiso));
+  /** De todo lo emitido, lo que Google COBRA. Las llamadas que caben en la
+   * cuota no valen dinero, y valorarlas a precio de lista era volver a pintar
+   * en rojo el "US$ 42,00" que originó esta rama — encima de un barrido al que
+   * se llegó por un botón que decía "gratis". `permiso.gratis` es la foto del
+   * momento en que se confirmó: si otra cosa consumió cuota mientras tanto,
+   * esto se queda corto, como todo lo que sale del conteo propio. */
+  const cobradas = llamadasCobradas(gastadas, permiso.gratis);
 
   // ---- Estados de la banda -------------------------------------------------
   const porcentaje = total > 0 ? Math.min(100, Math.round((hechos / total) * 100)) : 0;
   const termino = arranco && !corriendo && hechos >= total;
   const faltan = Math.max(0, total - hechos);
   const capado = arranco && !corriendo && !termino && tope > 0 && gastadas >= tope;
+  // El diálogo no cobró nada por esta tanda: se llegó hasta acá desde un botón
+  // que decía "gratis", sin escribir ningún monto. Entonces el techo era la
+  // línea de la cuota, así que si se frenó fue POR llegar ahí y no porque una
+  // zona densa sorprendiera al margen del 2×. El motivo que explica el banner
+  // tiene que ser el correcto, o el usuario desconfía de la próxima cifra.
+  const arrancoGratis = llamadasCobradas(permiso.llamadas, permiso.gratis) === 0;
+  const porCuotaGratis = capado && arrancoGratis;
+
+  // ---- El peaje escrito de la continuación ---------------------------------
+  // El tramo de la continuación es LO QUE FALTA en la cola, todo de pago: al
+  // frenarse un barrido la línea del gratis ya quedó atrás. Dimensionarlo por
+  // la cuota (el `tope` del permiso inicial) concedía 1.000 llamadas de pago
+  // —US$ 35— a un barrido de 700 que arrancó gratis. Es la misma fórmula del
+  // diálogo para una tanda de pago: lo nombrado es el costo de las que faltan
+  // y el techo lleva el margen del 2× para la subdivisión.
+  const tramo = permisoDeBarrido(faltan, 0);
+  const costoTramo = pagadasAprobadas(tramo) * PRECIO_POR_LLAMADA_USD;
+  const montoContinuar = formatoUsd(costoTramo);
+  // Quién tiene que teclear lo decide `continuacionPideMonto` (puro, con
+  // tests): cuando el tramo se paga MÁS de lo que la persona ya confirmó
+  // tecleando. El que arrancó gratis no ha confirmado nada; el que arrancó
+  // pagando sigue a un clic mientras la cola no crezca por encima de lo que
+  // aprobó (la exención de la spec, acotada a la magnitud que ya demostró
+  // entender); el mixto —US$ 0,04 tecleados, 698 de pago por delante— teclea.
+  const exigeMontoContinuar = capado && continuacionPideMonto(tramo, confirmadas);
+  const [escritoContinuar, setEscritoContinuar] = useState("");
+  const coincideContinuar = coincideMonto(escritoContinuar, costoTramo);
 
   // Reanudar puede ser un no-op silencioso: si los trabajos que faltaban se
   // habían sacado de la cola justo antes del abort, `arrancar` vuelve sin
@@ -281,10 +328,27 @@ export function BarridoProgreso({
   ]);
   useEffect(() => () => onAviso(null), [onAviso]);
 
-  function reanudar(ampliarTope: boolean) {
-    if (ampliarTope) setAmpliaciones((a) => a + 1);
+  function reanudar(continuar: boolean) {
+    // Reanudar tras una pausa manual sigue dentro del techo vigente; Continuar
+    // tras el tope le suma el tramo. En los dos casos la tanda nueva recibe
+    // como presupuesto lo que el techo deja después de lo ya emitido, y es el
+    // hook quien lo cobra antes de despachar.
+    let techo = tope;
+    if (continuar) {
+      techo = tope + tramo.tope;
+      setTope(techo);
+      // Solo lo TECLEADO amplía lo confirmado: un clic no demuestra nada.
+      if (exigeMontoContinuar) {
+        const pagadas = pagadasAprobadas(tramo);
+        setConfirmadas((c) => Math.max(c, pagadas));
+      }
+    }
+    // El monto tecleado vale para ESTE tramo y nada más: dejarlo escrito haría
+    // que la próxima pausa encontrara el peaje ya pagado y volviera a ser un
+    // clic suelto.
+    setEscritoContinuar("");
     setIntento({ hechos, total });
-    arrancar(verticales);
+    arrancar(verticales, techo - gastadas);
   }
 
   async function cerrar() {
@@ -343,8 +407,9 @@ export function BarridoProgreso({
               // esta sesión.
               <span className="text-peligro">
                 el contador del territorio no se pudo refrescar; en esta sesión
-                van {gastadas} consultas ≈{" "}
-                {formatoUsd(gastadas * PRECIO_POR_LLAMADA_USD)}
+                van {formatoNumero(gastadas)} consultas emitidas,{" "}
+                {formatoNumero(cobradas)} de pago ≈{" "}
+                {formatoUsd(cobradas * PRECIO_POR_LLAMADA_USD)}
               </span>
             ) : (
               <>
@@ -382,12 +447,55 @@ export function BarridoProgreso({
           preguntar es gastar plata que no autorizó. */}
       {capado && (
         <Banner variante="error">
-          Aprobaste {llamadasAprobadas} consultas ≈{" "}
-          {formatoUsd(llamadasAprobadas * PRECIO_POR_LLAMADA_USD)} y ya van{" "}
-          <strong>{gastadas}</strong> ≈{" "}
-          <strong>{formatoUsd(gastadas * PRECIO_POR_LLAMADA_USD)}</strong>: hubo más
-          zonas densas de las que cabía suponer y cada una se partió en cuatro. El
-          barrido se frenó solo con {faltan} teselas en la cola — nada se perdió.
+          {porCuotaGratis ? (
+            // Acá NO se valoran las emitidas a precio de lista: se llegó a esta
+            // pantalla por un botón que decía "gratis", y un "≈ US$ 35,00" en
+            // rojo encima de llamadas que Google regala es exactamente el susto
+            // que originó esta rama. Se dice lo emitido (consultas) y, aparte,
+            // lo cobrado (plata). Tampoco se promete que frenó "en la línea":
+            // eso solo vale en el primer tramo, porque cada "Continuar" corre
+            // el techo. Lo que sí se promete es que no se pasó: el tope lo
+            // cobra el worker antes de despachar cada llamada.
+            <>
+              Este barrido arrancó dentro de lo gratis: las{" "}
+              {formatoNumero(permiso.gratis)} consultas que quedaban libres este
+              mes. Van <strong>{formatoNumero(gastadas)}</strong> emitidas y se
+              frenó justo ahí para volver a preguntar.{" "}
+              {cobradas === 0 ? (
+                <>Ninguna se ha cobrado todavía.</>
+              ) : (
+                <>
+                  De esas, <strong>{formatoNumero(cobradas)}</strong> ya se
+                  pagan ≈{" "}
+                  <strong>{formatoUsd(cobradas * PRECIO_POR_LLAMADA_USD)}</strong>.
+                </>
+              )}{" "}
+              De aquí en adelante todo lo que sigas barriendo se paga. Quedan{" "}
+              {formatoNumero(faltan)} teselas en la cola — nada se perdió.
+            </>
+          ) : (
+            // Lo aprobado también se valora por lo que se COBRA: con 699 gratis
+            // y una tanda de 700, el usuario escribió US$ 0,04 en el diálogo y
+            // este banner tiene que decir ese mismo número, no US$ 24,50. Y no
+            // se le atribuye la pausa a la densidad: en el caso mixto el techo
+            // queda dos llamadas por encima de la línea del gratis, así que se
+            // llega ahí sin ninguna zona densa. La banda sabe QUE se llegó al
+            // techo; por qué, no.
+            <>
+              Aprobaste {formatoNumero(permiso.llamadas)} consultas ≈{" "}
+              {formatoUsd(
+                llamadasCobradas(permiso.llamadas, permiso.gratis) *
+                  PRECIO_POR_LLAMADA_USD,
+              )}{" "}
+              y ya van <strong>{formatoNumero(gastadas)}</strong> emitidas,{" "}
+              <strong>{formatoNumero(cobradas)}</strong> de pago ≈{" "}
+              <strong>{formatoUsd(cobradas * PRECIO_POR_LLAMADA_USD)}</strong>: el
+              barrido llegó al techo de ese permiso. Puede que se hayan partido en
+              cuatro más zonas densas de las previstas, o que el techo quedara
+              justo encima de lo aprobado. Se frenó solo con{" "}
+              {formatoNumero(faltan)} teselas en la cola — nada se perdió.
+            </>
+          )}
         </Banner>
       )}
 
@@ -463,6 +571,41 @@ export function BarridoProgreso({
         </Banner>
       )}
 
+      {/* El peaje escrito de la continuación. Ver el comentario junto a
+          `exigeMontoContinuar`. */}
+      {exigeMontoContinuar && (
+        <div className="flex flex-col gap-1.5">
+          {/* Las DOS cifras se nombran: lo que cuesta el tramo y lo que la
+              persona ya había confirmado. "Más de lo que llevas confirmado" a
+              secas obliga a recordar un número que en el camino gratis es cero
+              y en el mixto son cuatro centavos. `montoContinuar` es el mismo
+              valor que rotula el botón y contra el que se compara lo tecleado. */}
+          <p id="monto-continuar-ayuda" className="text-xs text-tinta-40">
+            De acá en adelante todo se paga: las {formatoNumero(faltan)} teselas
+            que faltan cuestan{" "}
+            <strong className="text-tinta-60">{montoContinuar}</strong>, más de
+            lo que llevas confirmado con un monto escrito (
+            {formatoUsd(confirmadas * PRECIO_POR_LLAMADA_USD)}). Escribe ese
+            mismo monto acá para confirmar que lo viste antes de seguir.
+          </p>
+          <Field
+            label="Monto a confirmar"
+            error={
+              escritoContinuar.length > 0 && !coincideContinuar
+                ? "No coincide con el monto de «Continuar» de abajo."
+                : undefined
+            }
+          >
+            <Input
+              value={escritoContinuar}
+              onChange={(e) => setEscritoContinuar(e.target.value)}
+              placeholder="US$ 0,00"
+              inputMode="decimal"
+            />
+          </Field>
+        </div>
+      )}
+
       <div className="flex flex-wrap gap-2">
         {corriendo && (
           <Button
@@ -481,15 +624,20 @@ export function BarridoProgreso({
         {/* Con el tope alcanzado, "Continuar" REEMPLAZA a Reanudar: si dejara
             los dos, el botón de siempre saltaría el permiso recién pedido. */}
         {!corriendo && !termino && capado && (
-          <Button variante="primaria" onClick={() => reanudar(true)}>
-            Continuar por otras {otorga} consultas ≈{" "}
-            {formatoUsd(otorga * PRECIO_POR_LLAMADA_USD)}
+          <Button
+            variante="primaria"
+            disabled={exigeMontoContinuar && !coincideContinuar}
+            aria-describedby={exigeMontoContinuar ? "monto-continuar-ayuda" : undefined}
+            onClick={() => reanudar(true)}
+          >
+            Continuar por las {formatoNumero(faltan)} teselas que faltan ≈ {montoContinuar}
           </Button>
         )}
 
         {!corriendo && !termino && !capado && (
           <Button variante="primaria" onClick={() => reanudar(false)}>
-            Reanudar: {faltan} teselas ≈ {formatoUsd(faltan * PRECIO_POR_LLAMADA_USD)}
+            Reanudar: {formatoNumero(faltan)} teselas ≈{" "}
+            {formatoUsd(faltan * PRECIO_POR_LLAMADA_USD)}
           </Button>
         )}
 
