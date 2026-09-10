@@ -1,4 +1,12 @@
-import { claveTrabajo, subdividir, teselar, PROFUNDIDAD_MAX, type Tesela } from "./barrido";
+import {
+  claveTrabajo,
+  subdividir,
+  teselaTocaPoligono,
+  teselar,
+  PROFUNDIDAD_MAX,
+  type Punto,
+  type Tesela,
+} from "./barrido";
 import type { ResumenTesela } from "./barrido-servidor";
 import type { Territorio } from "./territorios";
 
@@ -64,7 +72,7 @@ export function planDeBarrido(
       // Saturada ⇒ ya barrida y ya cobrada (el mismo RPC anota las dos cosas).
       // Lo que falta son sus hijas, que se recorren igual: una hija que también
       // saturó baja otro nivel, una que ya está hecha se salta sola.
-      for (const hija of hijasDe(t)) expandir(hija);
+      for (const hija of hijasDe(t, territorio.poligono)) expandir(hija);
       return;
     }
     if (hechas.has(t.clave)) return;
@@ -117,13 +125,17 @@ export function acumularFallida(
   };
 }
 
-/** Las 4 teselas en las que se parte una celda saturada, para la MISMA
- * vertical y una profundidad más. Vacío si el trabajo ya está en el tope de
- * partición — ahí la saturación queda contabilizada (saturadasAlFondo), no
- * resuelta. */
-export function hijasDe(t: Trabajo): Trabajo[] {
+/** Las teselas en las que se parte una celda saturada, para la MISMA vertical
+ * y una profundidad más: las 4 de `subdividir` menos las que quedan enteras
+ * fuera del polígono (una madre del borde, aceptada por el margen del
+ * servidor, tiene hijas que no pisan el área y que el servidor rechazaría).
+ * Vacío si el trabajo ya está en el tope de partición — ahí la saturación
+ * queda contabilizada (saturadasAlFondo), no resuelta. */
+export function hijasDe(t: Trabajo, poligono: readonly Punto[]): Trabajo[] {
   if (t.profundidad >= PROFUNDIDAD_MAX) return [];
-  return subdividir(t.tesela).map((tesela) => ({
+  return subdividir(t.tesela)
+    .filter((tesela) => teselaTocaPoligono(tesela, poligono))
+    .map((tesela) => ({
     tesela,
     vertical: t.vertical,
     profundidad: t.profundidad + 1,

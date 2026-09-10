@@ -10,6 +10,7 @@ import {
   puntoEnPoligono,
   rectanguloAPuntos,
   subdividir,
+  teselaTocaPoligono,
   teselar,
   METROS_POR_GRADO_LAT,
   PRECIO_POR_LLAMADA_USD,
@@ -232,6 +233,37 @@ describe("celdaTocaPoligono", () => {
     // Celda centrada justo sobre el borde norte del cuadrado.
     expect(celdaTocaPoligono({ lat: 4.74, lng: -74.27 }, 0.002, 0.002, CUADRADO)).toBe(
       true,
+    );
+  });
+});
+
+describe("teselaTocaPoligono", () => {
+  // Lo que mide un metro en grados de latitud, para poner teselas a una
+  // distancia exacta del borde norte del cuadrado (lat 4.74).
+  const M = 1 / METROS_POR_GRADO_LAT;
+
+  it("una tesela cuya celda queda dentro toca", () => {
+    const centro = { lat: 4.73, lng: -74.27 };
+    expect(teselaTocaPoligono({ centro, radio: 200, clave: claveTesela(centro, 200) }, CUADRADO)).toBe(
+      true,
+    );
+  });
+
+  it("una tesela del borde con el centro afuera pero la celda pisando el área sí toca", () => {
+    // Centro 100 m al norte del borde; con radio 200 la celda mide ±141 m y
+    // entra 41 m en el cuadrado. Es la madre que el servidor acepta por margen.
+    const centro = { lat: 4.74 + 100 * M, lng: -74.27 };
+    expect(teselaTocaPoligono({ centro, radio: 200, clave: claveTesela(centro, 200) }, CUADRADO)).toBe(
+      true,
+    );
+  });
+
+  it("una tesela cuya celda queda entera fuera no toca", () => {
+    // Centro 171 m al norte del borde con radio 100: la celda va de +100 m a
+    // +242 m. Es la hija norte de la madre anterior: no pisa el área.
+    const centro = { lat: 4.74 + 171 * M, lng: -74.27 };
+    expect(teselaTocaPoligono({ centro, radio: 100, clave: claveTesela(centro, 100) }, CUADRADO)).toBe(
+      false,
     );
   });
 });

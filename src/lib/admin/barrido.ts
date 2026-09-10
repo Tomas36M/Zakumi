@@ -355,6 +355,20 @@ export function teselar(
   return teselas;
 }
 
+/** Si la celda de una tesela —el cuadrado que su círculo circunscribe, el mismo
+ * que recorre `teselar`— pisa el polígono. Sirve para las hijas de una celda
+ * saturada: `subdividir` es geometría pura y produce las 4 aunque la madre
+ * estuviera en el borde con el centro afuera (el servidor la acepta porque su
+ * círculo sí toca el área). Las hijas que quedan enteras fuera no cubren nada
+ * del territorio y el servidor las rechaza con `circulo_fuera_del_territorio`;
+ * mandarlas solo infla la estimación y pinta "fallidas" que no lo son. */
+export function teselaTocaPoligono(t: Tesela, poligono: readonly Punto[]): boolean {
+  const paso = t.radio * Math.SQRT2;
+  const altoLat = paso / METROS_POR_GRADO_LAT;
+  const anchoLng = paso / metrosPorGradoLng(t.centro.lat);
+  return celdaTocaPoligono(t.centro, altoLat, anchoLng, poligono);
+}
+
 /** Parte una tesela saturada en 4 de la mitad del radio. */
 export function subdividir(t: Tesela): Tesela[] {
   const subRadio = t.radio / 2;
