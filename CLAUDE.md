@@ -218,12 +218,14 @@ Ledger de decisiones (37 rulings, leerlo antes de "arreglar" algo que parece rar
 - `git add -A` (incluso scoped a `src/`) puede barrer el working tree de OTRA
   sesión: agrega archivos explícitos, o trabaja en un **worktree**
   (`.claude/worktrees/`) como hace la rama del design system.
-- Ramas (2026-08-30): `feat/admin-design-system` y `feat/agentes-voz` viven en
-  worktrees (`.claude/worktrees/`) — NO borrarlas aunque figuren mergeadas.
-  Las demás ramas locales ya mergeadas se limpiaron; quedan por borrar
-  `feat/folletos-prospeccion` y `fix/portal-nav-desnudo` (ambas mergeadas y
-  con copia en origin). El tema de folletos —headers de imagen en plantillas
-  Meta— sigue bloqueado por re-aprobación de plantillas.
+- Ramas (2026-09-12): todo lo mergeado se limpió, en local y en origin. Quedan
+  `main`, `feat/agentes-voz` y las cuatro que viven en worktrees
+  (`.claude/worktrees/`: `feat/admin-design-system`, `fix/avisos-plantilla-meta`,
+  `feat/zak-unificado`, `feat/cuota-y-confirmacion`) — NO borrarlas aunque
+  figuren mergeadas: otra sesión puede estar parada ahí. El tema de folletos
+  —headers de imagen en plantillas Meta— quedó desbloqueado el 2026-08-24
+  (plantillas con header aprobadas); el pendiente real es el display name del
+  número (`name_status: NON_EXISTS`), que lo mantiene en TIER_250.
 
 ## Repo y despliegue
 
