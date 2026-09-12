@@ -78,3 +78,35 @@ describe("EXTRACCION_ZAK", () => {
     expect(claves).toContain("cita_confirmada");
   });
 });
+
+describe("el guion de Zak al llamar (2026-09-12)", () => {
+  it("el saludo dice en una frase qué es Zakumi y pide el nombre", () => {
+    expect(PRIMER_MENSAJE_ZAK).toMatch(/estudio colombiano/i);
+    expect(PRIMER_MENSAJE_ZAK).toMatch(/con quién tengo el gusto/i);
+  });
+
+  it("pregunta por el negocio antes de ofrecer, y ofrece antes de pedir la solicitud", () => {
+    const g = SECCIONES_ZAK.guion;
+    const pregunta = g.indexOf("Pregunta por el negocio");
+    const conecta = g.indexOf("Conecta UN solo servicio");
+    const solicitud = g.indexOf("propuesta o demo");
+    expect(pregunta).toBeGreaterThan(-1);
+    expect(pregunta).toBeLessThan(conecta);
+    expect(conecta).toBeLessThan(solicitud);
+  });
+
+  it("vende también web, tienda con catálogo y pasarela de pagos, sin inventarles precio", () => {
+    const negocio = SECCIONES_ZAK.negocio.toLowerCase();
+    for (const s of ["página web", "tienda en línea", "catálogo de productos", "pasarela de pagos"]) {
+      expect(negocio).toContain(s);
+    }
+    expect(negocio).toContain("a la medida");
+    expect(SECCIONES_ZAK.noDecir.toLowerCase()).toContain("pasarela");
+  });
+
+  it("si piden una persona, contacta alguien del equipo — no Tomás por nombre", () => {
+    expect(SECCIONES_ZAK.guion).toContain("alguien del equipo");
+    expect(SECCIONES_ZAK.guion).not.toContain("Tomás");
+    expect(PRIMER_MENSAJE_ZAK).not.toContain("Tomás");
+  });
+});
