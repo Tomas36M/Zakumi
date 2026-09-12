@@ -8,7 +8,14 @@ import {
   type ResumenBarrido,
   type Trabajo,
 } from "../plan-barrido";
-import { claveTesela, claveTrabajo, subdividir, teselar, PROFUNDIDAD_MAX } from "../barrido";
+import {
+  claveTesela,
+  claveTrabajo,
+  subdividir,
+  teselar,
+  METROS_POR_GRADO_LAT,
+  PROFUNDIDAD_MAX,
+} from "../barrido";
 import type { ResumenTesela } from "../barrido-servidor";
 import type { Territorio } from "../territorios";
 
@@ -114,6 +121,16 @@ describe("planDeBarrido y las celdas saturadas", () => {
     // El resto del territorio sigue en el plan: una tesela menos (la madre),
     // cuatro hijas más.
     expect(plan).toHaveLength(teselas.length - 1 + 4);
+  });
+
+  it("una madre saturada del borde no vuelve a pedir las hijas que quedan fuera del polígono", () => {
+    const centro = { lat: 4.74 + 100 / METROS_POR_GRADO_LAT, lng: -74.27 };
+    const borde = { centro, radio: 200, clave: claveTesela(centro, 200) };
+    const claveBorde = claveTrabajo(borde, "taller");
+    const plan = planDeBarrido(territorioCon([claveBorde], [claveBorde]), ["taller"], [borde]);
+    expect(plan).toHaveLength(2);
+    expect(plan.every((t) => t.profundidad === 1)).toBe(true);
+    expect(plan.every((t) => t.tesela.centro.lat < centro.lat)).toBe(true);
   });
 
   it("las hijas emitidas van a profundidad 1 y con la vertical de la madre", () => {
@@ -309,18 +326,40 @@ describe("hijasDe", () => {
   }
 
   it("parte una celda en 4 por debajo del tope de partición", () => {
-    expect(hijasDe(trabajo(0))).toHaveLength(4);
-    expect(hijasDe(trabajo(PROFUNDIDAD_MAX - 1))).toHaveLength(4);
+    expect(hijasDe(trabajo(0), POLIGONO)).toHaveLength(4);
+    expect(hijasDe(trabajo(PROFUNDIDAD_MAX - 1), POLIGONO)).toHaveLength(4);
   });
 
   it("no parte más allá del tope de partición", () => {
-    expect(hijasDe(trabajo(PROFUNDIDAD_MAX))).toEqual([]);
+    expect(hijasDe(trabajo(PROFUNDIDAD_MAX), POLIGONO)).toEqual([]);
   });
 
   it("las hijas heredan la vertical de la madre y suben una profundidad", () => {
-    const hijas = hijasDe(trabajo(0));
+    const hijas = hijasDe(trabajo(0), POLIGONO);
     expect(hijas.every((h) => h.vertical === "ferreteria")).toBe(true);
     expect(hijas.every((h) => h.profundidad === 1)).toBe(true);
+  });
+
+  it("descarta las hijas que quedan enteras fuera del polígono", () => {
+    // La madre del borde norte: centro 100 m afuera, radio 200. El servidor la
+    // acepta (su círculo pisa el área) y si satura, sus dos hijas del norte
+    // quedan enteras fuera: mandarlas es un 400 seguro que la pantalla pinta
+    // como "tesela que no se pudo barrer". Visto en producción el 2026-09-09.
+    const centro = { lat: 4.74 + 100 / METROS_POR_GRADO_LAT, lng: -74.27 };
+    const tesela = { centro, radio: 200, clave: claveTesela(centro, 200) };
+    const madre: Trabajo = {
+      tesela,
+      vertical: "taller",
+      profundidad: 0,
+      clave: claveTrabajo(tesela, "taller"),
+    };
+    const hijas = hijasDe(madre, POLIGONO);
+    expect(hijas).toHaveLength(2);
+    expect(hijas.every((h) => h.tesela.centro.lat < centro.lat)).toBe(true);
+    // Las que quedan son EXACTAMENTE las que produce subdividir, con su misma
+    // clave: teselas_hechas las tiene que reconocer.
+    const clavesSubdividir = subdividir(madre.tesela).map((t) => claveTrabajo(t, "taller"));
+    for (const h of hijas) expect(clavesSubdividir).toContain(h.clave);
   });
 });
 

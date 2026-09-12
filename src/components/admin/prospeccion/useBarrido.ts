@@ -292,7 +292,7 @@ export function useBarrido(territorio: Territorio) {
           // contarlas. (El mismo RPC que anota la madre como hecha la anota
           // como saturada, así que un plan futuro las volvería a generar; esto
           // es para no esperar a ese plan futuro.)
-          const hijas = hijasDe(t);
+          const hijas = hijasDe(t, territorio.poligono);
           cola.current.push(...hijas);
           setEstado((e) => ({ ...e, total: e.total + hijas.length }));
         }
