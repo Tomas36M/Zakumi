@@ -94,6 +94,13 @@ tienda, de una llamada o de un chat. Espec y runbook:
   (`ponerAlDiaCamposZak`) fusiona los estándar sin pisar lo escrito a mano.
 - **Pendiente fuera de este repo**: la tool del bot Flask
   (`docs/bot-flask/tool-registrar-solicitud.md`).
+- **Brochure de servicios y precios** (2026-09-13): `public/folletos/
+  brochure-zakumi-servicios-precios.pdf` se sirve en
+  `https://zakumistudio.com/folletos/brochure-zakumi-servicios-precios.pdf`. Lo manda
+  Zak (tool `enviar_brochure` en `whatsapp-bot/agent.py`, solo instancia Zak) cuando
+  preguntan por precios o servicios; la URL se deriva del host de `ZAK_VOZ_URL` (o
+  `ZAK_BROCHURE_URL`). Para cambiar el PDF: reemplazar el archivo con nombre NUEVO y
+  actualizar el sufijo en el bot (Cache-Control immutable en `/folletos/`).
 
 ## Agentes de voz /admin/voz — ElevenLabs (2026-08-30, PR #3 sobre `main`)
 
