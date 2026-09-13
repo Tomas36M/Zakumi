@@ -68,6 +68,10 @@ type Props = {
   /** La cara está en segundo plano: se esconde, NUNCA se desmonta (adentro
    * puede haber un barrido en vuelo). */
   oculta: boolean;
+  /** La ficha del lead (modal) vive en el shell: aquí solo se pide abrirla. */
+  onAbrirLead: (id: string) => void;
+  /** El lead cuya ficha está abierta: su pin se pinta activo. */
+  leadAbierto: string | null;
 };
 
 /**
@@ -83,6 +87,8 @@ export function TerritorioView({
   onBarrido,
   onAvisoBarrido,
   oculta,
+  onAbrirLead,
+  leadAbierto,
 }: Props) {
   const router = useRouter();
   const [resultados, setResultados] = useState<ResultadoPlace[]>([]);
@@ -110,10 +116,12 @@ export function TerritorioView({
     null,
   );
 
-  const negocioSeleccionado = useMemo(() => {
-    if (seleccion?.tipo !== "negocio") return null;
-    return negocios.find((n) => n.id === seleccion.id) ?? null;
-  }, [seleccion, negocios]);
+  // El pin de un negocio abre su ficha en el modal del shell; la isla derecha
+  // queda para lo que no es un lead todavía (resultado suelto, alta manual).
+  // El pin activo del mapa es el del lead abierto.
+  const seleccionMapa: Seleccion = leadAbierto
+    ? { tipo: "negocio", id: leadAbierto }
+    : seleccion;
 
   const resultadoSeleccionado = useMemo(() => {
     if (seleccion?.tipo !== "resultado") return null;
@@ -357,14 +365,20 @@ export function TerritorioView({
           <MapCanvas
             negocios={negocios}
             resultados={resultados}
-            seleccion={seleccion}
+            seleccion={seleccionMapa}
             territorios={territorios}
             territorioActivo={territorioActivo}
             onSeleccionarTerritorio={onSeleccionarTerritorio}
             // En MapCanvas esto solo pone el cursor en cruz, y dibujar también
             // es "toca el mapa": el puntero tiene que decirlo.
             modoCaptura={modoCaptura || modo !== null}
-            onSeleccionar={setSeleccion}
+            onSeleccionar={(s) => {
+              if (s?.tipo === "negocio") {
+                onAbrirLead(s.id);
+                return;
+              }
+              setSeleccion(s);
+            }}
             onClickMapa={(lat, lng) => {
               // En rectángulo el clic no pone nada: el área sale del arrastre,
               // que TrazoEnCurso escucha sobre el mapa.
@@ -401,13 +415,16 @@ export function TerritorioView({
         >
           <FichaLateral
             seleccion={seleccion}
-            negocio={negocioSeleccionado}
             resultado={resultadoSeleccionado}
             importando={importando}
             onImportar={importar}
-            onSeleccionar={setSeleccion}
+            onCreado={(id) => {
+              // El pin nuevo ya es un lead: se abre su ficha como a cualquiera.
+              setSeleccion(null);
+              onAbrirLead(id);
+              router.refresh();
+            }}
             onCerrar={() => setSeleccion(null)}
-            onCambio={() => router.refresh()}
           />
         </aside>
 

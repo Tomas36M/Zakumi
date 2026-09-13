@@ -70,8 +70,11 @@ function coordenadasValidas(lat: unknown, lng: unknown): boolean {
 
 function revalidarPanel() {
   // `/admin/mapa` y `/admin/negocios` son stubs de redirect desde la T14:
-  // revalidarlos no invalida nada que alguien mire. La pantalla real es una.
+  // revalidarlos no invalida nada que alguien mire. Las pantallas que
+  // enseñan negocios son dos: Prospección y Territorios (grid + detalle, por
+  // eso "layout": cubre también `/admin/territorios/[id]`).
   revalidatePath("/admin/prospeccion");
+  revalidatePath("/admin/territorios", "layout");
 }
 
 /**

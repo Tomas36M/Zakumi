@@ -136,6 +136,55 @@ export function resumenDeTerritorio(
   };
 }
 
+/** Cuentas por territorio como objeto plano: viaja del servidor al cliente
+ * (un Map no sobrevive la frontera de props). */
+export type CuentasPorTerritorio = Record<string, CuentaTerritorio>;
+
+/**
+ * Cuentas EXACTAS por territorio, contadas en el servidor con `count: exact`
+ * + `head: true` (dos consultas chicas por territorio, en paralelo). Existe
+ * porque `cuentasPorTerritorio` recorre la lista topada a 900 y con más
+ * negocios que eso mentiría — y la página Territorios es una lista de
+ * cifras. `null` = alguna consulta falló: la vista cae a la cuenta sobre lo
+ * cargado y lo dice con un banner, en vez de pintar ceros que no son.
+ */
+export async function cuentasTerritoriosServidor(
+  supabase: SupabaseClient,
+  territorios: readonly Pick<Territorio, "id">[],
+): Promise<CuentasPorTerritorio | null> {
+  const consultas = territorios.map(async (t) => {
+    const [total, sinWeb] = await Promise.all([
+      supabase
+        .from("negocios")
+        .select("*", { count: "exact", head: true })
+        .eq("territorio_id", t.id),
+      supabase
+        .from("negocios")
+        .select("*", { count: "exact", head: true })
+        .eq("territorio_id", t.id)
+        .is("sitio_web", null),
+    ]);
+    const error = total.error ?? sinWeb.error;
+    if (error) throw new Error(error.message);
+    return [t.id, { leads: total.count ?? 0, sinWeb: sinWeb.count ?? 0 }] as const;
+  });
+  try {
+    return Object.fromEntries(await Promise.all(consultas));
+  } catch (e) {
+    console.error("[territorios] cuentas por territorio:", e instanceof Error ? e.message : e);
+    return null;
+  }
+}
+
+/** La caja del territorio en el literal que entiende `map.fitBounds`. */
+export type CajaLatLng = { south: number; north: number; west: number; east: number };
+
+export function bboxDeTerritorio(
+  t: Pick<Territorio, "bbox_sur" | "bbox_norte" | "bbox_oeste" | "bbox_este">,
+): CajaLatLng {
+  return { south: t.bbox_sur, north: t.bbox_norte, west: t.bbox_oeste, east: t.bbox_este };
+}
+
 /** Consultas de BARRIDO facturadas en el mes calendario en curso, según la hora
  * de Bogotá (UTC-5 fijo, sin horario de verano). Es el número que se compara
  * contra `CUOTA_GRATIS_MENSUAL`.

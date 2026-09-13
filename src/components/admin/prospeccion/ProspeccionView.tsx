@@ -12,6 +12,9 @@ import {
 } from "@/lib/admin/prospeccion-caras";
 import { esSinWeb, estadoCenso, type Negocio } from "@/lib/admin/negocios";
 import type { Territorio } from "@/lib/admin/territorios";
+import type { EstadoVozZak } from "@/lib/admin/voz-estado";
+import { FichaLeadModal } from "@/components/admin/leads/FichaLeadModal";
+import { useFichaLead } from "@/components/admin/leads/useFichaLead";
 import { NegociosView } from "@/components/admin/negocios/NegociosView";
 import { Banner } from "@/components/admin/ui/Banner";
 import { Button } from "@/components/admin/ui/Button";
@@ -39,6 +42,8 @@ type Props = {
    * el diálogo de barrer no puede afirmar cuota gratis sobre un dato que no
    * tiene. */
   consultasMes: number | null;
+  /** Estado de la voz de Zak (server): habilita «Llamar con IA» en la ficha. */
+  vozZak: EstadoVozZak;
 };
 
 // Dos cockpits anidados con altura fija de viewport se desbordan y devuelven
@@ -62,8 +67,16 @@ export function ProspeccionView({
   fallaNegocios,
   fallaTerritorios,
   consultasMes,
+  vozZak,
 }: Props) {
   const router = useRouter();
+
+  // La ficha del lead (modal) es del shell, no de las caras: Territorio está
+  // siempre montada y Leads solo a veces — dos modales leyendo `?lead=` se
+  // abrirían a la vez. Se guarda el id; el negocio se resuelve en cada render
+  // para que tras `router.refresh()` el modal vea la fila nueva.
+  const [leadId, abrirLead] = useFichaLead();
+  const leadAbierto = leadId ? (negocios.find((n) => n.id === leadId) ?? null) : null;
 
   // La URL manda (es compartible y sobrevive al atrás del navegador), pero la
   // cara se pinta YA: `router.push` vuelve al servidor a releer negocios y
@@ -228,6 +241,8 @@ export function ProspeccionView({
         onBarrido={setBarrido}
         onAvisoBarrido={setAviso}
         oculta={cara !== "territorio"}
+        onAbrirLead={abrirLead}
+        leadAbierto={leadId}
       />
 
       {cara === "leads" && (
@@ -235,8 +250,21 @@ export function ProspeccionView({
           negocios={negocios}
           territorios={territorios}
           className={COCKPIT_ANIDADO}
+          onAbrirLead={abrirLead}
         />
       )}
+
+      <FichaLeadModal
+        leadId={leadId}
+        negocio={leadAbierto}
+        vozZak={vozZak}
+        onCerrar={() => abrirLead(null)}
+        onCambio={() => router.refresh()}
+        onEliminado={() => {
+          abrirLead(null);
+          router.refresh();
+        }}
+      />
     </Cockpit>
   );
 }

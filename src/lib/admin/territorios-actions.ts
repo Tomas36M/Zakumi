@@ -5,6 +5,13 @@ import { verifySession } from "./dal";
 import { filasDeTerritorio, poligonoValido, NOMBRE_MAX, VERTICES_MAX } from "./territorios";
 import type { Punto } from "./barrido";
 
+/** Los territorios se ven en el mapa y en su propia página (grid + detalle,
+ * por eso "layout": cubre también `/admin/territorios/[id]`). */
+function revalidarTerritorios() {
+  revalidarTerritorios();
+  revalidatePath("/admin/territorios", "layout");
+}
+
 export async function crearTerritorio(
   nombre: string,
   poligono: Punto[],
@@ -35,7 +42,7 @@ export async function crearTerritorio(
     return { error: "No se pudo guardar el territorio." };
   }
 
-  revalidatePath("/admin/prospeccion");
+  revalidarTerritorios();
   return { id: data.id as string };
 }
 
@@ -56,7 +63,7 @@ export async function renombrarTerritorio(
     console.error("[territorios] error renombrando:", error.message);
     return { error: "No se pudo renombrar." };
   }
-  revalidatePath("/admin/prospeccion");
+  revalidarTerritorios();
   return { ok: true };
 }
 
@@ -71,6 +78,6 @@ export async function eliminarTerritorio(
     console.error("[territorios] error eliminando:", error.message);
     return { error: "No se pudo eliminar el territorio." };
   }
-  revalidatePath("/admin/prospeccion");
+  revalidarTerritorios();
   return { ok: true };
 }
