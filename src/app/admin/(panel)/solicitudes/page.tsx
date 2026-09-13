@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Cockpit, CockpitBody } from "@/components/admin/ui/Cockpit";
+import { PageHeader } from "@/components/admin/ui/PageHeader";
 import { verifySession } from "@/lib/admin/dal";
 import type { Solicitud } from "@/lib/portal/solicitudes";
 import {
@@ -41,14 +42,11 @@ export default async function SolicitudesAdminPage() {
 
   return (
     <Cockpit>
-      <header className="border-b border-hairline px-5 py-4">
-        <h1 className="text-lg font-semibold text-tinta">Solicitudes</h1>
-        <p className="text-xs text-tinta-60">
-          Todo el que quiere contratarnos: lo que piden en la tienda y lo que
-          Zak consigue por llamada o por WhatsApp. Cotiza, manda el link de pago
-          y activa.
-        </p>
-      </header>
+      <PageHeader
+        titulo="Solicitudes"
+        coletilla="lo que quieren contratar"
+        subtitulo="Lo que piden en la tienda y lo que Zak consigue por llamada o por WhatsApp. Cotiza, manda el link de pago y activa."
+      />
       <CockpitBody>
         <BandejaSolicitudes solicitudes={solicitudes} perfiles={perfiles} />
       </CockpitBody>

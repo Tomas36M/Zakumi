@@ -7,7 +7,6 @@ import {
   TIPOS_PRODUCTO,
   descripcionVencimiento,
   formatearCOP,
-  hoyBogota,
   ordenarPorUrgencia,
   semaforoCobro,
   type Cliente,
@@ -18,7 +17,9 @@ import { Button } from "@/components/admin/ui/Button";
 import { Cockpit, CockpitBody } from "@/components/admin/ui/Cockpit";
 import { EmptyState } from "@/components/admin/ui/EmptyState";
 import { ListRow } from "@/components/admin/ui/ListRow";
+import { PageHeader } from "@/components/admin/ui/PageHeader";
 import { Tabs } from "@/components/admin/ui/Tabs";
+import { useParametroUrl } from "@/components/admin/ui/useParametroUrl";
 import { FichaCliente } from "./FichaCliente";
 import { NuevoClienteForm } from "./NuevoClienteForm";
 
@@ -38,26 +39,33 @@ const GRID_COBRO =
 const GRID_CLIENTE =
   "grid grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)_auto_minmax(0,0.8fr)] items-center gap-3";
 
+export type VistaClientes = "cobros" | "clientes";
+
 type Props = {
   productos: ProductoConCliente[];
   clientes: Cliente[];
   abrirInicial: string | null;
+  vistaInicial: VistaClientes;
+  /** El día de hoy en Bogotá, decidido en el servidor. */
+  hoy: string;
 };
-
-type Vista = "cobros" | "clientes";
 
 const VISTAS = [
   { id: "cobros", label: "Próximos cobros" },
   { id: "clientes", label: "Clientes" },
 ] as const;
 
-export function ClientesView({ productos, clientes, abrirInicial }: Props) {
+export function ClientesView({ productos, clientes, abrirInicial, vistaInicial, hoy }: Props) {
   const router = useRouter();
-  const [vista, setVista] = useState<Vista>("cobros");
+  const [vista, setVista] = useState<VistaClientes>(vistaInicial);
+  const [, ponerTab] = useParametroUrl("tab");
   const [seleccionId, setSeleccionId] = useState<string | null>(abrirInicial);
   const [creando, setCreando] = useState(false);
 
-  const hoy = hoyBogota();
+  function cambiarVista(nueva: VistaClientes) {
+    setVista(nueva);
+    ponerTab(nueva);
+  }
 
   const cobros = useMemo(
     () => ordenarPorUrgencia(productos.filter((p) => p.activo)),
@@ -76,22 +84,27 @@ export function ClientesView({ productos, clientes, abrirInicial }: Props) {
 
   return (
     <Cockpit>
-      {/* Pestañas y acciones: alto natural, siempre a la vista. */}
-      <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 px-5 pt-4">
-        <Tabs pestanas={VISTAS} activa={vista} onCambiar={setVista} />
-        <span className="text-xs text-tinta-40">
-          <strong className="text-tinta-85">{clientes.length}</strong> clientes ·{" "}
-          <strong className="text-tinta-85">{cobros.length}</strong> cobros activos
-        </span>
-        <Button
-          onClick={() => {
-            setCreando(true);
-            setSeleccionId(null);
-          }}
-        >
-          Nuevo cliente
-        </Button>
-      </div>
+      <PageHeader
+        titulo="Clientes"
+        coletilla="la cartera"
+        navegacion={<Tabs pestanas={VISTAS} activa={vista} onCambiar={cambiarVista} />}
+        contador={
+          <>
+            <strong className="text-tinta-85">{clientes.length}</strong> clientes ·{" "}
+            <strong className="text-tinta-85">{cobros.length}</strong> cobros activos
+          </>
+        }
+        acciones={
+          <Button
+            onClick={() => {
+              setCreando(true);
+              setSeleccionId(null);
+            }}
+          >
+            Nuevo cliente
+          </Button>
+        }
+      />
 
       <CockpitBody>
         <div className="grid items-start gap-aire min-[1000px]:grid-cols-[minmax(0,1fr)_380px]">
