@@ -8,8 +8,6 @@ import {
   Bot,
   Boxes,
   CalendarDays,
-  ChevronLeft,
-  ChevronRight,
   Inbox,
   LandPlot,
   LogOut,
@@ -119,8 +117,8 @@ function useCitasHoy(): number {
 
 /**
  * Isla de marca. En desktop es EL botón de colapsar: toda la isla es objetivo
- * de clic y el chevron solo insinúa hacia dónde se va a mover. Al colapsar, la
- * palabra se pliega hasta dejar la Z (animación en admin-theme.css, .adm-logo).
+ * de clic. Al colapsar, la palabra se pliega hasta dejar la Z (animación en
+ * admin-theme.css, .adm-logo).
  * En el overlay móvil no hay nada que colapsar: el logo vuelve a ser el
  * enlace al inicio del panel.
  */
@@ -141,8 +139,9 @@ function Marca({ colapsado, onAlternar }: { colapsado: boolean; onAlternar?: () 
     );
   }
 
+  // Sin flecha: el logo solo, como en el resto de la marca. El hover y el
+  // tooltip ya dicen que se puede tocar.
   const etiqueta = colapsado ? "Expandir menú" : "Colapsar menú";
-  const Flecha = colapsado ? ChevronRight : ChevronLeft;
   return (
     <button
       type="button"
@@ -151,13 +150,9 @@ function Marca({ colapsado, onAlternar }: { colapsado: boolean; onAlternar?: () 
       aria-controls="adm-nav"
       aria-label={etiqueta}
       title={etiqueta}
-      className={cn(
-        "group flex items-center justify-center overflow-hidden rounded-isla bg-isla px-3 py-3.5 transition-colors hover:bg-isla-alta",
-        colapsado ? "flex-col gap-1.5" : "gap-2",
-      )}
+      className="flex items-center justify-center overflow-hidden rounded-isla bg-isla px-3 py-3.5 transition-colors hover:bg-isla-alta"
     >
       {logo}
-      <Flecha className="h-3.5 w-3.5 shrink-0 text-tinta-40 transition-colors group-hover:text-tinta" />
     </button>
   );
 }
