@@ -10,11 +10,11 @@ export const metadata = { title: "Encontrar clientes" };
 export default async function ProspeccionPage({
   searchParams,
 }: {
-  searchParams: Promise<{ tab?: string }>;
+  searchParams: Promise<{ tab?: string; territorio?: string }>;
 }) {
   // Next 16: los layouts NO se re-renderizan — el check va en CADA page.
   const { supabase } = await verifySession();
-  const { tab } = await searchParams;
+  const { tab, territorio } = await searchParams;
 
   const [negocios, cuenta, territorios, consultasMes, zakVoz] = await Promise.all([
     supabase
@@ -55,6 +55,9 @@ export default async function ProspeccionPage({
       fallaTerritorios={territorios.error !== null}
       consultasMes={consultasMes}
       vozZak={estadoVozZak(zakVoz, Boolean(process.env.ELEVENLABS_PHONE_NUMBER_ID))}
+      // Deep-link desde la página Territorios («Ver en el mapa» / «Barrer»):
+      // abre la ficha del territorio y encuadra el mapa en él.
+      territorioInicial={territorio ?? null}
     />
   );
 }

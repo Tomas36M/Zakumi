@@ -44,6 +44,8 @@ type Props = {
   consultasMes: number | null;
   /** Estado de la voz de Zak (server): habilita «Llamar con IA» en la ficha. */
   vozZak: EstadoVozZak;
+  /** `?territorio=<id>`: abrir la ficha de ese territorio y encuadrarlo. */
+  territorioInicial: string | null;
 };
 
 // Dos cockpits anidados con altura fija de viewport se desbordan y devuelven
@@ -68,6 +70,7 @@ export function ProspeccionView({
   fallaTerritorios,
   consultasMes,
   vozZak,
+  territorioInicial,
 }: Props) {
   const router = useRouter();
 
@@ -243,6 +246,7 @@ export function ProspeccionView({
         oculta={cara !== "territorio"}
         onAbrirLead={abrirLead}
         leadAbierto={leadId}
+        territorioInicial={territorioInicial}
       />
 
       {cara === "leads" && (
