@@ -89,6 +89,43 @@ export function edicionesRestantes(
   return { puedeEnviar: true, usadasMes };
 }
 
+// ---- Folletos: el archivo sube DIRECTO del navegador al bucket ------------
+// Pasarlo por una server action lo metía en el cuerpo de la función (Next
+// corta en 1 MB, Vercel en 4,5 MB) y un folleto grande tumbaba la página
+// entera en vez de avisar. El navegador sube con la sesión del admin (la
+// política folletos_escribe_admin lo permite) y la action solo anota la ruta.
+
+export const BUCKET_FOLLETOS = "folletos";
+/** Meta acepta headers de imagen de máximo 5 MB. */
+export const FOLLETO_MAX_BYTES = 5 * 1024 * 1024;
+export const TIPOS_FOLLETO = ["image/png", "image/jpeg"] as const;
+
+/** Null = válido; si no, el motivo para el usuario. Se comprueba ANTES de
+ * subir nada. */
+export function validarFolleto(tipo: string, tamano: number): string | null {
+  if (!(TIPOS_FOLLETO as readonly string[]).includes(tipo)) {
+    return "El folleto tiene que ser PNG o JPG.";
+  }
+  if (tamano <= 0) return "El archivo está vacío.";
+  if (tamano > FOLLETO_MAX_BYTES) {
+    const mb = (tamano / (1024 * 1024)).toFixed(1);
+    return `Meta acepta headers de máximo 5 MB (este pesa ${mb} MB). Comprímelo o expórtalo en JPG.`;
+  }
+  return null;
+}
+
+/** La ruta dentro del bucket: SIEMPRE con nombre nuevo (el CDN de Supabase
+ * cachea el path; sobreescribir serviría la imagen vieja quién sabe cuánto). */
+export function rutaFolleto(slug: string, tipo: string, ahora: number): string {
+  return `${slug}/${ahora}.${tipo === "image/png" ? "png" : "jpg"}`;
+}
+
+/** La ruta la eligió el navegador: solo se acepta la carpeta de ESA plantilla
+ * y una extensión de imagen — nada de `../` ni de apuntar a otro folleto. */
+export function rutaFolletoValida(slug: string, ruta: string): boolean {
+  return new RegExp(`^${slug}/\\d{10,16}\\.(png|jpg)$`).test(ruta);
+}
+
 /** Validación del cuerpo antes de mandarlo a Meta. Null = válido. */
 export function validarCuerpo(textoCuerpo: string): string | null {
   const t = textoCuerpo.trim();
