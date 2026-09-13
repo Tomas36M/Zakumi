@@ -10,7 +10,7 @@
 // En modo "Testing" Google caduca el refresh token a los 7 días y la agenda
 // deja de funcionar sola sin avisar.
 
-import type { Calendario, EventoAgendado } from "./tipos";
+import type { Calendario, EventoAgendado, ResultadoGoogle } from "./tipos";
 
 const ZONA = "America/Bogota";
 const API = "https://www.googleapis.com/calendar/v3";
@@ -65,6 +65,23 @@ export function leerEvento(json: unknown): EventoAgendado | null {
     }
   }
   return { eventoId: id, meetUrl: meet, linkGoogle: texto(e?.htmlLink) };
+}
+
+/** El cuerpo del PATCH al mover un evento: solo inicio y fin (el resto —
+ * título, Meet, invitados— se conserva). Puro. */
+export function cuerpoReprogramacion(inicio: string, fin: string): Json {
+  return {
+    start: { dateTime: inicio, timeZone: ZONA },
+    end: { dateTime: fin, timeZone: ZONA },
+  };
+}
+
+/** Status HTTP → qué pasó con el evento. 404 (no existe) y 410 (borrado en
+ * Google) van juntos: en los dos casos el evento ya no está. Puro. */
+export function resultadoDeStatus(status: number): ResultadoGoogle {
+  if (status >= 200 && status < 300) return "ok";
+  if (status === 404 || status === 410) return "no_existe";
+  return "error";
 }
 
 /** Respuesta de freeBusy → ¿hay algo en la franja? Puro. Ante cualquier cosa
@@ -197,6 +214,60 @@ export function calendarioGoogle(): Calendario | null {
       } catch (e) {
         console.error("[agenda] freeBusy:", e instanceof Error ? e.message : e);
         return false;
+      }
+    },
+
+    async actualizarEvento(eventoId, cambios) {
+      const token = await accessToken();
+      if (!token) return "error";
+      try {
+        const res = await fetch(
+          `${API}/calendars/primary/events/${encodeURIComponent(eventoId)}?sendUpdates=all`,
+          {
+            method: "PATCH",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(cuerpoReprogramacion(cambios.inicio, cambios.fin)),
+            signal: AbortSignal.timeout(TIMEOUT_MS),
+            cache: "no-store",
+          },
+        );
+        const resultado = resultadoDeStatus(res.status);
+        if (resultado === "error") {
+          const json = await res.text().catch(() => "");
+          console.error("[agenda] events.patch →", res.status, json.slice(0, 300));
+        }
+        return resultado;
+      } catch (e) {
+        console.error("[agenda] actualizarEvento:", e instanceof Error ? e.message : e);
+        return "error";
+      }
+    },
+
+    async borrarEvento(eventoId) {
+      const token = await accessToken();
+      if (!token) return "error";
+      try {
+        const res = await fetch(
+          `${API}/calendars/primary/events/${encodeURIComponent(eventoId)}?sendUpdates=all`,
+          {
+            method: "DELETE",
+            headers: { Authorization: `Bearer ${token}` },
+            signal: AbortSignal.timeout(TIMEOUT_MS),
+            cache: "no-store",
+          },
+        );
+        const resultado = resultadoDeStatus(res.status);
+        if (resultado === "error") {
+          const json = await res.text().catch(() => "");
+          console.error("[agenda] events.delete →", res.status, json.slice(0, 300));
+        }
+        return resultado;
+      } catch (e) {
+        console.error("[agenda] borrarEvento:", e instanceof Error ? e.message : e);
+        return "error";
       }
     },
   };

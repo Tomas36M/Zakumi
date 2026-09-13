@@ -11,6 +11,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { servicioDelSlug, slugDeInteres } from "@/lib/catalogo";
 import { avisarAdmin, type PlantillaAviso } from "@/lib/portal/avisos";
+import { eventoDeSolicitud, urlPanelSolicitudes } from "@/lib/agenda/citas";
 import { calendarioGoogle } from "@/lib/agenda/google";
 import type { Calendario } from "@/lib/agenda/tipos";
 import { parsearCita, type Cita } from "./fecha";
@@ -66,11 +67,6 @@ export type DepsEntrada = {
   avisar?: (texto: string, plantilla?: PlantillaAviso) => Promise<void>;
   ahora?: Date;
 };
-
-function urlPanel(): string {
-  const base = process.env.NEXT_PUBLIC_SITE_URL ?? "https://zakumistudio.com";
-  return `${base.replace(/\/$/, "")}/admin/solicitudes`;
-}
 
 function limpio(v: unknown, tope = 2000): string | null {
   if (typeof v !== "string") return null;
@@ -197,21 +193,21 @@ export async function registrarSolicitudEntrante(
       // El choque solo informa: se agenda igual (perder una cita conseguida
       // es peor que solapar dos eventos en el calendario).
       choque = await calendario.hayChoque(cita.inicio, cita.fin);
-      const titulo = `Zakumi · ${nombre ?? telefono}`;
-      const evento = await calendario.crearEvento({
-        titulo,
-        descripcion: [
-          detalle ? `Lo que pidió: ${detalle}` : null,
-          `Servicio: ${servicioDelSlug(slug)?.nombre ?? "por definir"}`,
-          `Contacto: ${telefono}`,
-          `Origen: ${entrada.origen}`,
-          urlPanel(),
-        ]
-          .filter((l) => l)
-          .join("\n"),
-        inicio: cita.inicio,
-        fin: cita.fin,
-      });
+      // El mismo título y descripción que arman las acciones del panel al
+      // agendar a mano: un solo sitio para el texto del evento.
+      const evento = await calendario.crearEvento(
+        eventoDeSolicitud(
+          {
+            contacto_nombre: nombre,
+            contacto_telefono: telefono,
+            mensaje: detalle,
+            servicio_slug: slug,
+            origen: entrada.origen,
+          },
+          cita,
+          urlPanelSolicitudes(solicitudId),
+        ),
+      );
       if (evento) {
         // Agendada = se creó el evento, no que además haya llegado el link de
         // Meet: un evento sin sala igual ocupó el horario en el calendario.
@@ -248,7 +244,8 @@ export async function registrarSolicitudEntrante(
     citaTextoCrudo: cita ? null : citaCrudaTexto,
     meetUrl,
     choque,
-    urlPanel: urlPanel(),
+    // Con el id, el aviso abre directo la solicitud en la bandeja.
+    urlPanel: urlPanelSolicitudes(solicitudId),
   };
   await avisarSeguro(avisar, construirAviso(datosAviso), "normal", {
     nombre: PLANTILLA_AVISO_SOLICITUD,
