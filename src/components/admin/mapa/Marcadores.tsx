@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AdvancedMarker, useMap } from "@vis.gl/react-google-maps";
 import { MarkerClusterer, type Marker, type Renderer } from "@googlemaps/markerclusterer";
 import { esSinWeb, labelEstado, type Negocio } from "@/lib/admin/negocios";
@@ -76,18 +76,30 @@ export function Marcadores({ negocios, activoId, onSeleccionar }: Props) {
     c.addMarkers(Object.values(marcadores));
   }, [marcadores, map]);
 
-  function registrar(id: string, marker: Marker | null) {
-    setMarcadores((prev) => {
-      if (marker) {
-        if (prev[id] === marker) return prev;
-        return { ...prev, [id]: marker };
-      }
-      if (!(id in prev)) return prev;
-      const resto = { ...prev };
-      delete resto[id];
-      return resto;
-    });
-  }
+  // Un ref callback ESTABLE por negocio. Uno inline cambia de identidad en
+  // cada render, y React lo llama con null y de nuevo con el nodo cada vez:
+  // dos setState por marcador por render, que a su vez re-renderiza — un
+  // bucle. Memoizados sobre la lista, solo cambian cuando cambia la lista
+  // (y ahí sí hay que re-registrar).
+  const refs = useMemo(() => {
+    const m = new Map<string, (marker: Marker | null) => void>();
+    for (const n of negocios) {
+      const id = n.id;
+      m.set(id, (marker) =>
+        setMarcadores((prev) => {
+          if (marker) {
+            if (prev[id] === marker) return prev;
+            return { ...prev, [id]: marker };
+          }
+          if (!(id in prev)) return prev;
+          const resto = { ...prev };
+          delete resto[id];
+          return resto;
+        }),
+      );
+    }
+    return m;
+  }, [negocios]);
 
   return (
     <>
@@ -96,7 +108,7 @@ export function Marcadores({ negocios, activoId, onSeleccionar }: Props) {
         return (
           <AdvancedMarker
             key={n.id}
-            ref={(marker) => registrar(n.id, marker)}
+            ref={refs.get(n.id)}
             position={{ lat: n.lat, lng: n.lng }}
             title={`${n.nombre} — ${labelEstado(n.estado)}${esSinWeb(n) ? " — sin sitio web" : ""}`}
             zIndex={activo ? 20 : 1}
