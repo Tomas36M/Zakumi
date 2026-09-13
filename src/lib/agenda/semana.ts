@@ -63,7 +63,7 @@ export function diaBogotaDe(instante: string | Date): string {
 }
 
 /** Un instante → minutos desde la medianoche de Bogotá. */
-function minutosBogota(instante: string): number {
+export function minutosBogota(instante: string): number {
   const d = new Date(new Date(instante).getTime() - OFFSET_MS);
   return d.getUTCHours() * 60 + d.getUTCMinutes();
 }

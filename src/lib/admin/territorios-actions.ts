@@ -8,7 +8,7 @@ import type { Punto } from "./barrido";
 /** Los territorios se ven en el mapa y en su propia página (grid + detalle,
  * por eso "layout": cubre también `/admin/territorios/[id]`). */
 function revalidarTerritorios() {
-  revalidarTerritorios();
+  revalidatePath("/admin/prospeccion");
   revalidatePath("/admin/territorios", "layout");
 }
 

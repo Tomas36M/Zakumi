@@ -2,7 +2,13 @@
 
 import { useMemo, useState } from "react";
 import type { Cita360 } from "@/lib/agenda/consultas";
-import { carriles, diaBogotaDe, posicionEnGrilla, type RangoSemana } from "@/lib/agenda/semana";
+import {
+  carriles,
+  diaBogotaDe,
+  minutosBogota,
+  posicionEnGrilla,
+  type RangoSemana,
+} from "@/lib/agenda/semana";
 import { cn } from "@/lib/cn";
 import { ColumnaDia, type CitaColocada } from "./ColumnaDia";
 import { HORAS, PX_POR_HORA } from "./grilla";
@@ -14,12 +20,6 @@ type Props = {
   citaAbierta: string | null;
   onAbrir: (id: string) => void;
 };
-
-/** Minutos desde medianoche de Bogotá de un instante. */
-function minutosBogota(iso: string): number {
-  const d = new Date(new Date(iso).getTime() - 5 * 3_600_000);
-  return d.getUTCHours() * 60 + d.getUTCMinutes();
-}
 
 /**
  * La semana: 7 columnas × 16 horas (6:00–22:00) en desktop; en móvil un día

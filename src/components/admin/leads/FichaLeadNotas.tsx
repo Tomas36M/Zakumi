@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { agregarNota } from "@/lib/admin/actions";
+import { fechaCorta } from "@/lib/admin/formato";
 import type { Nota } from "@/lib/admin/negocios";
 import { createSupabaseBrowser } from "@/lib/supabase/browser";
 import { Banner } from "@/components/admin/ui/Banner";
@@ -93,14 +94,7 @@ export function FichaLeadNotas({ negocioId, version }: Props) {
           {notas.map((n) => (
             <li key={n.id}>
               <ListRow interactiva={false} className="flex flex-col gap-0.5">
-                <span className="text-xs text-tinta-40">
-                  {new Date(n.created_at).toLocaleDateString("es-CO", {
-                    day: "2-digit",
-                    month: "short",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                </span>
+                <span className="text-xs text-tinta-40">{fechaCorta(n.created_at)}</span>
                 <span className={n.automatica ? "text-sm text-tinta-60 italic" : "text-sm text-tinta"}>
                   {n.texto}
                 </span>
