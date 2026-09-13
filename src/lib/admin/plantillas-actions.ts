@@ -8,17 +8,15 @@
 import { revalidatePath } from "next/cache";
 import { verifySession } from "./dal";
 import {
+  BUCKET_FOLLETOS,
   conciliarPlantillas,
   edicionesRestantes,
+  rutaFolletoValida,
   validarCuerpo,
   type PlantillaZakFila,
 } from "./plantillas";
 import { editarPlantillaMeta, listarPlantillasMeta } from "@/lib/bots/api";
 import { ID_ZAK } from "@/lib/bots/tipos";
-
-const BUCKET = "folletos";
-const FOLLETO_MAX_BYTES = 5 * 1024 * 1024;
-const TIPOS_FOLLETO = ["image/png", "image/jpeg"];
 
 async function filaPorSlug(
   supabase: Awaited<ReturnType<typeof verifySession>>["supabase"],
@@ -62,47 +60,33 @@ export async function guardarBorradorPlantilla(
 }
 
 /**
- * Sube un folleto nuevo al bucket público y lo deja como borrador. SIEMPRE
- * con nombre nuevo: el CDN de Supabase cachea el path — sobreescribir
- * serviría la imagen vieja quién sabe cuánto tiempo.
+ * Anota como borrador un folleto que el navegador YA subió al bucket
+ * público (con la sesión del admin: la política folletos_escribe_admin lo
+ * permite). El archivo no pasa por aquí a propósito: dentro de una server
+ * action lo cortaba el límite de cuerpo (1 MB de Next, 4,5 MB de Vercel) y
+ * tumbaba la página entera. Se valida la ruta: solo la carpeta de ESTA
+ * plantilla y una extensión de imagen.
  */
-export async function subirFolletoBorrador(
+export async function anotarFolletoBorrador(
   slug: string,
-  formData: FormData,
+  ruta: string,
 ): Promise<{ ok: true; url: string } | { error: string }> {
   const { supabase } = await verifySession();
 
   const fila = await filaPorSlug(supabase, slug);
   if (!fila) return { error: "Esa plantilla no existe (¿corriste plantillas.sql?)." };
-
-  const archivo = formData.get("folleto");
-  if (!(archivo instanceof File) || archivo.size === 0) {
-    return { error: "Adjunta la imagen del folleto (PNG o JPG)." };
-  }
-  if (!TIPOS_FOLLETO.includes(archivo.type)) {
-    return { error: "El folleto tiene que ser PNG o JPG." };
-  }
-  if (archivo.size > FOLLETO_MAX_BYTES) {
-    return { error: "Meta acepta headers de máximo 5 MB." };
+  if (typeof ruta !== "string" || !rutaFolletoValida(fila.slug, ruta)) {
+    return { error: "La ruta del folleto no es válida." };
   }
 
-  const extension = archivo.type === "image/png" ? "png" : "jpg";
-  const ruta = `${fila.slug}/${Date.now()}.${extension}`;
-  const { error: eSubida } = await supabase.storage
-    .from(BUCKET)
-    .upload(ruta, archivo, { contentType: archivo.type });
-  if (eSubida) {
-    console.error("[subirFolletoBorrador] upload:", eSubida.message);
-    return { error: "No se pudo subir al bucket (¿existe 'folletos' en Storage?)." };
-  }
-  const { data: publica } = supabase.storage.from(BUCKET).getPublicUrl(ruta);
+  const { data: publica } = supabase.storage.from(BUCKET_FOLLETOS).getPublicUrl(ruta);
 
   const { error } = await supabase
     .from("plantillas_zak")
     .update({ folleto_url_borrador: publica.publicUrl })
     .eq("slug", fila.slug);
   if (error) {
-    console.error("[subirFolletoBorrador] fila:", error.message);
+    console.error("[anotarFolletoBorrador] fila:", error.message);
     return { error: "Subió la imagen pero no se pudo guardar el borrador." };
   }
   revalidatePath("/admin/zak");

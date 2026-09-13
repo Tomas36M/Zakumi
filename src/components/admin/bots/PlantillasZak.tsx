@@ -4,19 +4,23 @@ import Image from "next/image";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { fechaCorta } from "@/lib/admin/formato";
 import {
+  BUCKET_FOLLETOS,
   edicionesRestantes,
   estadoLocal,
+  rutaFolleto,
+  validarFolleto,
   verticalDeFila,
   type PlantillaZakFila,
 } from "@/lib/admin/plantillas";
 import {
   adoptarTextoDeMeta,
+  anotarFolletoBorrador,
   enviarARevisionPlantilla,
   guardarBorradorPlantilla,
   refrescarEstadosPlantillas,
-  subirFolletoBorrador,
 } from "@/lib/admin/plantillas-actions";
 import { srcFolleto } from "@/lib/admin/zak";
+import { createSupabaseBrowser } from "@/lib/supabase/browser";
 import type { EstadoMeta } from "@/lib/bots/tipos";
 import { Badge, type TonoBadge } from "@/components/admin/ui/Badge";
 import { Banner } from "@/components/admin/ui/Banner";
@@ -124,12 +128,26 @@ export function PlantillasZak({ filas: filasIniciales }: Props) {
     });
   }
 
+  // El archivo sube DIRECTO al bucket desde el navegador (sesión del admin) y
+  // la action solo anota la ruta: dentro de una server action lo cortaba el
+  // límite de cuerpo de la función y la página entera se caía sin aviso.
   function subirFolleto(slug: string, archivo: File) {
     setErrorAviso(null);
-    const fd = new FormData();
-    fd.set("folleto", archivo);
+    const invalido = validarFolleto(archivo.type, archivo.size);
+    if (invalido) {
+      setErrorAviso(invalido);
+      return;
+    }
     startOperar(async () => {
-      const r = await subirFolletoBorrador(slug, fd);
+      const ruta = rutaFolleto(slug, archivo.type, Date.now());
+      const { error } = await createSupabaseBrowser()
+        .storage.from(BUCKET_FOLLETOS)
+        .upload(ruta, archivo, { contentType: archivo.type });
+      if (error) {
+        setErrorAviso(`No se pudo subir al bucket: ${error.message}`);
+        return;
+      }
+      const r = await anotarFolletoBorrador(slug, ruta);
       if ("error" in r) {
         setErrorAviso(r.error);
         return;
