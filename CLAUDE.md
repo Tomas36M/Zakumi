@@ -197,6 +197,45 @@ Ledger de decisiones (37 rulings, leerlo antes de "arreglar" algo que parece rar
   `src/app/admin/(panel)/prospeccion/page.tsx` y se avisa en pantalla cuando
   hay más de las que se muestran.
 
+## Panel rediseñado: header con navegación, Territorios, fichas en modal, agenda semanal (2026-09-13, rama `feat/panel-rediseno`)
+
+Plan aprobado en `~/.claude/plans/hay-que-aprovechar-mas-reactive-toucan.md` (fases F0–F6, un commit por fase).
+
+- **Una sola cabecera**: `ui/PageHeader` (`titulo`, `coletilla`, `subtitulo`, `contador`,
+  `navegacion`, `acciones`). Las caras («Territorio | Leads», «Chat | Voz») van en el
+  header con `ui/Caras`; sus definiciones son puras (`carasProspeccion`, `carasZak`).
+- **Deep-links con `useParametroUrl`** (`history.replaceState`, NUNCA `router.replace`:
+  re-renderizaría la page con todos sus fetches): `?tab`, `?lead`, `?territorio`,
+  `?cliente`, `?solicitud`, `?cita`, `?semana`. El modal de una ficha lo monta el
+  **shell de la página**, no las vistas (en Prospección la cara Territorio está siempre
+  montada y dos modales se abrirían a la vez).
+- **Sidebar**: la preferencia de colapso viaja en la cookie `zk-sidebar` y el layout la
+  lee en el servidor (sin flash). La isla del logo es el botón de colapsar.
+- **Territorios** es entrada del menú: `/admin/territorios` (grid, cuentas exactas por
+  `count` en el servidor — no heredan el tope de 900 del mapa) y
+  `/admin/territorios/[id]` (locales + acciones). El mapa ya no tiene lista: tocar un
+  polígono abre su ficha (Barrer, Ver locales, Centrar, Renombrar, Eliminar); Dibujar,
+  Buscar en Google y Añadir manual viven en la barra. `useBarrido`/`DialogoBarrer`/
+  `BarridoProgreso` NO cambiaron.
+- **Ficha de lead** = `leads/FichaLeadModal` (datos, notas, Chat con Zak, Llamar con
+  IA, convertir, eliminar), la misma desde el mapa, la lista Leads y un territorio.
+  `estadoVozZak` (puro) habilita «Llamar con IA» en cualquier page con una consulta.
+- **Mapa** (`mapa/`): `Marcadores` (clusters con `@googlemaps/markerclusterer`, zoom ≥16
+  sueltos), `ControlesMapa` (zoom, recentrar, satélite, pantalla completa por CSS),
+  `Leyenda` y `FiltrosMapa` (misma `filtrarLeads` que la lista). `pines.tsx` es la única
+  fuente de las clases de los pines.
+- **Agenda**: semana 6:00–22:00 hecha a mano (`agenda/semana.ts`, puro). Solo citas de
+  Zakumi. `agenda/citas.ts` orquesta agendar/mover/cancelar: **Supabase primero, Google
+  después, aviso de último**, y devuelve qué pasó con cada uno (`lineasDeResultado`).
+  Google gana `actualizarEvento`/`borrarEvento` (tri-estado). `avisarLead` escribe AL
+  LEAD por Zak con la plantilla **`aviso_reunion` — PENDIENTE de crear y aprobar en
+  Meta** (hasta entonces cae al texto libre dentro de la ventana de 24 h).
+- **Solicitudes** y **Clientes**: grid de tarjetas + ficha en modal. Nuevas actions:
+  `actualizarSolicitud`/`eliminarSolicitud` (validación pura `validarCambiosSolicitud`),
+  `actualizarCliente`; dar de baja producto usa `actualizarProducto({activo})`. La cita
+  se agenda/mueve/cancela también desde la solicitud (mismas piezas que la agenda).
+- Sin SQL ni envs nuevas. Fuera del repo: la plantilla `aviso_reunion` en Meta.
+
 ## Dónde vive cada cosa (reorganizado 2026-08-30)
 
 - `marketing/` — TODO el material de marca/venta que antes estaba regado en la
