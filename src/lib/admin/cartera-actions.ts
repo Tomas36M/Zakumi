@@ -73,6 +73,52 @@ export async function crearCliente(datos: {
   return { id: data.id as string };
 }
 
+export async function actualizarCliente(
+  id: string,
+  cambios: {
+    nombre?: string;
+    telefono?: string | null;
+    email?: string | null;
+    notas?: string | null;
+    activo?: boolean;
+  },
+): Promise<{ error: string | null }> {
+  const { supabase } = await verifySession();
+
+  if (typeof id !== "string" || !id) return { error: "Cliente no válido." };
+
+  // Whitelist explícita: solo entra a la base lo que el panel edita.
+  const fila: Record<string, unknown> = {};
+  if ("nombre" in cambios) {
+    const nombre = cambios.nombre?.trim() ?? "";
+    if (!nombre) return { error: "El cliente necesita un nombre." };
+    fila.nombre = nombre.slice(0, 300);
+  }
+  if ("telefono" in cambios) {
+    const tel = telefonoONull(cambios.telefono);
+    if ("error" in tel) return tel;
+    fila.telefono = tel.telefono;
+  }
+  if ("email" in cambios) {
+    const email = cambios.email?.trim() ?? "";
+    if (email && !email.includes("@")) return { error: "Ese correo no se entiende." };
+    fila.email = email ? email.slice(0, 200) : null;
+  }
+  if ("notas" in cambios) fila.notas = cambios.notas?.trim() || null;
+  if ("activo" in cambios) fila.activo = Boolean(cambios.activo);
+
+  if (Object.keys(fila).length === 0) return { error: null };
+
+  const { error } = await supabase.from("clientes").update(fila).eq("id", id);
+  if (error) {
+    console.error("[actualizarCliente]", error.message);
+    return { error: "No se pudo guardar el cambio." };
+  }
+  revalidarCartera();
+  revalidatePath(`/admin/clientes/${id}`);
+  return { error: null };
+}
+
 /**
  * Un negocio del CRM se vuelve cliente de la cartera. Idempotente: el UNIQUE
  * de clientes.negocio_id garantiza que pulsar dos veces no duplica.

@@ -13,10 +13,11 @@ function vistaDe(tab: string | undefined): VistaClientes {
 export default async function ClientesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ cliente?: string; tab?: string }>;
+  searchParams: Promise<{ tab?: string }>;
 }) {
   const { supabase } = await verifySession();
-  const { cliente, tab } = await searchParams;
+  // `?cliente=` lo lee la vista desde la URL (useParametroUrl): abre la ficha.
+  const { tab } = await searchParams;
 
   const [productosRes, clientesRes] = await Promise.all([
     supabase
@@ -37,7 +38,6 @@ export default async function ClientesPage({
     <ClientesView
       productos={(productosRes.data as ProductoConCliente[]) ?? []}
       clientes={(clientesRes.data as Cliente[]) ?? []}
-      abrirInicial={cliente ?? null}
       vistaInicial={vistaDe(tab)}
       // "Hoy" se decide en el servidor: en el cliente sería `new Date()` en
       // render, que el React Compiler marca y que además cambia entre

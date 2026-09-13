@@ -1,18 +1,17 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { X } from "lucide-react";
 import { crearCliente } from "@/lib/admin/cartera-actions";
 import { Banner } from "@/components/admin/ui/Banner";
 import { Button } from "@/components/admin/ui/Button";
 import { Field, Input } from "@/components/admin/ui/Field";
-import { IconButton } from "@/components/admin/ui/IconButton";
 
 type Props = {
   onCreado: (id: string) => void;
   onCancelar: () => void;
 };
 
+/** El alta de un cliente. Va dentro de un Modal, que pone el título. */
 export function NuevoClienteForm({ onCreado, onCancelar }: Props) {
   const [guardando, startGuardar] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -40,18 +39,6 @@ export function NuevoClienteForm({ onCreado, onCancelar }: Props) {
         });
       }}
     >
-      <div className="flex items-start justify-between gap-2">
-        <div>
-          <h2 className="text-base font-semibold text-tinta">Cliente nuevo</h2>
-          <p className="text-xs text-tinta-40">
-            También puedes convertir un negocio del CRM desde su ficha.
-          </p>
-        </div>
-        <IconButton etiqueta="Cancelar" onClick={onCancelar}>
-          <X className="h-4 w-4" />
-        </IconButton>
-      </div>
-
       <Field label="Nombre *">
         <Input
           value={nombre}
@@ -77,14 +64,14 @@ export function NuevoClienteForm({ onCreado, onCancelar }: Props) {
 
       {error ? <Banner variante="error">{error}</Banner> : null}
 
-      <Button
-        variante="primaria"
-        type="submit"
-        className="self-start"
-        disabled={guardando || !nombre.trim()}
-      >
-        {guardando ? "Guardando…" : "Crear cliente"}
-      </Button>
+      <div className="flex flex-wrap gap-2">
+        <Button variante="primaria" type="submit" disabled={guardando || !nombre.trim()}>
+          {guardando ? "Guardando…" : "Crear cliente"}
+        </Button>
+        <Button onClick={onCancelar} disabled={guardando}>
+          Cancelar
+        </Button>
+      </div>
     </form>
   );
 }
