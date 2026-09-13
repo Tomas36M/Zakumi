@@ -72,13 +72,25 @@ export function componentesSaludo(vertical: VerticalProspeccion): unknown[] {
   ];
 }
 
-// El cuerpo visible de saludo_zakumi: se guarda como mensaje del asistente al
+// El cuerpo visible de saludo_general: se guarda como mensaje del asistente al
 // abrir/reabrir un chat, para que la conversación exista en la bandeja y Zak
 // sepa que ya saludó. Mantener en espejo con la plantilla aprobada en Meta.
-export const PLANTILLA_SALUDO = "saludo_zakumi";
-export const PLANTILLA_SALUDO_TEXTO =
-  "¡Hola! 👋 Soy *Zak*, el asistente de IA de Zakumi. " +
-  "Me pidieron saludarte por aquí — escríbeme cualquier cosa y conversamos. 🧡";
+// `saludo_general` reemplazó a `saludo_zakumi` el 2026-09-13 (imagen nueva y
+// texto que dice qué es Zakumi y qué vende, sin asteriscos): editar la vieja
+// estaba bloqueado por el límite de Meta de 1 edición cada 24 h.
+export const PLANTILLA_SALUDO = "saludo_general";
+export const PLANTILLA_SALUDO_TEXTO = [
+  "¡Hola! 👋 Soy Zak, el asistente de IA de Zakumi Estudio.",
+  "",
+  "Ayudamos a negocios como el tuyo a vender más y atender mejor con tecnología hecha a la medida:",
+  "",
+  "🤖 Agentes de IA para WhatsApp que responden, toman pedidos y captan clientes 24/7",
+  "📞 Agentes de voz que contestan y hacen llamadas por ti",
+  "🌐 Páginas web y tiendas en línea con pasarela de pagos",
+  "📊 CRM y automatizaciones para no perder ningún cliente",
+  "",
+  "Cuéntame qué hace tu negocio y te digo cómo podemos ayudarte. Si quieres, te mando el brochure con servicios y precios. 🧡",
+].join("\n");
 
 // ---------- Verticales de prospección ----------
 // Cada vertical define: la plantilla de Meta con la que Zak ABRE (su cuerpo en
@@ -216,7 +228,7 @@ export const VERTICAL_GENERICO: VerticalProspeccion = desdeSeed({
   plantilla: PLANTILLA_SALUDO,
   texto: PLANTILLA_SALUDO_TEXTO,
   angulo: "Descubre a qué se dedica el negocio y muestra cómo un agente como tú le atendería clientes 24/7.",
-  folleto: "generico.png",
+  folleto: "generico-v2.jpg",
   matchers: [],
 });
 

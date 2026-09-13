@@ -128,8 +128,8 @@ values
    'Pedidos y preguntas frecuentes respondidos al momento: la venta no se enfría esperando.',
    '¡Hola! 👋 Soy *Zak*, el asistente de IA de Zakumi. Ayudamos a tiendas y comercios a responder clientes y tomar pedidos por WhatsApp 24/7 — con un agente como yo. ¿Te cuento cómo se vería en tu negocio? 🛍️',
    'https://zakumistudio.com/folletos/comercio.png'),
-  ('generico', 11, 'Genérico', 'saludo_zakumi', '{}'::text[],
+  ('generico', 11, 'Genérico', 'saludo_general', '{}'::text[],
    'Descubre a qué se dedica el negocio y muestra cómo un agente como tú le atendería clientes 24/7.',
-   '¡Hola! 👋 Soy *Zak*, el asistente de IA de Zakumi. Me pidieron saludarte por aquí — escríbeme cualquier cosa y conversamos. 🧡',
-   'https://zakumistudio.com/folletos/generico.png')
+   E'¡Hola! 👋 Soy Zak, el asistente de IA de Zakumi Estudio.\n\nAyudamos a negocios como el tuyo a vender más y atender mejor con tecnología hecha a la medida:\n\n🤖 Agentes de IA para WhatsApp que responden, toman pedidos y captan clientes 24/7\n📞 Agentes de voz que contestan y hacen llamadas por ti\n🌐 Páginas web y tiendas en línea con pasarela de pagos\n📊 CRM y automatizaciones para no perder ningún cliente\n\nCuéntame qué hace tu negocio y te digo cómo podemos ayudarte. Si quieres, te mando el brochure con servicios y precios. 🧡',
+   'https://zakumistudio.com/folletos/generico-v2.jpg')
 on conflict (slug) do nothing;

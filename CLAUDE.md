@@ -101,6 +101,12 @@ tienda, de una llamada o de un chat. Espec y runbook:
   preguntan por precios o servicios; la URL se deriva del host de `ZAK_VOZ_URL` (o
   `ZAK_BROCHURE_URL`). Para cambiar el PDF: reemplazar el archivo con nombre NUEVO y
   actualizar el sufijo en el bot (Cache-Control immutable en `/folletos/`).
+- **Saludo genérico = `saludo_general`** (2026-09-13, id Meta 1468817021745554,
+  imagen `public/folletos/generico-v2.jpg`). Reemplazó a `saludo_zakumi` porque
+  Meta solo acepta 1 edición cada 24 h por plantilla aprobada — y cuenta las
+  ediciones «sin cambios». La fila `generico` de `plantillas_zak` se movió con
+  `supabase/plantillas-saludo-general.sql`; la vieja sigue aprobada en Meta
+  pero nadie la manda. `PLANTILLA_SALUDO_TEXTO` (zak.ts) es el espejo del body.
 
 ## Agentes de voz /admin/voz — ElevenLabs (2026-08-30, PR #3 sobre `main`)
 

@@ -117,7 +117,7 @@ describe("componentesSaludo", () => {
     const [header] = componentesSaludo(VERTICAL_GENERICO) as {
       parameters: { image: { link: string } }[];
     }[];
-    expect(header.parameters[0].image.link).toMatch(/\/folletos\/generico\.png$/);
+    expect(header.parameters[0].image.link).toMatch(/\/folletos\/generico-v2\.jpg$/);
   });
 
   it("cada folleto del catálogo existe en public/folletos/", () => {
@@ -231,8 +231,8 @@ describe("verticalPara", () => {
     expect(verticalPara("convenience store").slug).toBe("comercio");
   });
 
-  it("lo desconocido cae al genérico (saludo_zakumi)", () => {
-    expect(verticalPara("manufacturer").plantilla).toBe("saludo_zakumi");
+  it("lo desconocido cae al genérico (saludo_general)", () => {
+    expect(verticalPara("manufacturer").plantilla).toBe("saludo_general");
     expect(verticalPara("bank").slug).toBe("generico");
     expect(verticalPara(null).slug).toBe("generico");
   });
@@ -295,7 +295,7 @@ describe("verticalDeSaludo", () => {
 describe("verticalPorSlug", () => {
   it("encuentra el vertical por su slug (el que eligió el humano en la UI)", () => {
     expect(verticalPorSlug("panaderia").plantilla).toBe("saludo_panaderia");
-    expect(verticalPorSlug("generico").plantilla).toBe("saludo_zakumi");
+    expect(verticalPorSlug("generico").plantilla).toBe("saludo_general");
   });
 
   it("slug desconocido o ausente cae al genérico: jamás rompe el envío", () => {
