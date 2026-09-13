@@ -13,6 +13,7 @@
     "logos": "node scripts/gen-tech-logos.mjs"
   },
   "dependencies": {
+    "@googlemaps/markerclusterer": "^2.6.2",
     "@radix-ui/react-dialog": "^1.1.23",
     "@supabase/ssr": "^0.12.4",
     "@supabase/supabase-js": "^2.112.3",

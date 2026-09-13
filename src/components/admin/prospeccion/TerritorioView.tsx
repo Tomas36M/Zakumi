@@ -3,6 +3,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { poligonoSeCruza, type PermisoBarrido, type Punto } from "@/lib/admin/barrido";
+import { FILTRO_VACIO, filtrarLeads, type FiltroLeads } from "@/lib/admin/filtros-leads";
 import type { Negocio } from "@/lib/admin/negocios";
 import type { ResultadoPlace } from "@/lib/admin/places";
 import {
@@ -12,8 +13,11 @@ import {
   type Territorio,
 } from "@/lib/admin/territorios";
 import { cn } from "@/lib/cn";
+import type { TipoMapa } from "@/components/admin/mapa/ControlesMapa";
+import { FiltrosMapa } from "@/components/admin/mapa/FiltrosMapa";
 import { MapCanvas } from "@/components/admin/mapa/MapCanvas";
 import { SearchPanel } from "@/components/admin/mapa/SearchPanel";
+import { usePantallaCompleta } from "@/components/admin/mapa/usePantallaCompleta";
 import { BarraTerritorio } from "./BarraTerritorio";
 import { BarridoProgreso, type AvisoBarrido } from "./BarridoProgreso";
 import { DialogoBarrer } from "./DialogoBarrer";
@@ -110,6 +114,12 @@ export function TerritorioView({
   // de la barra y el clic en el primer vértice sobre el mapa.
   const [nombrando, setNombrando] = useState(false);
   const [aEstimarId, setAEstimarId] = useState<string | null>(null);
+  // Los filtros del mapa recortan los pines con la MISMA regla que la lista
+  // de Leads; las cifras de la ficha de un territorio siguen contando todo.
+  const [filtros, setFiltros] = useState<FiltroLeads>(FILTRO_VACIO);
+  const [tipoMapa, setTipoMapa] = useState<TipoMapa>("roadmap");
+  const [pantallaCompleta, alternarPantallaCompleta] = usePantallaCompleta();
+  const negociosVisibles = useMemo(() => filtrarLeads(negocios, filtros), [negocios, filtros]);
 
   // El pin de un negocio abre su ficha en el modal del shell; el pin activo
   // del mapa es el del lead abierto.
@@ -199,7 +209,15 @@ export function TerritorioView({
   }
 
   return (
-    <div className={cn("flex min-h-0 flex-1 flex-col", oculta && "hidden")}>
+    <div
+      className={cn(
+        "flex min-h-0 flex-1 flex-col",
+        oculta && "hidden",
+        // Pantalla completa por CSS: la cara entera (barra, banda del barrido,
+        // mapa y ficha) se pega a la ventana; los modales siguen encima.
+        pantallaCompleta && "fixed inset-0 z-40 bg-isla",
+      )}
+    >
       <BarraTerritorio
         dibujando={modo !== null}
         onDibujar={alternarDibujo}
@@ -261,12 +279,16 @@ export function TerritorioView({
         {/* El mapa es el protagonista: en desktop ocupa el lienzo entero. */}
         <div className="relative min-h-[50vh] overflow-hidden rounded-isla min-[1000px]:absolute min-[1000px]:inset-5 min-[1000px]:min-h-0">
           <MapCanvas
-            negocios={negocios}
+            negocios={negociosVisibles}
             resultados={busqueda.resultados}
             seleccion={seleccionMapa}
             territorios={territorios}
             territorioActivo={territorioActivo}
             onSeleccionarTerritorio={onSeleccionarTerritorio}
+            tipoMapa={tipoMapa}
+            onTipoMapa={setTipoMapa}
+            pantallaCompleta={pantallaCompleta}
+            onPantallaCompleta={alternarPantallaCompleta}
             // En MapCanvas esto solo pone el cursor en cruz, y dibujar también
             // es "toca el mapa": el puntero tiene que decirlo.
             modoCaptura={modoCaptura || modo !== null}
@@ -302,6 +324,15 @@ export function TerritorioView({
             )}
             <EncuadrarTerritorio encuadre={encuadre} territorios={territorios} visible={!oculta} />
           </MapCanvas>
+          {/* Fuera del APIProvider a propósito: no necesita el mapa, y así el
+              sitio del mapa sigue siendo solo del mapa. */}
+          <FiltrosMapa
+            filtro={filtros}
+            onCambiar={setFiltros}
+            negocios={negocios}
+            territorios={territorios}
+            visibles={negociosVisibles.length}
+          />
         </div>
 
         <aside
