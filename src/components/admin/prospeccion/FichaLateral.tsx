@@ -1,55 +1,36 @@
 "use client";
 
 import { X } from "lucide-react";
-import type { Negocio } from "@/lib/admin/negocios";
 import type { ResultadoPlace } from "@/lib/admin/places";
 import { Button } from "@/components/admin/ui/Button";
 import { EmptyState } from "@/components/admin/ui/EmptyState";
 import { IconButton } from "@/components/admin/ui/IconButton";
-import { FichaNegocio } from "@/components/admin/mapa/FichaNegocio";
 import { NuevoNegocioForm } from "@/components/admin/mapa/NuevoNegocioForm";
 import type { Seleccion } from "./TerritorioView";
 
 type Props = {
   seleccion: Seleccion;
-  negocio: Negocio | null;
   resultado: ResultadoPlace | null;
   importando: boolean;
   onImportar: (resultados: ResultadoPlace[]) => void;
-  onSeleccionar: (seleccion: Seleccion) => void;
+  /** El alta manual terminó: el dueño abre la ficha del lead nuevo. */
+  onCreado: (id: string) => void;
   onCerrar: () => void;
-  onCambio: () => void;
 };
 
 /**
- * La isla derecha: la ficha de lo que esté seleccionado — un lead del CRM, un
- * resultado suelto de la búsqueda, o el alta manual de un pin nuevo.
+ * La isla derecha: lo que todavía NO es un lead del CRM — un resultado suelto
+ * de la búsqueda, o el alta manual de un pin nuevo. La ficha de un lead ya no
+ * vive aquí: es el modal compartido del shell (FichaLeadModal).
  */
 export function FichaLateral({
   seleccion,
-  negocio,
   resultado,
   importando,
   onImportar,
-  onSeleccionar,
+  onCreado,
   onCerrar,
-  onCambio,
 }: Props) {
-  if (negocio) {
-    return (
-      <FichaNegocio
-        key={negocio.id}
-        negocio={negocio}
-        onCambio={onCambio}
-        onCerrar={onCerrar}
-      />
-    );
-  }
-
-  if (seleccion?.tipo === "negocio") {
-    return <EmptyState titulo="Actualizando…" />;
-  }
-
   if (resultado) {
     return (
       <div className="flex flex-col gap-3">
@@ -83,10 +64,7 @@ export function FichaLateral({
       <NuevoNegocioForm
         lat={seleccion.lat}
         lng={seleccion.lng}
-        onCreado={(id) => {
-          onSeleccionar({ tipo: "negocio", id });
-          onCambio();
-        }}
+        onCreado={onCreado}
         onCancelar={onCerrar}
       />
     );

@@ -1,19 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  AdvancedMarker,
-  APIProvider,
-  ControlPosition,
-  Map as GoogleMap,
-  useMap,
-} from "@vis.gl/react-google-maps";
-import {
-  esSinWeb,
-  ESTADOS,
-  type EstadoNegocio,
-  type Negocio,
-} from "@/lib/admin/negocios";
+import { useCallback, useMemo, useRef, useState } from "react";
+import { AdvancedMarker, APIProvider, Map as GoogleMap } from "@vis.gl/react-google-maps";
+import type { Negocio } from "@/lib/admin/negocios";
 import type { ResultadoPlace } from "@/lib/admin/places";
 import {
   cuentasPorTerritorio,
@@ -22,39 +11,17 @@ import {
 } from "@/lib/admin/territorios";
 import { cn } from "@/lib/cn";
 import type { Seleccion } from "@/components/admin/prospeccion/TerritorioView";
-import { ACENTO } from "./colores";
+import { ControlesMapa, type TipoMapa } from "./ControlesMapa";
+import { Leyenda } from "./Leyenda";
+import { Marcadores } from "./Marcadores";
+import { PIN_ACTIVO, PIN_BASE, PIN_NUEVO, PIN_RESULTADO, PinHit } from "./pines";
+import { PoligonosTerritorio } from "./PoligonosTerritorio";
 import { TarjetaTerritorio } from "./TarjetaTerritorio";
 
 // Solo el encuadre de arranque del mapa (Madrid, Cundinamarca) — ya NO es un
 // preset de búsqueda: con territorios libres el sesgo de la búsqueda sale del
 // viewport actual, no de una ciudad fija.
 const CENTRO_INICIAL = { lat: 4.7326, lng: -74.2642 };
-
-const LABEL_ESTADO = new Map(ESTADOS.map((e) => [e.valor, e.label]));
-
-// Rombos por estado — mismo lenguaje que chips y badges (clases literales).
-const COLOR_PIN: Record<EstadoNegocio, string> = {
-  nuevo: "bg-estado-nuevo",
-  contactado: "bg-estado-contactado",
-  respondido: "bg-estado-respondido",
-  interesado: "bg-estado-interesado",
-  cliente: "bg-estado-cliente",
-  descartado: "bg-estado-descartado",
-};
-
-const PIN_BASE =
-  "h-4 w-4 rotate-45 border-[1.5px] border-black/80 shadow-[0_1px_4px_rgba(0,0,0,0.5)] transition-transform duration-150";
-const PIN_ACTIVO = "scale-[1.45] border-white";
-
-// Anillo de "sin web": el lead que queremos. Va en un canal distinto al
-// relleno (estado, COLOR_PIN) y al contorno naranja (resultado sin importar,
-// más abajo), para que las tres señales se puedan leer a la vez.
-const PIN_SIN_WEB = "ring-2 ring-offset-1 ring-acento ring-offset-transparent";
-
-/** Padding de 9px = target táctil ~34px sobre el pin de 16px. */
-function PinHit({ children }: { children: React.ReactNode }) {
-  return <div className="cursor-pointer p-[9px]">{children}</div>;
-}
 
 // Territorio sin dueño: identidad estable para que el efecto de
 // PoligonosTerritorio no se repita en cada render si algún caller no le pasa
@@ -66,19 +33,6 @@ function noSeleccionarTerritorio() {}
 /** Separación en píxeles entre el cursor y la esquina de la tarjeta: acompaña
  * al puntero sin taparle justo el trozo de mapa que está señalando. */
 const SEPARACION_TARJETA = 14;
-
-/**
- * Dónde está el ratón, según el evento DOM que Google adjunta a los suyos.
- *
- * No hace falta proyectar nada: `domEvent` trae las coordenadas de pantalla
- * del evento real. Un evento de teclado o táctil no las trae, y ahí no hay
- * tarjeta que colocar (el hover no existe con el dedo).
- */
-function coordenadasDom(e: google.maps.PolyMouseEvent): { x: number; y: number } | null {
-  const dom = e.domEvent;
-  if (!dom || !("clientX" in dom)) return null;
-  return { x: dom.clientX, y: dom.clientY };
-}
 
 /**
  * Pone la tarjeta junto al cursor, dentro del mapa.
@@ -115,120 +69,6 @@ function colocarTarjeta(
   )}px)`;
 }
 
-/**
- * Los territorios guardados, pintados como polígonos. Mismo patrón que
- * TrazoEnCurso: `@vis.gl/react-google-maps` no trae `<Polygon>`, así que el
- * overlay se crea y se limpia a mano dentro de un componente hijo del mapa
- * (necesita `useMap()`). El cleanup NO es opcional: sin él, cada render deja
- * un polígono huérfano apilado sobre el anterior y se acumulan en silencio.
- *
- * Los overlays se crean UNA vez por lista de territorios (igual que
- * TrazoEnCurso crea el suyo una vez) y el resaltado se aplica después con
- * `setOptions` sobre los ya existentes: recrearlos en cada cambio de `activo`
- * o `modoCaptura` haría parpadear TODOS los polígonos cuando en realidad solo
- * cambió cuál está resaltado.
- */
-function PoligonosTerritorio({
-  territorios,
-  activo,
-  encima,
-  modoCaptura,
-  onSeleccionar,
-  onEncima,
-  onFuera,
-}: {
-  territorios: Territorio[];
-  activo: string | null;
-  /** El territorio bajo el cursor: se resalta IGUAL que el activo (mismo
-   * lenguaje visual, una sola forma de decir "este"). */
-  encima: string | null;
-  /** Capturando un punto nuevo o dibujando un territorio: el clic es para el
-   * mapa, no para el relleno de un territorio ya guardado. */
-  modoCaptura: boolean;
-  onSeleccionar: (id: string) => void;
-  /** El cursor está sobre un territorio, en estas coordenadas de pantalla.
-   * Memoizado en el padre, como `onSeleccionar`. */
-  onEncima: (id: string, clientX: number, clientY: number) => void;
-  /** El cursor salió de `id`; con `null`, cerrar pase lo que pase (los
-   * polígonos se están destruyendo y ya no van a avisar de nada). */
-  onFuera: (id: string | null) => void;
-}) {
-  const map = useMap();
-  const overlays = useRef(new Map<string, google.maps.Polygon>());
-
-  useEffect(() => {
-    if (!map) return;
-    const creados = new Map<string, google.maps.Polygon>();
-    const escuchas: google.maps.MapsEventListener[] = [];
-    for (const t of territorios) {
-      const poligono = new google.maps.Polygon({
-        map,
-        paths: t.poligono,
-        fillColor: ACENTO,
-        strokeColor: ACENTO,
-        // Bajo los pines: el territorio es el escenario, no el actor.
-        zIndex: 0,
-      });
-      escuchas.push(
-        poligono.addListener("click", () => onSeleccionar(t.id)),
-        // `mouseover` da el primer punto y `mousemove` la sigue: un territorio
-        // es un ÁREA, y una tarjeta clavada donde entró el cursor se ve
-        // abandonada en cuanto uno se mueve por dentro.
-        poligono.addListener("mouseover", (e: google.maps.PolyMouseEvent) => {
-          const p = coordenadasDom(e);
-          if (p) onEncima(t.id, p.x, p.y);
-        }),
-        poligono.addListener("mousemove", (e: google.maps.PolyMouseEvent) => {
-          const p = coordenadasDom(e);
-          if (p) onEncima(t.id, p.x, p.y);
-        }),
-        poligono.addListener("mouseout", () => onFuera(t.id)),
-      );
-      creados.set(t.id, poligono);
-    }
-    overlays.current = creados;
-    return () => {
-      // Las escuchas se quitan a mano (no basta con `setMap(null)`): es la
-      // misma disciplina de TrazoEnCurso, y aquí además son cuatro por
-      // territorio.
-      escuchas.forEach((l) => l.remove());
-      creados.forEach((o) => o.setMap(null));
-      overlays.current = new Map();
-      // Los polígonos que iban a avisar del `mouseout` ya no existen: sin
-      // esto la tarjeta se quedaría flotando sobre un mapa que ya no la
-      // sostiene, enseñando cifras de un área que el cursor ya no señala.
-      //
-      // Cuesta un parpadeo: `territorios` es un array nuevo en cada
-      // `router.refresh()` (o sea en cada tanda de un barrido), y ahí la
-      // tarjeta se cierra aunque el cursor no se haya movido. Vuelve sola con
-      // el primer `mousemove`. Preferimos el parpadeo a un número viejo: en
-      // esta pantalla los contadores no mienten.
-      onFuera(null);
-    };
-  }, [map, territorios, onSeleccionar, onEncima, onFuera]);
-
-  // El resaltado y la clicabilidad se mutan sobre los overlays YA creados —
-  // depende de `territorios` para alcanzar también a los que el efecto de
-  // arriba acaba de crear en este mismo commit, sin recrear nada.
-  useEffect(() => {
-    for (const [id, poligono] of overlays.current) {
-      const esActivo = id === activo || id === encima;
-      poligono.setOptions({
-        fillOpacity: esActivo ? 0.14 : 0.05,
-        strokeOpacity: esActivo ? 0.9 : 0.35,
-        strokeWeight: esActivo ? 2 : 1,
-        // Igual que TrazoEnCurso: un relleno clicable se roba el clic que
-        // "Añadir manual" o dibujar un territorio nuevo esperan del mapa. Y de
-        // paso apaga el hover: sin clicabilidad no hay `mouseover` ni
-        // `mouseout`, así que la tarjeta la cierra MapCanvas al entrar al modo.
-        clickable: !modoCaptura,
-      });
-    }
-  }, [territorios, activo, encima, modoCaptura]);
-
-  return null;
-}
-
 type Props = {
   negocios: Negocio[];
   resultados: ResultadoPlace[];
@@ -247,6 +87,12 @@ type Props = {
    * PoligonosTerritorio, y una función nueva en cada render redibuja todos
    * los polígonos en cada tecla que se pulse. */
   onSeleccionarTerritorio?: (id: string) => void;
+  /** Mapa o satélite (con `mapId`, el estilo propio solo aplica al mapa). */
+  tipoMapa: TipoMapa;
+  onTipoMapa: (tipo: TipoMapa) => void;
+  /** La cara ocupa la ventana entera (lo maneja el dueño con CSS). */
+  pantallaCompleta: boolean;
+  onPantallaCompleta: () => void;
   /** Overlays que necesitan el contexto del mapa (useMap/useMapsLibrary): el
    * trazo en curso de un territorio nuevo (TrazoEnCurso) vive aquí adentro. */
   children?: React.ReactNode;
@@ -267,8 +113,8 @@ export function MapCanvas(props: Props) {
   const marco = useRef<HTMLDivElement | null>(null);
   const tarjeta = useRef<HTMLDivElement | null>(null);
 
-  // Los números del hover salen del MISMO recuento que la lista de la
-  // izquierda (`cuentasPorTerritorio`), no de un bucle propio.
+  // Los números del hover salen del MISMO recuento que la ficha del
+  // territorio (`cuentasPorTerritorio`), no de un bucle propio.
   const cuentas = useMemo(
     () => cuentasPorTerritorio(props.negocios),
     [props.negocios],
@@ -347,10 +193,10 @@ export function MapCanvas(props: Props) {
           defaultZoom={14}
           gestureHandling="greedy"
           disableDefaultUI
-          zoomControl
-          // Abajo al centro: las islas flotantes cubren las esquinas superiores
-          // y (cuando su contenido es largo) los laterales completos.
-          zoomControlOptions={{ position: ControlPosition.BLOCK_END_INLINE_CENTER }}
+          // El zoom nativo no habla el idioma de las islas: lo pone
+          // ControlesMapa, junto con recentrar, satélite y pantalla completa.
+          zoomControl={false}
+          mapTypeId={props.tipoMapa}
           onClick={(e) => {
             const punto = e.detail.latLng;
             if (punto) props.onClickMapa(punto.lat, punto.lng);
@@ -368,32 +214,12 @@ export function MapCanvas(props: Props) {
             onFuera={alFuera}
           />
 
-          {props.negocios.map((n) => {
-            const activo =
-              props.seleccion?.tipo === "negocio" && props.seleccion.id === n.id;
-            return (
-              <AdvancedMarker
-                key={n.id}
-                position={{ lat: n.lat, lng: n.lng }}
-                title={`${n.nombre} — ${LABEL_ESTADO.get(n.estado) ?? n.estado}${
-                  esSinWeb(n) ? " — sin sitio web" : ""
-                }`}
-                zIndex={activo ? 20 : 1}
-                onClick={() => props.onSeleccionar({ tipo: "negocio", id: n.id })}
-              >
-                <PinHit>
-                  <div
-                    className={cn(
-                      PIN_BASE,
-                      COLOR_PIN[n.estado],
-                      esSinWeb(n) && PIN_SIN_WEB,
-                      activo && PIN_ACTIVO,
-                    )}
-                  />
-                </PinHit>
-              </AdvancedMarker>
-            );
-          })}
+          {/* Los pines de los negocios, agrupados en burbujas de lejos. */}
+          <Marcadores
+            negocios={props.negocios}
+            activoId={props.seleccion?.tipo === "negocio" ? props.seleccion.id : null}
+            onSeleccionar={(id) => props.onSeleccionar({ tipo: "negocio", id })}
+          />
 
           {props.resultados
             .filter((r) => !r.yaImportado)
@@ -412,13 +238,7 @@ export function MapCanvas(props: Props) {
                   }
                 >
                   <PinHit>
-                    <div
-                      className={cn(
-                        PIN_BASE,
-                        "border-2 border-acento bg-transparent",
-                        activo && PIN_ACTIVO,
-                      )}
-                    />
+                    <div className={cn(PIN_BASE, PIN_RESULTADO, activo && PIN_ACTIVO)} />
                   </PinHit>
                 </AdvancedMarker>
               );
@@ -431,13 +251,26 @@ export function MapCanvas(props: Props) {
               zIndex={30}
             >
               <PinHit>
-                <div className={cn(PIN_BASE, "border-acento bg-white", PIN_ACTIVO)} />
+                <div className={cn(PIN_BASE, PIN_NUEVO, PIN_ACTIVO)} />
               </PinHit>
             </AdvancedMarker>
           ) : null}
 
           {props.children}
         </GoogleMap>
+
+        {/* Hermanos del mapa, no hijos: sus hijos van dentro del div de las
+            teselas, que Google reordena a su antojo. `useMap()` los encuentra
+            igual desde aquí (siguen bajo el APIProvider). */}
+        <ControlesMapa
+          puntos={props.negocios}
+          centroInicial={CENTRO_INICIAL}
+          tipoMapa={props.tipoMapa}
+          onTipoMapa={props.onTipoMapa}
+          pantallaCompleta={props.pantallaCompleta}
+          onPantallaCompleta={props.onPantallaCompleta}
+        />
+        <Leyenda />
 
         {/* Fuera del <GoogleMap> a propósito: sus hijos van dentro del div de
             las teselas, que Google reordena a su antojo. Y `pointer-events-none`

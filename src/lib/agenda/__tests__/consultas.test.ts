@@ -12,10 +12,12 @@ function cita(inicio: string, id = inicio): Cita360 {
     fin: inicio,
     nombre: "María",
     telefono: "+57300",
+    telefonoAviso: null,
     servicio: "Bot de WhatsApp",
     detalle: null,
     meetUrl: null,
     linkGoogle: null,
+    tieneEventoGoogle: false,
     origen: "voz",
     estado: "nueva",
   };

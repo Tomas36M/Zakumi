@@ -1,11 +1,17 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
+import {
+  COOKIE_SIDEBAR,
+  colapsadoDeCookie,
+  cookieSidebar,
+  valorDeCookie,
+} from "@/lib/admin/sidebar-cookie";
 
-/** Colapso del sidebar persistido. Patrón useSyncExternalStore + localStorage:
- *  sin contexto, sin hydration mismatch (el servidor siempre ve expandido). */
+/** Colapso del sidebar persistido en cookie. Patrón useSyncExternalStore sin
+ *  contexto. El estado inicial lo manda el servidor (leyó la misma cookie), así
+ *  que no hay hydration mismatch ni flash expandido→colapsado al cargar. */
 
-const CLAVE = "zk-sidebar-colapsado";
 const oyentes = new Set<() => void>();
 
 function suscribir(cb: () => void): () => void {
@@ -17,25 +23,22 @@ function suscribir(cb: () => void): () => void {
 
 function instantanea(): boolean {
   try {
-    return localStorage.getItem(CLAVE) === "1";
+    return colapsadoDeCookie(valorDeCookie(document.cookie, COOKIE_SIDEBAR));
   } catch {
     return false;
   }
 }
 
-function instantaneaServidor(): boolean {
-  return false;
-}
-
 export function alternarSidebar(): void {
   try {
-    localStorage.setItem(CLAVE, instantanea() ? "0" : "1");
+    document.cookie = cookieSidebar(!instantanea());
   } catch {
-    /* sin storage no hay persistencia, pero tampoco crash */
+    /* sin cookies no hay persistencia, pero tampoco crash */
   }
   for (const oyente of oyentes) oyente();
 }
 
-export function useSidebarColapsado(): boolean {
-  return useSyncExternalStore(suscribir, instantanea, instantaneaServidor);
+/** `inicial` es lo que el servidor pintó: es la instantánea de hidratación. */
+export function useSidebarColapsado(inicial: boolean): boolean {
+  return useSyncExternalStore(suscribir, instantanea, () => inicial);
 }

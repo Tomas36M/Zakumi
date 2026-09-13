@@ -320,6 +320,12 @@ export function linkChatZak(
   return `/admin/zak?telefono=${sinMas(n.telefono)}`;
 }
 
+/** Deep-link a la ficha de un lead en el CRM (la cara Leads con su modal
+ * abierto). Es el camino de vuelta de `linkChatZak`. */
+export function linkFichaLead(id: string): string {
+  return `/admin/prospeccion?tab=leads&lead=${encodeURIComponent(id)}`;
+}
+
 /** El vertical cuyo saludo de plantilla es este contenido, o null. Con esto la
  * bandeja pinta el folleto que Meta mostró: el saludo se guarda como mensaje
  * del asistente con el texto EXACTO del vertical (startsWith tolera sufijos;

@@ -124,6 +124,43 @@ export function descripcionVencimiento(
   return `venció hace ${-dias} días`;
 }
 
+/** Ingreso mensual recurrente de una lista de productos: mensuales enteros,
+ * anuales entre 12, únicos e inactivos no cuentan. Única definición — la
+ * Ficha 360 y la tarjeta del cliente enseñan el MISMO número. */
+export function mrrDeProductos(productos: readonly ProductoContratado[]): number {
+  return productos
+    .filter((p) => p.activo)
+    .reduce((total, p) => {
+      if (p.ciclo === "mensual") return total + p.tarifa;
+      if (p.ciclo === "anual") return total + p.tarifa / 12;
+      return total; // pago único no es recurrente
+    }, 0);
+}
+
+/** Lo que una tarjeta de cliente necesita de un vistazo. */
+export type ResumenCliente = {
+  activos: number;
+  mrr: number;
+  /** El cobro más próximo entre los productos activos, o null. */
+  proximaFecha: string | null;
+  semaforo: Semaforo;
+};
+
+export function resumenCliente(
+  productos: readonly ProductoContratado[],
+  hoy: string,
+): ResumenCliente {
+  const activos = productos.filter((p) => p.activo);
+  const fechas = activos.map((p) => p.proxima_fecha).filter((f): f is string => f !== null);
+  const proximaFecha = fechas.length > 0 ? fechas.toSorted()[0] : null;
+  return {
+    activos: activos.length,
+    mrr: mrrDeProductos(productos),
+    proximaFecha,
+    semaforo: semaforoCobro(proximaFecha, hoy),
+  };
+}
+
 export function formatearCOP(monto: number): string {
   return new Intl.NumberFormat("es-CO", {
     style: "currency",

@@ -8,11 +8,12 @@ import {
   Bot,
   Boxes,
   CalendarDays,
+  ChevronLeft,
+  ChevronRight,
   Inbox,
+  LandPlot,
   LogOut,
   Menu,
-  PanelLeftClose,
-  PanelLeftOpen,
   Target,
   UserCog,
   Users,
@@ -28,6 +29,7 @@ import { alternarSidebar, useSidebarColapsado } from "@/components/admin/ui/side
 const SECCIONES = [
   // Una sola puerta: dos puertas a lo mismo se desincronizan.
   { href: "/admin/prospeccion", label: "Encontrar clientes", Icono: Target },
+  { href: "/admin/territorios", label: "Territorios", Icono: LandPlot },
   { href: "/admin/zak", label: "Zak", Icono: Bot },
   { href: "/admin/solicitudes", label: "Solicitudes", Icono: Inbox },
   { href: "/admin/agenda", label: "Agenda", Icono: CalendarDays },
@@ -115,13 +117,61 @@ function useCitasHoy(): number {
   return citasHoy;
 }
 
+/**
+ * Isla de marca. En desktop es EL botón de colapsar: toda la isla es objetivo
+ * de clic y el chevron solo insinúa hacia dónde se va a mover. Al colapsar, la
+ * palabra se pliega hasta dejar la Z (animación en admin-theme.css, .adm-logo).
+ * En el overlay móvil no hay nada que colapsar: el logo vuelve a ser el
+ * enlace al inicio del panel.
+ */
+function Marca({ colapsado, onAlternar }: { colapsado: boolean; onAlternar?: () => void }) {
+  const logo = (
+    <span className="adm-logo text-tinta" data-colapsado={colapsado || undefined}>
+      <LogoZakumi decorativo />
+    </span>
+  );
+
+  if (!onAlternar) {
+    return (
+      <div className="flex items-center justify-center overflow-hidden rounded-isla bg-isla px-3 py-3.5">
+        <Link href="/admin/prospeccion" aria-label="Zakumi — inicio del panel">
+          {logo}
+        </Link>
+      </div>
+    );
+  }
+
+  const etiqueta = colapsado ? "Expandir menú" : "Colapsar menú";
+  const Flecha = colapsado ? ChevronRight : ChevronLeft;
+  return (
+    <button
+      type="button"
+      onClick={onAlternar}
+      aria-expanded={!colapsado}
+      aria-controls="adm-nav"
+      aria-label={etiqueta}
+      title={etiqueta}
+      className={cn(
+        "group flex items-center justify-center overflow-hidden rounded-isla bg-isla px-3 py-3.5 transition-colors hover:bg-isla-alta",
+        colapsado ? "flex-col gap-1.5" : "gap-2",
+      )}
+    >
+      {logo}
+      <Flecha className="h-3.5 w-3.5 shrink-0 text-tinta-40 transition-colors group-hover:text-tinta" />
+    </button>
+  );
+}
+
 /** Contenido del sidebar: islas apiladas (marca / navegación / usuario). */
 function ContenidoSidebar({
   colapsado,
   onNavegar,
+  onAlternar,
 }: {
   colapsado: boolean;
   onNavegar?: () => void;
+  /** Sin esto (overlay móvil) la isla de marca es un enlace, no un botón. */
+  onAlternar?: () => void;
 }) {
   const pathname = usePathname();
   const salud = useSaludBots();
@@ -129,20 +179,9 @@ function ContenidoSidebar({
 
   return (
     <div className="flex h-full flex-col gap-aire">
-      {/* Marca: solo el logotipo, centrado. Al colapsar, la palabra se pliega
-          hasta dejar la Z (animación en admin-theme.css, .adm-logo). */}
-      <div className="flex items-center justify-center overflow-hidden rounded-isla bg-isla px-3 py-3.5">
-        <Link
-          href="/admin/prospeccion"
-          aria-label="Zakumi — inicio del panel"
-          className="adm-logo text-tinta"
-          data-colapsado={colapsado || undefined}
-        >
-          <LogoZakumi decorativo />
-        </Link>
-      </div>
+      <Marca colapsado={colapsado} onAlternar={onAlternar} />
 
-      <nav className="flex flex-1 flex-col gap-1 rounded-isla bg-isla p-2">
+      <nav id="adm-nav" className="flex flex-1 flex-col gap-1 rounded-isla bg-isla p-2">
         {SECCIONES.map(({ href, label, Icono }) => {
           const activa = pathname.startsWith(href);
           return (
@@ -151,8 +190,9 @@ function ContenidoSidebar({
               href={href}
               onClick={onNavegar}
               title={label}
+              aria-current={activa ? "page" : undefined}
               className={cn(
-                "flex h-9 items-center gap-2.5 rounded-full px-3 text-sm transition-colors",
+                "relative flex h-9 items-center gap-2.5 rounded-full px-3 text-sm transition-colors",
                 colapsado && "justify-center px-0",
                 activa
                   ? "bg-acento-10 font-medium text-acento"
@@ -161,13 +201,16 @@ function ContenidoSidebar({
             >
               <Icono className="h-4 w-4 shrink-0" />
               {!colapsado && <span className="truncate">{label}</span>}
+              {/* Colapsado, el hueco útil son 40px: icono + gap + píldora no
+                  caben en fila, así que los avisos se montan sobre la esquina
+                  del icono en vez de empujarlo fuera de la isla. */}
               {href === "/admin/bots" && salud && (
                 <span
                   title={TITULO_SALUD[salud]}
                   className={cn(
                     "h-1.5 w-1.5 shrink-0 rounded-full",
                     COLOR_SALUD[salud],
-                    !colapsado && "ml-auto",
+                    colapsado ? "absolute top-1.5 right-2.5" : "ml-auto",
                   )}
                 />
               )}
@@ -175,8 +218,10 @@ function ContenidoSidebar({
                 <span
                   title={`${citasHoy} cita(s) hoy`}
                   className={cn(
-                    "rounded-full bg-acento-10 px-1.5 text-[10px] font-semibold text-acento",
-                    !colapsado && "ml-auto",
+                    "rounded-full bg-acento-10 font-semibold text-acento",
+                    colapsado
+                      ? "absolute -top-0.5 right-0.5 h-4 min-w-4 px-1 text-center text-[9px] leading-4"
+                      : "ml-auto px-1.5 text-[10px]",
                   )}
                 >
                   {citasHoy}
@@ -187,8 +232,8 @@ function ContenidoSidebar({
         })}
       </nav>
 
-      <div className={cn("flex items-center gap-1 rounded-isla bg-isla p-2", colapsado && "flex-col")}>
-        <form action={logout} className={cn("min-w-0", colapsado ? "w-full" : "flex-1")}>
+      <div className="rounded-isla bg-isla p-2">
+        <form action={logout}>
           <button
             type="submit"
             title="Salir"
@@ -201,20 +246,13 @@ function ContenidoSidebar({
             {!colapsado && <span>Salir</span>}
           </button>
         </form>
-        <IconButton
-          etiqueta={colapsado ? "Expandir menú" : "Colapsar menú"}
-          onClick={alternarSidebar}
-          className="max-[899px]:hidden"
-        >
-          {colapsado ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
-        </IconButton>
       </div>
     </div>
   );
 }
 
-export function Sidebar() {
-  const colapsado = useSidebarColapsado();
+export function Sidebar({ colapsadoInicial }: { colapsadoInicial: boolean }) {
+  const colapsado = useSidebarColapsado(colapsadoInicial);
   const pathname = usePathname();
   // El overlay móvil recuerda en qué ruta se abrió: al navegar (también con
   // atrás/adelante) deja de coincidir y se cierra solo, sin setState en un efecto.
@@ -232,7 +270,7 @@ export function Sidebar() {
           colapsado ? "w-14" : "w-60",
         )}
       >
-        <ContenidoSidebar colapsado={colapsado} />
+        <ContenidoSidebar colapsado={colapsado} onAlternar={alternarSidebar} />
       </aside>
 
       {/* Móvil: botón flotante + overlay con velo */}

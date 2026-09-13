@@ -3,7 +3,7 @@ import { agenteZakVoz, contarLlamadasHoy, llamadasDeAgente } from "@/lib/admin/v
 import { catalogoVerticales } from "@/lib/admin/zak-verticales";
 import { pestanaInicial } from "@/lib/admin/zak-caras";
 import { listarVoces } from "@/lib/voz/api";
-import type { EstadoVozZak } from "@/components/admin/voz/BotonLlamarZak";
+import { estadoVozZak } from "@/lib/admin/voz-estado";
 import {
   listarProspectos,
   listarTandas,
@@ -55,16 +55,8 @@ export default async function ZakPage({
     .order("nombre");
 
   // Cada rechazo con su remedio: el tooltip del botón guía al fix correcto.
-  const vozZak: EstadoVozZak = !zakVoz
-    ? "sin_agente"
-    : !zakVoz.agent_id_eleven
-      ? "sin_sincronizar"
-      : !zakVoz.activo
-        ? "apagada"
-        : Boolean(process.env.ELEVENLABS_PHONE_NUMBER_ID) ||
-            Boolean(zakVoz.phone_number_id_eleven)
-          ? "lista"
-          : "sin_numero";
+  const telefoniaEnv = Boolean(process.env.ELEVENLABS_PHONE_NUMBER_ID);
+  const vozZak = estadoVozZak(zakVoz, telefoniaEnv);
 
   return (
     <ZakView
@@ -84,10 +76,7 @@ export default async function ZakPage({
       llamadasVozHoy={llamadasVozHoy ?? 0}
       voces={voces.ok ? voces.data : null}
       clientes={(clientes.data ?? []) as { id: string; nombre: string }[]}
-      telefoniaLista={
-        Boolean(process.env.ELEVENLABS_PHONE_NUMBER_ID) ||
-        Boolean(zakVoz?.phone_number_id_eleven)
-      }
+      telefoniaLista={telefoniaEnv || Boolean(zakVoz?.phone_number_id_eleven)}
     />
   );
 }

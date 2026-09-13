@@ -6,6 +6,8 @@
 // van prefijadas. Así no hay dos parámetros que puedan contradecirse ni
 // estado duplicado que sincronizar.
 
+import type { CaraDef } from "./caras";
+
 export type CaraZak = "chat" | "voz";
 
 export const PESTANAS_CHAT = [
@@ -65,4 +67,25 @@ export function pestanaInicial(tab: unknown): PestanaZak {
  */
 export function subPestanaVoz(tab: PestanaVoz): string {
   return tab.slice(PREFIJO_VOZ.length);
+}
+
+/**
+ * Las dos tarjetas de la cabecera de Zak. `vozPendiente` marca la cara de voz
+ * con un punto fijo: Zak todavía no tiene agente de voz configurado.
+ */
+export function carasZak(d: { vozPendiente: boolean }): CaraDef<CaraZak>[] {
+  return [
+    {
+      id: "chat",
+      label: "Chat",
+      detalle: "WhatsApp · bandeja y prospección",
+      punto: null,
+    },
+    {
+      id: "voz",
+      label: "Voz",
+      detalle: "llamadas con IA",
+      punto: d.vozPendiente ? { titulo: "Zak todavía no tiene voz" } : null,
+    },
+  ];
 }

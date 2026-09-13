@@ -5,6 +5,7 @@
 // que originó el aviso (la solicitud igual queda en la bandeja del admin).
 
 import { enviarManual, enviarPlantillaDirecta } from "@/lib/bots/api";
+import { sinMas } from "@/lib/admin/telefono";
 
 /** Una plantilla de utilidad aprobada en Meta y sus variables EN EL ORDEN del
  *  cuerpo aprobado. Existe porque Meta rechaza el texto libre a quien no le
@@ -84,4 +85,45 @@ export async function avisarAdmin(texto: string, plantilla?: PlantillaAviso): Pr
       console.error(`[avisos] el aviso a ${numero} no salió:`, r.error);
     }
   }
+}
+
+/**
+ * Un aviso AL LEAD (no a la casa): el WhatsApp de Zak le escribe a su número
+ * cuando su reunión se agenda, se mueve o se cancela. Misma secuencia que
+ * `avisarAdmin` —plantilla primero, texto libre de respaldo dentro de la
+ * ventana de 24 h— pero un solo destinatario y DEVUELVE qué pasó: la acción
+ * que lo pidió se lo dice al usuario en vez de prometer una entrega que no
+ * puede garantizar. `telefonoE164` viene normalizado (+57…); el bot lo
+ * quiere sin el «+».
+ */
+export async function avisarLead(
+  telefonoE164: string,
+  texto: string,
+  plantilla?: PlantillaAviso,
+): Promise<"enviado" | "fallo"> {
+  const iid = Number(process.env.AVISOS_BOT_INSTANCIA_ID ?? "");
+  if (!Number.isInteger(iid) || iid <= 0) {
+    console.error("[avisos] falta AVISOS_BOT_INSTANCIA_ID — aviso al lead no enviado");
+    return "fallo";
+  }
+  const numero = sinMas(telefonoE164);
+  if (plantilla) {
+    const p = await enviarPlantillaDirecta(iid, {
+      telefono: numero,
+      plantilla: plantilla.nombre,
+      lang: "es",
+      texto,
+      componentes: componentesPlantilla(plantilla.variables),
+    });
+    if (p.ok) return "enviado";
+    console.error(
+      `[avisos] plantilla ${plantilla.nombre} al lead ${numero} no salió (${p.error}); se intenta texto libre`,
+    );
+  }
+  const r = await enviarManual(iid, numero, texto);
+  if (!r.ok) {
+    console.error(`[avisos] el aviso al lead ${numero} no salió:`, r.error);
+    return "fallo";
+  }
+  return "enviado";
 }

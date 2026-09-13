@@ -2,16 +2,29 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { caraDe, pestanaInicial, type CaraProspeccion } from "@/lib/admin/prospeccion-caras";
+// `Map` sin alias sombrearía el Map global del lenguaje.
+import { Contact, Map as IconoMapa } from "lucide-react";
+import {
+  caraDe,
+  carasProspeccion,
+  pestanaInicial,
+  type CaraProspeccion,
+} from "@/lib/admin/prospeccion-caras";
 import { esSinWeb, estadoCenso, type Negocio } from "@/lib/admin/negocios";
 import type { Territorio } from "@/lib/admin/territorios";
+import type { EstadoVozZak } from "@/lib/admin/voz-estado";
+import { FichaLeadModal } from "@/components/admin/leads/FichaLeadModal";
+import { useFichaLead } from "@/components/admin/leads/useFichaLead";
 import { NegociosView } from "@/components/admin/negocios/NegociosView";
 import { Banner } from "@/components/admin/ui/Banner";
 import { Button } from "@/components/admin/ui/Button";
+import { Caras } from "@/components/admin/ui/Caras";
 import { Cockpit } from "@/components/admin/ui/Cockpit";
+import { PageHeader } from "@/components/admin/ui/PageHeader";
 import type { AvisoBarrido } from "./BarridoProgreso";
-import { CarasProspeccion } from "./CarasProspeccion";
 import { TerritorioView, type BarridoAbierto } from "./TerritorioView";
+
+const ICONOS_CARAS = { territorio: IconoMapa, leads: Contact } as const;
 
 type Props = {
   tab: string | null;
@@ -29,6 +42,10 @@ type Props = {
    * el diálogo de barrer no puede afirmar cuota gratis sobre un dato que no
    * tiene. */
   consultasMes: number | null;
+  /** Estado de la voz de Zak (server): habilita «Llamar con IA» en la ficha. */
+  vozZak: EstadoVozZak;
+  /** `?territorio=<id>`: abrir la ficha de ese territorio y encuadrarlo. */
+  territorioInicial: string | null;
 };
 
 // Dos cockpits anidados con altura fija de viewport se desbordan y devuelven
@@ -52,8 +69,17 @@ export function ProspeccionView({
   fallaNegocios,
   fallaTerritorios,
   consultasMes,
+  vozZak,
+  territorioInicial,
 }: Props) {
   const router = useRouter();
+
+  // La ficha del lead (modal) es del shell, no de las caras: Territorio está
+  // siempre montada y Leads solo a veces — dos modales leyendo `?lead=` se
+  // abrirían a la vez. Se guarda el id; el negocio se resuelve en cada render
+  // para que tras `router.refresh()` el modal vea la fila nueva.
+  const [leadId, abrirLead] = useFichaLead();
+  const leadAbierto = leadId ? (negocios.find((n) => n.id === leadId) ?? null) : null;
 
   // La URL manda (es compartible y sobrevive al atrás del navegador), pero la
   // cara se pinta YA: `router.push` vuelve al servidor a releer negocios y
@@ -97,104 +123,114 @@ export function ProspeccionView({
     router.push(`/admin/prospeccion?tab=${pestanaInicial(nueva)}`, { scroll: false });
   }
 
+  // Los avisos ocupan una banda propia solo cuando hay alguno: una banda
+  // vacía le roba 16px al mapa por nada.
+  const hayAvisos =
+    fallaNegocios || (cara === "leads" && aviso !== null) || censo.tipo !== "completo";
+
   return (
     <Cockpit>
-      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-hairline px-5 py-4">
-        <h1 className="text-lg font-semibold text-tinta">
-          Encontrar clientes{" "}
-          <span className="font-editorial text-base font-normal italic text-acento">
-            el censo de la calle
-          </span>
-        </h1>
-        <span className="text-xs text-tinta-40">
-          <strong className="text-tinta-85">{negocios.length}</strong>
-          {/* Con la lista topada, "N negocios" a secas sería la cifra de la
-              pantalla presentada como la cifra de la base. Sin cuenta exacta
-              no hay un total que nombrar, así que el "+" es lo único honesto:
-              dice "al menos esto" sin inventar un número. */}
-          {censo.tipo === "recortado" && <> de {censo.total}</>}
-          {censo.tipo === "recortado_sin_conteo" && <>+</>} negocios ·{" "}
-          <strong className="text-tinta-85">{sinWeb}</strong> sin web ·{" "}
-          <strong className="text-tinta-85">{territorios.length}</strong> territorios
-        </span>
-      </header>
+      <PageHeader
+        titulo="Encontrar clientes"
+        coletilla="el censo de la calle"
+        navegacion={
+          <Caras
+            caras={carasProspeccion({
+              territorios: territorios.length,
+              leads: negocios.length,
+              sinWeb,
+              barriendo: barrido !== null,
+            })}
+            iconos={ICONOS_CARAS}
+            activa={cara}
+            onCambiar={cambiarCara}
+            etiqueta="Las dos caras de Encontrar clientes"
+          />
+        }
+        contador={
+          <>
+            <strong className="text-tinta-85">{negocios.length}</strong>
+            {/* Con la lista topada, "N negocios" a secas sería la cifra de la
+                pantalla presentada como la cifra de la base. Sin cuenta exacta
+                no hay un total que nombrar, así que el "+" es lo único honesto:
+                dice "al menos esto" sin inventar un número. */}
+            {censo.tipo === "recortado" && <> de {censo.total}</>}
+            {censo.tipo === "recortado_sin_conteo" && <>+</>} negocios ·{" "}
+            <strong className="text-tinta-85">{sinWeb}</strong> sin web ·{" "}
+            <strong className="text-tinta-85">{territorios.length}</strong> territorios
+          </>
+        }
+      />
 
-      <div className="flex shrink-0 flex-col gap-3 px-5 pt-4">
-        <CarasProspeccion
-          activa={cara}
-          onCambiar={cambiarCara}
-          territorios={territorios.length}
-          leads={negocios.length}
-          sinWeb={sinWeb}
-          barriendo={barrido !== null}
-        />
+      {hayAvisos && (
+        <div className="flex shrink-0 flex-col gap-3 px-5 pt-4">
+          {fallaNegocios && (
+            <Banner variante="error">
+              No se pudieron cargar los negocios. Los contadores de leads y de «sin
+              web» están incompletos: no tomes decisiones con estos números hasta
+              recargar.
+            </Banner>
+          )}
 
-        {fallaNegocios && (
-          <Banner variante="error">
-            No se pudieron cargar los negocios. Los contadores de leads y de «sin
-            web» están incompletos: no tomes decisiones con estos números hasta
-            recargar.
-          </Banner>
-        )}
+          {/* El barrido, visible desde esta cara. El punto que late en la
+              pestaña dice que hay uno; esto dice cómo va y deja pararlo. */}
+          {cara === "leads" && aviso && (
+            <Banner variante={aviso.error || aviso.capado ? "error" : "aviso"}>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span>
+                  {aviso.corriendo
+                    ? "Barriendo"
+                    : aviso.termino
+                      ? "Barrido terminado"
+                      : aviso.capado
+                        ? "Barrido en pausa: se pasó de lo aprobado"
+                        : "Barrido en pausa"}{" "}
+                  · <strong>{aviso.territorio}</strong> · {aviso.hechos} de{" "}
+                  {aviso.total} en esta tanda
+                  {aviso.error && <> — {aviso.error}</>}
+                  {aviso.sinContabilizar > 0 && (
+                    <>
+                      {" "}
+                      — {aviso.sinContabilizar}{" "}
+                      {aviso.sinContabilizar === 1
+                        ? "tesela cobrada sin contabilizar"
+                        : "teselas cobradas sin contabilizar"}
+                    </>
+                  )}
+                </span>
+                <span className="flex shrink-0 gap-2">
+                  {aviso.corriendo && <Button onClick={aviso.pausar}>Pausar</Button>}
+                  <Button variante="primaria" onClick={() => cambiarCara("territorio")}>
+                    {aviso.termino ? "Ver el resumen" : "Ver el barrido"}
+                  </Button>
+                </span>
+              </div>
+            </Banner>
+          )}
 
-        {/* El barrido, visible desde esta cara. El punto que late en la
-            pestaña dice que hay uno; esto dice cómo va y deja pararlo. */}
-        {cara === "leads" && aviso && (
-          <Banner variante={aviso.error || aviso.capado ? "error" : "aviso"}>
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <span>
-                {aviso.corriendo
-                  ? "Barriendo"
-                  : aviso.termino
-                    ? "Barrido terminado"
-                    : aviso.capado
-                      ? "Barrido en pausa: se pasó de lo aprobado"
-                      : "Barrido en pausa"}{" "}
-                · <strong>{aviso.territorio}</strong> · {aviso.hechos} de{" "}
-                {aviso.total} en esta tanda
-                {aviso.error && <> — {aviso.error}</>}
-                {aviso.sinContabilizar > 0 && (
-                  <>
-                    {" "}
-                    — {aviso.sinContabilizar}{" "}
-                    {aviso.sinContabilizar === 1
-                      ? "tesela cobrada sin contabilizar"
-                      : "teselas cobradas sin contabilizar"}
-                  </>
-                )}
-              </span>
-              <span className="flex shrink-0 gap-2">
-                {aviso.corriendo && <Button onClick={aviso.pausar}>Pausar</Button>}
-                <Button variante="primaria" onClick={() => cambiarCara("territorio")}>
-                  {aviso.termino ? "Ver el resumen" : "Ver el barrido"}
-                </Button>
-              </span>
-            </div>
-          </Banner>
-        )}
-
-        {/* Un censo que no dice que está recortado no es un censo. */}
-        {censo.tipo === "recortado" && (
-          <Banner variante="error">
-            La base tiene <strong>{censo.total}</strong> negocios y esta
-            pantalla cargó los <strong>{negocios.length}</strong> más recientes.
-            Todo lo de aquí cuenta SOLO esos {negocios.length}: los contadores de
-            arriba, los filtros de la lista, los pines del mapa y los negocios
-            por territorio. Los más antiguos existen y no están en pantalla.
-          </Banner>
-        )}
-        {censo.tipo === "recortado_sin_conteo" && (
-          <Banner variante="error">
-            Esta pantalla cargó <strong>{negocios.length}</strong> negocios, su
-            tope máximo — y la cuenta real de cuántos hay en la base falló, así
-            que no hay forma de decir cuántos faltan (aunque es casi seguro que
-            faltan). Todo lo de aquí cuenta SOLO esos {negocios.length}: los
-            contadores de arriba, los filtros de la lista, los pines del mapa y
-            los negocios por territorio. Recarga la página para reintentar la
-            cuenta.
-          </Banner>
-        )}
-      </div>
+          {/* Un censo que no dice que está recortado no es un censo. */}
+          {censo.tipo === "recortado" && (
+            <Banner variante="error">
+              La base tiene <strong>{censo.total}</strong> negocios y esta
+              pantalla cargó los <strong>{negocios.length}</strong> más recientes.
+              Todo lo de aquí cuenta SOLO esos {negocios.length}: los contadores de
+              arriba, los filtros de la lista, los pines del mapa y los negocios
+              por territorio. Los más antiguos existen y no están en pantalla.
+            </Banner>
+          )}
+          {censo.tipo === "recortado_sin_conteo" && (
+            <Banner variante="error">
+              Esta pantalla cargó <strong>{negocios.length}</strong> negocios, su
+              tope máximo — y la cuenta real de cuántos hay en la base falló, así
+              que no hay forma de decir cuántos faltan (aunque es casi seguro que
+              faltan). Todo lo de aquí cuenta SOLO esos {negocios.length}: los
+              contadores de arriba, los filtros de la lista, los pines del mapa y
+              los negocios por territorio. Recarga la página para reintentar la
+              cuenta.
+            </Banner>
+          )}
+        </div>
+      )}
 
       {/* Territorio se monta SIEMPRE y se esconde con `hidden`: desmontarlo
           mataría un barrido en vuelo (el hook vive dentro). Mismo patrón que
@@ -208,6 +244,9 @@ export function ProspeccionView({
         onBarrido={setBarrido}
         onAvisoBarrido={setAviso}
         oculta={cara !== "territorio"}
+        onAbrirLead={abrirLead}
+        leadAbierto={leadId}
+        territorioInicial={territorioInicial}
       />
 
       {cara === "leads" && (
@@ -215,8 +254,21 @@ export function ProspeccionView({
           negocios={negocios}
           territorios={territorios}
           className={COCKPIT_ANIDADO}
+          onAbrirLead={abrirLead}
         />
       )}
+
+      <FichaLeadModal
+        leadId={leadId}
+        negocio={leadAbierto}
+        vozZak={vozZak}
+        onCerrar={() => abrirLead(null)}
+        onCambio={() => router.refresh()}
+        onEliminado={() => {
+          abrirLead(null);
+          router.refresh();
+        }}
+      />
     </Cockpit>
   );
 }

@@ -49,13 +49,7 @@ export function oportunidades(productosActivos: ProductoContratado[]): Oportunid
   });
 }
 
-/** Suma de tarifas mensualizadas de los productos activos (anual → /12). */
-export function mrrDeProductos(productos: ProductoContratado[]): number {
-  return productos
-    .filter((p) => p.activo)
-    .reduce((total, p) => {
-      if (p.ciclo === "mensual") return total + p.tarifa;
-      if (p.ciclo === "anual") return total + p.tarifa / 12;
-      return total; // pago único no es recurrente
-    }, 0);
-}
+/** Suma de tarifas mensualizadas de los productos activos (anual → /12).
+ * Vive en cartera.ts (la tarjeta del cliente enseña el mismo número); aquí
+ * se re-exporta para los imports históricos. */
+export { mrrDeProductos } from "./cartera";

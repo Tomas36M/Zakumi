@@ -2,12 +2,14 @@
 
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { AudioLines, MessageCircle } from "lucide-react";
 import { sincronizarEstadosZak } from "@/lib/admin/zak-actions";
 import {
   PESTANAS_CHAT,
   PESTANAS_VOZ,
   PESTANA_INICIAL,
   caraDe,
+  carasZak,
   type CaraZak,
   type PestanaVoz,
   type PestanaZak,
@@ -22,8 +24,11 @@ import {
   type VersionPrompt,
 } from "@/lib/bots/tipos";
 import { Banner } from "@/components/admin/ui/Banner";
+import { Caras } from "@/components/admin/ui/Caras";
 import { Cockpit, CockpitBody } from "@/components/admin/ui/Cockpit";
+import { PageHeader } from "@/components/admin/ui/PageHeader";
 import { Tabs } from "@/components/admin/ui/Tabs";
+import { useParametroUrl } from "@/components/admin/ui/useParametroUrl";
 import { cn } from "@/lib/cn";
 import type { PlantillaZakFila } from "@/lib/admin/plantillas";
 import type { VerticalProspeccion } from "@/lib/admin/zak";
@@ -37,9 +42,10 @@ import { MetricasZak } from "./MetricasZak";
 import { PlantillasZak } from "./PlantillasZak";
 import { PromptEditor } from "./PromptEditor";
 import { TandasZak } from "./TandasZak";
-import { CarasZak } from "./CarasZak";
 import { ZakVoz } from "./ZakVoz";
 import type { EstadoVozZak } from "@/components/admin/voz/BotonLlamarZak";
+
+const ICONOS_CARAS = { chat: MessageCircle, voz: AudioLines } as const;
 
 const LABEL_CHAT: Record<(typeof PESTANAS_CHAT)[number], string> = {
   bandeja: "Bandeja",
@@ -111,7 +117,11 @@ export function ZakView({
   telefoniaLista,
 }: Props) {
   const router = useRouter();
+  // `tabInicial` (server) manda en el primer render; después la pestaña es
+  // estado local y solo se ESCRIBE a la URL, para que el enlace se pueda
+  // compartir y una recarga vuelva a la misma pestaña.
   const [tab, setTab] = useState<PestanaZak>(tabInicial);
+  const [, ponerTab] = useParametroUrl("tab");
   const [sincronizando, startSync] = useTransition();
   const [avisoSync, setAvisoSync] = useState<string | null>(null);
   const syncHecho = useRef(false);
@@ -167,6 +177,7 @@ export function ZakView({
   function irA(destino: PestanaZak) {
     if (destino === "voz-lab") setLabVozVisitado(true);
     setTab(destino);
+    ponerTab(destino);
   }
 
   const pestanasChat = PESTANAS_CHAT.map((p) => ({
@@ -196,36 +207,41 @@ export function ZakView({
 
   return (
     <Cockpit>
-      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-hairline px-5 py-4">
-        <div>
-          <h1 className="text-lg font-semibold text-tinta">
-            Zak{" "}
-            <span className="font-editorial text-base font-normal italic text-acento">
-              el cerebro comercial
-            </span>
-          </h1>
-          {instancia && (
-            <p className="text-xs text-tinta-60">
+      <PageHeader
+        titulo="Zak"
+        coletilla="el cerebro comercial"
+        subtitulo={
+          instancia && (
+            <>
               {instancia.nombre} ·{" "}
               {instancia.proveedor === "cloud" ? "API oficial de Meta" : "Green API"} · prompt v
               {instancia.prompt_version}
               {!instancia.activo && " · APAGADO"}
-            </p>
-          )}
-        </div>
-        {uso && (
-          <span className="text-xs text-tinta-40">
-            hoy: {uso.llamadas} llamadas · {uso.tokens_entrada + uso.tokens_salida} tokens ·{" "}
-            {interesados.length} interesados en total
-          </span>
-        )}
-      </header>
+            </>
+          )
+        }
+        navegacion={
+          <Caras
+            caras={carasZak({ vozPendiente: agenteVoz === null })}
+            iconos={ICONOS_CARAS}
+            activa={cara}
+            onCambiar={cambiarCara}
+            etiqueta="Las dos caras de Zak"
+          />
+        }
+        contador={
+          uso && (
+            <>
+              hoy: {uso.llamadas} llamadas · {uso.tokens_entrada + uso.tokens_salida} tokens ·{" "}
+              {interesados.length} interesados en total
+            </>
+          )
+        }
+      />
 
-      {/* Caras, avisos y pestañas: alto natural, siempre a la vista. Fuera del
-          body para que el contenido scrollee por debajo. */}
+      {/* Avisos y pestañas: alto natural, siempre a la vista. Fuera del body
+          para que el contenido scrollee por debajo. */}
       <div className="flex shrink-0 flex-col gap-4 px-5 pt-4">
-        <CarasZak activa={cara} onCambiar={cambiarCara} vozPendiente={agenteVoz === null} />
-
         {!instancia && cara === "chat" && (
           <Banner>
             Sin conexión con el bot: se muestra lo último conocido. Recarga en un momento.

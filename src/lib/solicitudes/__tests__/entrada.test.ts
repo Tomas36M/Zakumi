@@ -59,6 +59,9 @@ const calendarioOk: Calendario = {
     linkGoogle: "https://calendar.google.com/event?eid=ev-1",
   }),
   hayChoque: async () => false,
+  // La entrada nunca mueve ni borra: solo están para cumplir el contrato.
+  actualizarEvento: async () => "ok",
+  borrarEvento: async () => "ok",
 };
 
 // `vi.fn<...>` fija el tipo del mock explícitamente (en vez de dejar que TS
@@ -135,6 +138,7 @@ describe("registrarSolicitudEntrante", () => {
     const { cliente } = supabaseFalso();
     const avisar = vi.fn<(texto: string) => Promise<void>>(async () => {});
     const calendarioCaido: Calendario = {
+      ...calendarioOk,
       crearEvento: async () => null,
       hayChoque: async () => false,
     };
@@ -207,6 +211,7 @@ describe("registrarSolicitudEntrante", () => {
     const { cliente } = supabaseFalso();
     const avisar = vi.fn<(texto: string) => Promise<void>>(async () => {});
     const calendarioQueLanza: Calendario = {
+      ...calendarioOk,
       crearEvento: async () => {
         throw new Error("timeout de red");
       },
@@ -227,7 +232,7 @@ describe("registrarSolicitudEntrante", () => {
     const { cliente } = supabaseFalso();
     const avisar = vi.fn<(texto: string) => Promise<void>>(async () => {});
     const calendarioQueLanza: Calendario = {
-      crearEvento: calendarioOk.crearEvento,
+      ...calendarioOk,
       hayChoque: async () => {
         throw new Error("credenciales vencidas");
       },
@@ -258,6 +263,7 @@ describe("registrarSolicitudEntrante", () => {
     const { cliente } = supabaseFalso();
     const avisar = vi.fn<(texto: string) => Promise<void>>(async () => {});
     const calendarioSinMeet: Calendario = {
+      ...calendarioOk,
       crearEvento: async () => ({ eventoId: "ev-1", meetUrl: null, linkGoogle: null }),
       hayChoque: async () => false,
     };

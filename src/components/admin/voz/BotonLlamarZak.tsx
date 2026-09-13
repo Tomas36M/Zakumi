@@ -3,10 +3,12 @@
 import { useState, useTransition } from "react";
 import { Phone } from "lucide-react";
 import { llamarConZak } from "@/lib/admin/voz-actions";
+import type { EstadoVozZak } from "@/lib/admin/voz-estado";
 import { Button } from "@/components/admin/ui/Button";
 
-/** Qué tan lista está la voz de Zak — lo calcula el server (zak/page.tsx). */
-export type EstadoVozZak = "lista" | "sin_numero" | "apagada" | "sin_sincronizar" | "sin_agente";
+/** Qué tan lista está la voz de Zak — lo calcula el server con `estadoVozZak`.
+ * Re-exportado para que los consumidores viejos sigan importándolo de aquí. */
+export type { EstadoVozZak };
 
 const MOTIVO: Record<Exclude<EstadoVozZak, "lista">, string> = {
   sin_agente: "Zak no tiene voz todavía — créala en /admin/voz",

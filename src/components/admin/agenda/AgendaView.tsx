@@ -1,53 +1,73 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import type { Cita360 } from "@/lib/agenda/consultas";
+import { lunesDe, rangoSemana } from "@/lib/agenda/semana";
 import { Cockpit, CockpitBody } from "@/components/admin/ui/Cockpit";
-import { EmptyState } from "@/components/admin/ui/EmptyState";
 import { PageHeader } from "@/components/admin/ui/PageHeader";
-import type { GrupoAgenda } from "@/lib/agenda/consultas";
-import { DetalleCita } from "./DetalleCita";
-import { ListaCitas } from "./ListaCitas";
+import { useParametroUrl } from "@/components/admin/ui/useParametroUrl";
+import { NavegacionSemana } from "./Calendario/NavegacionSemana";
+import { Semana } from "./Calendario/Semana";
+import { CitaModal } from "./CitaModal";
+import { useAhora } from "./useAhora";
 
-export function AgendaView({ grupos }: { grupos: GrupoAgenda[] }) {
-  const todas = useMemo(() => grupos.flatMap((g) => g.citas), [grupos]);
+type Props = {
+  /** Las citas de la semana visible (pasadas incluidas). */
+  citas: Cita360[];
+  /** El lunes de la semana visible, "YYYY-MM-DD". */
+  lunes: string;
+  /** Hoy en Bogotá, decidido en el servidor. */
+  hoy: string;
+  ahoraIso: string;
+};
 
-  // Guardamos solo el id (patrón de ClientesView/LlamadasVoz): el panel
-  // refresca props del servidor con router.refresh() sin desmontar el
-  // árbol, así que el objeto Cita360 completo en el estado quedaría
-  // congelado con datos viejos. Derivarlo de `grupos` en cada render
-  // garantiza que, si la cita seleccionada se reagenda o cancela, nunca se
-  // siga mostrando (ni se pueda pulsar) un Meet que ya no existe.
-  const [seleccionadaId, setSeleccionadaId] = useState<string | null>(todas[0]?.id ?? null);
-  const seleccionada = useMemo(
-    () => todas.find((c) => c.id === seleccionadaId) ?? todas[0] ?? null,
-    [todas, seleccionadaId],
-  );
+/**
+ * La agenda: una semana tipo calendario con las reuniones que Zak (o la
+ * tienda) consiguió. Solo citas de Zakumi — el resto del calendario de
+ * Google no se lee. Cada cita abre su ficha (`?cita=<id>`) para moverla o
+ * cancelarla, avisándole al lead.
+ */
+export function AgendaView({ citas, lunes, hoy, ahoraIso }: Props) {
+  const router = useRouter();
+  const rango = rangoSemana(lunes, hoy);
+  const ahora = useAhora(ahoraIso);
+  const [citaId, abrirCita] = useParametroUrl("cita");
+  const citaAbierta = citaId ? (citas.find((c) => c.id === citaId) ?? null) : null;
 
   return (
     <Cockpit>
-      <PageHeader titulo="Agenda" />
-      {grupos.length === 0 ? (
-        <CockpitBody>
-          <EmptyState
-            titulo="Nada agendado."
-            detalle="Cuando Zak cierre una reunión en una llamada o un chat, aparece aquí con su link de Meet."
-          />
-        </CockpitBody>
-      ) : (
-        // El scroll vive DENTRO de cada columna, nunca en la página.
-        <div className="grid min-h-0 flex-1 gap-aire px-5 py-4 min-[900px]:grid-cols-[320px_1fr]">
-          <div className="barra-fina min-h-0 min-[900px]:overflow-y-auto">
-            <ListaCitas
-              grupos={grupos}
-              seleccionadaId={seleccionada?.id ?? null}
-              onElegir={(cita) => setSeleccionadaId(cita.id)}
-            />
-          </div>
-          <div className="barra-fina min-h-0 min-[900px]:overflow-y-auto">
-            {seleccionada && <DetalleCita cita={seleccionada} />}
-          </div>
-        </div>
-      )}
+      <PageHeader
+        titulo="Agenda"
+        coletilla="las reuniones de Zak"
+        navegacion={<NavegacionSemana rango={rango} lunesDeHoy={lunesDe(hoy)} />}
+        contador={
+          citas.length === 0 ? (
+            "sin citas esta semana"
+          ) : (
+            <>
+              <strong className="text-tinta-85">{citas.length}</strong>{" "}
+              {citas.length === 1 ? "cita" : "citas"} esta semana
+            </>
+          )
+        }
+      />
+
+      <CockpitBody>
+        <Semana
+          citas={citas}
+          rango={rango}
+          ahoraIso={ahora}
+          citaAbierta={citaId}
+          onAbrir={abrirCita}
+        />
+      </CockpitBody>
+
+      <CitaModal
+        citaId={citaId}
+        cita={citaAbierta}
+        onCerrar={() => abrirCita(null)}
+        onCambio={() => router.refresh()}
+      />
     </Cockpit>
   );
 }

@@ -6,14 +6,15 @@ import type { ResumenTerritorio, Territorio } from "@/lib/admin/territorios";
 type Props = {
   territorio: Territorio;
   /** Los números del territorio. Salen de `resumenDeTerritorio` —el mismo que
-   * pinta la lista de la izquierda— y NO de un recuento propio: dos bucles
-   * sobre `negocios` son dos sitios donde el mismo número puede equivocarse. */
+   * pinta su ficha y el grid de Territorios— y NO de un recuento propio: dos
+   * bucles sobre `negocios` son dos sitios donde el mismo número puede
+   * equivocarse. */
   resumen: ResumenTerritorio;
 };
 
 /**
- * Lo que el panel de la izquierda ya sabe de un territorio, traído encima del
- * mapa. Pasar el ratón por un área dibujada y que no dijera NADA —ni cuántos
+ * Lo que la ficha del territorio ya sabe, traído encima del mapa al pasar el
+ * ratón. Pasar el ratón por un área dibujada y que no dijera NADA —ni cuántos
  * locales hay, ni cuántos sin web— es exactamente la queja que abrió esto.
  *
  * No estima nada ni pide nada a Google: solo enseña lo que ya se barrió (y se
@@ -47,8 +48,8 @@ export function TarjetaTerritorio({ territorio, resumen }: Props) {
         <>
           <p className="mt-1 text-xs text-tinta-60">Sin barrer todavía.</p>
           <p className="mt-1 text-xs text-tinta-40">
-            Ábrelo en la lista de la izquierda y pulsa «Barrer» para llenarlo
-            con los negocios que hay dentro.
+            Tócalo para abrir su ficha y pulsa «Barrer» para llenarlo con los
+            negocios que hay dentro.
           </p>
         </>
       )}

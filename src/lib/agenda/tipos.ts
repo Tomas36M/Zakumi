@@ -1,13 +1,17 @@
 // El contrato del calendario, aparte de su implementación (google.ts) para que
-// `entrada.ts` se pueda probar sin red y para que la fase 1 funcione sin
-// Google configurado: si no hay calendario, la solicitud igual queda guardada
-// y el aviso lo dice.
+// `entrada.ts` y `citas.ts` se puedan probar sin red y para que la fase 1
+// funcione sin Google configurado: si no hay calendario, la solicitud igual
+// queda guardada y el aviso lo dice.
 
 export type EventoAgendado = {
   eventoId: string;
   meetUrl: string | null;
   linkGoogle: string | null;
 };
+
+/** Tri-estado a propósito: un 404/410 al BORRAR es éxito (ya no está) y al
+ * MOVER significa «hay que recrearlo»; un booleano perdería esa diferencia. */
+export type ResultadoGoogle = "ok" | "no_existe" | "error";
 
 export type Calendario = {
   /** null = no se pudo crear el evento (red, credenciales, respuesta rara). */
@@ -19,4 +23,12 @@ export type Calendario = {
   }): Promise<EventoAgendado | null>;
   /** Solo informa: un choque NO impide agendar (perder la cita es peor). */
   hayChoque(inicio: string, fin: string): Promise<boolean>;
+  /** Mueve un evento ya creado (PATCH de inicio y fin; los invitados reciben
+   * la actualización). */
+  actualizarEvento(
+    eventoId: string,
+    cambios: { inicio: string; fin: string },
+  ): Promise<ResultadoGoogle>;
+  /** Borra un evento (los invitados reciben la cancelación). */
+  borrarEvento(eventoId: string): Promise<ResultadoGoogle>;
 };

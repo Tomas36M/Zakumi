@@ -1,120 +1,46 @@
 "use client";
 
-import Link from "next/link";
 import { useMemo, useState, useTransition } from "react";
-import { useConfirmar } from "@/components/admin/ui/Confirmar";
 import { useRouter } from "next/navigation";
-import { Bot, MessageSquare, Trash2 } from "lucide-react";
 import { actualizarNegocio, cambiarEstadoLote, eliminarNegocios } from "@/lib/admin/actions";
-import {
-  ciudadesDe,
-  esSinWeb,
-  ESTADOS,
-  labelEstado,
-  type EstadoNegocio,
-  type Negocio,
-} from "@/lib/admin/negocios";
+import { FILTRO_VACIO, filtrarLeads, type FiltroLeads } from "@/lib/admin/filtros-leads";
+import { labelEstado, type EstadoNegocio, type Negocio } from "@/lib/admin/negocios";
 import type { Territorio } from "@/lib/admin/territorios";
-import { agruparPorVertical, contactables, linkChatZak } from "@/lib/admin/zak";
+import { agruparPorVertical, contactables } from "@/lib/admin/zak";
 import { enviarTandaZak } from "@/lib/admin/zak-actions";
 import { Banner } from "@/components/admin/ui/Banner";
-import { Button } from "@/components/admin/ui/Button";
 import { Cockpit, CockpitBody } from "@/components/admin/ui/Cockpit";
+import { useConfirmar } from "@/components/admin/ui/Confirmar";
 import { EmptyState } from "@/components/admin/ui/EmptyState";
-import { Field, Input, Select } from "@/components/admin/ui/Field";
-import { Island } from "@/components/admin/ui/Island";
-import { ListRow } from "@/components/admin/ui/ListRow";
+import { AccionesLote } from "./AccionesLote";
+import { FiltrosLeads } from "./FiltrosLeads";
+import { TablaLeads } from "./TablaLeads";
 
-// Punto de color del pipeline (clases literales: Tailwind no ve plantillas).
-const COLOR_ESTADO: Record<EstadoNegocio, string> = {
-  nuevo: "bg-estado-nuevo",
-  contactado: "bg-estado-contactado",
-  respondido: "bg-estado-respondido",
-  interesado: "bg-estado-interesado",
-  cliente: "bg-estado-cliente",
-  descartado: "bg-estado-descartado",
-};
-
-const GRID_FILA =
-  "grid grid-cols-[auto_minmax(0,3fr)_minmax(0,1fr)_minmax(0,1.4fr)_minmax(0,1.2fr)_auto_2.5rem] items-center gap-3";
-
-type FiltroTelefono = "todos" | "con" | "sin";
-type FiltroWeb = "todos" | "sin" | "con";
-
-/** El dominio del sitio (sin protocolo ni "www."): la fila necesita algo
- * corto que no rompa el grid, no la URL completa. */
-function dominioDe(url: string): string {
-  try {
-    return new URL(url).hostname.replace(/^www\./, "");
-  } catch {
-    return url;
-  }
-}
-
-/** `className` viaja al <Cockpit>: la cara Leads de /admin/prospeccion monta
- * esta vista DENTRO de otro cockpit, y dos cockpits anidados con la altura
- * fija de viewport se desbordan (vuelve el scroll de página). Ahí se le pasa
- * `min-[900px]:h-auto min-[900px]:min-h-0 min-[900px]:flex-1` para que ocupe
- * el hueco del padre en vez de una pantalla entera. */
-export function NegociosView({
-  negocios,
-  territorios = [],
-  className,
-}: {
+type Props = {
   negocios: Negocio[];
   territorios?: Territorio[];
+  /** Viaja al <Cockpit>: la cara Leads de /admin/prospeccion monta esta vista
+   * DENTRO de otro cockpit, y dos cockpits anidados con la altura fija de
+   * viewport se desbordan (vuelve el scroll de página). Ahí se le pasa
+   * `min-[900px]:h-auto min-[900px]:min-h-0 min-[900px]:flex-1`. */
   className?: string;
-}) {
+  /** Abrir la ficha de un lead (el modal lo monta el dueño de la página). */
+  onAbrirLead: (id: string) => void;
+};
+
+/** La lista de leads: filtros arriba fijos, resultados scrolleando debajo,
+ * acciones en lote sobre lo seleccionado. */
+export function NegociosView({ negocios, territorios = [], className, onAbrirLead }: Props) {
   const router = useRouter();
   const [guardando, startGuardar] = useTransition();
-  const [q, setQ] = useState("");
-  const [ciudad, setCiudad] = useState<string | "todas">("todas");
-  const [estado, setEstado] = useState<EstadoNegocio | "todos">("todos");
-  const [categoria, setCategoria] = useState<string>("todas");
-  const [telefono, setTelefono] = useState<FiltroTelefono>("todos");
-  // "Sin web" es la señal de lead: es a quien le vendemos marca y sitio.
-  const [web, setWeb] = useState<FiltroWeb>("todos");
-  const [territorio, setTerritorio] = useState<string | "todos">("todos");
-  const [seleccionados, setSeleccionados] = useState<ReadonlySet<string>>(
-    new Set(),
-  );
+  const [filtro, setFiltro] = useState<FiltroLeads>(FILTRO_VACIO);
+  const [seleccionados, setSeleccionados] = useState<ReadonlySet<string>>(new Set());
   const [estadoLote, setEstadoLote] = useState<EstadoNegocio>("contactado");
   const [aviso, setAviso] = useState<string | null>(null);
   const { confirmar, dialogo } = useConfirmar();
 
-  const categorias = useMemo(() => {
-    const set = new Set<string>();
-    for (const n of negocios) if (n.categoria) set.add(n.categoria);
-    return [...set].sort();
-  }, [negocios]);
-
-  const ciudades = useMemo(() => ciudadesDe(negocios), [negocios]);
-
-  const territoriosOrdenados = useMemo(
-    () => [...territorios].sort((a, b) => a.nombre.localeCompare(b.nombre, "es")),
-    [territorios],
-  );
-
-  const filtrados = useMemo(() => {
-    const texto = q.trim().toLowerCase();
-    return negocios.filter((n) => {
-      if (ciudad !== "todas" && n.ciudad !== ciudad) return false;
-      if (estado !== "todos" && n.estado !== estado) return false;
-      if (categoria !== "todas" && n.categoria !== categoria) return false;
-      if (telefono === "con" && n.telefono === null) return false;
-      if (telefono === "sin" && n.telefono !== null) return false;
-      if (web === "sin" && !esSinWeb(n)) return false;
-      if (web === "con" && esSinWeb(n)) return false;
-      if (territorio !== "todos" && n.territorio_id !== territorio) return false;
-      if (texto && !n.nombre.toLowerCase().includes(texto)) return false;
-      return true;
-    });
-  }, [negocios, q, ciudad, estado, categoria, telefono, web, territorio]);
-
-  const idsFiltrados = useMemo(
-    () => new Set(filtrados.map((n) => n.id)),
-    [filtrados],
-  );
+  const filtrados = useMemo(() => filtrarLeads(negocios, filtro), [negocios, filtro]);
+  const idsFiltrados = useMemo(() => new Set(filtrados.map((n) => n.id)), [filtrados]);
   const seleccionActiva = [...seleccionados].filter((id) => idsFiltrados.has(id));
   const seleccionSet = new Set(seleccionActiva);
   const contactablesZak = contactables(filtrados.filter((n) => seleccionSet.has(n.id)));
@@ -208,150 +134,42 @@ export function NegociosView({
     });
   }
 
+  function cambiarEstado(id: string, estado: EstadoNegocio) {
+    startGuardar(async () => {
+      await actualizarNegocio(id, { estado });
+      router.refresh();
+    });
+  }
+
   return (
     <Cockpit className={className}>
       {dialogo}
       {/* El buscador se queda fijo arriba; los resultados scrollean debajo. */}
       <div className="shrink-0 px-5 pt-4">
-        <Island role="search" className="p-5">
-          <div className="flex flex-col gap-4">
-            <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
-              <Input
-                type="search"
-                className="h-12 min-w-64 flex-1 px-5 text-base"
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                placeholder="Buscar negocio por nombre — El Tornillo…"
-                aria-label="Buscar por nombre"
-              />
-              <p className="whitespace-nowrap">
-                <span className="font-editorial text-3xl italic text-tinta">
-                  {filtrados.length}
-                </span>
-                <span className="text-sm text-tinta-40"> de {negocios.length} negocios</span>
-              </p>
-            </div>
-            <div className="grid grid-cols-2 gap-3 min-[900px]:grid-cols-3">
-              <Field label="Ciudad">
-                <Select value={ciudad} onChange={(e) => setCiudad(e.target.value)}>
-                  <option value="todas">Todas</option>
-                  {ciudades.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-              <Field label="Estado">
-                <Select
-                  value={estado}
-                  onChange={(e) =>
-                    setEstado(e.target.value as EstadoNegocio | "todos")
-                  }
-                >
-                  <option value="todos">Todos</option>
-                  {ESTADOS.map((e) => (
-                    <option key={e.valor} value={e.valor}>
-                      {e.label}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-              <Field label="Categoría">
-                <Select
-                  value={categoria}
-                  onChange={(e) => setCategoria(e.target.value)}
-                >
-                  <option value="todas">Todas</option>
-                  {categorias.map((c) => (
-                    <option key={c} value={c}>
-                      {c.replaceAll("_", " ")}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-              <Field label="Teléfono">
-                <Select
-                  value={telefono}
-                  onChange={(e) => setTelefono(e.target.value as FiltroTelefono)}
-                >
-                  <option value="todos">Todos</option>
-                  <option value="con">Con teléfono</option>
-                  <option value="sin">Sin teléfono</option>
-                </Select>
-              </Field>
-              <Field label="Sitio web">
-                <Select
-                  value={web}
-                  onChange={(e) => setWeb(e.target.value as FiltroWeb)}
-                >
-                  <option value="todos">Todos</option>
-                  <option value="sin">Sin web</option>
-                  <option value="con">Con web</option>
-                </Select>
-              </Field>
-              <Field label="Territorio">
-                <Select
-                  value={territorio}
-                  onChange={(e) => setTerritorio(e.target.value)}
-                >
-                  <option value="todos">Todos</option>
-                  {territoriosOrdenados.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.nombre}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-            </div>
-          </div>
-        </Island>
+        <FiltrosLeads
+          filtro={filtro}
+          onCambiar={setFiltro}
+          negocios={negocios}
+          territorios={territorios}
+          visibles={filtrados.length}
+        />
       </div>
 
       <CockpitBody>
-        {seleccionActiva.length > 0 ? (
-          <div className="flex flex-wrap items-center gap-3 rounded-fila bg-isla-alta px-4 py-2.5">
-            <span className="text-sm text-tinta">
-              <strong>{seleccionActiva.length}</strong> seleccionados
-            </span>
-            <label className="flex items-center gap-2 text-xs font-medium text-tinta-60">
-              Pasar a
-              <span className="w-40">
-                <Select
-                  className="bg-isla"
-                  value={estadoLote}
-                  onChange={(e) => setEstadoLote(e.target.value as EstadoNegocio)}
-                >
-                  {ESTADOS.map((e) => (
-                    <option key={e.valor} value={e.valor}>
-                      {e.label}
-                    </option>
-                  ))}
-                </Select>
-              </span>
-            </label>
-            <Button disabled={guardando} onClick={aplicarLote}>
-              {guardando ? "Aplicando…" : `Aplicar a ${seleccionActiva.length}`}
-            </Button>
-            <Button
-              variante="primaria"
-              disabled={guardando || contactablesZak.length === 0}
-              title={
-                contactablesZak.length === 0
-                  ? "Ninguno de los seleccionados tiene celular contactable"
-                  : undefined
-              }
-              onClick={() => void contactarConZak()}
-            >
-              <Bot className="h-4 w-4" /> Que Zak los contacte ({contactablesZak.length})
-            </Button>
-            <Button variante="peligro" disabled={guardando} onClick={() => void eliminarLote()}>
-              <Trash2 className="h-4 w-4" /> Eliminar ({seleccionActiva.length})
-            </Button>
-          </div>
-        ) : null}
+        {seleccionActiva.length > 0 && (
+          <AccionesLote
+            cantidad={seleccionActiva.length}
+            contactables={contactablesZak.length}
+            guardando={guardando}
+            estadoLote={estadoLote}
+            onEstadoLote={setEstadoLote}
+            onAplicar={aplicarLote}
+            onContactar={() => void contactarConZak()}
+            onEliminar={() => void eliminarLote()}
+          />
+        )}
 
-        {aviso ? <Banner>{aviso}</Banner> : null}
+        {aviso && <Banner>{aviso}</Banner>}
 
         {negocios.length === 0 ? (
           <EmptyState
@@ -361,136 +179,15 @@ export function NegociosView({
         ) : filtrados.length === 0 ? (
           <EmptyState titulo="Ningún negocio coincide con esos filtros." />
         ) : (
-          <div className="barra-fina overflow-x-auto">
-            <div className="flex min-w-[780px] flex-col gap-1">
-              <div
-                className={`${GRID_FILA} px-3 py-2 text-[11px] font-medium uppercase tracking-[0.12em] text-tinta-40`}
-              >
-                <input
-                  type="checkbox"
-                  className="accent-acento"
-                  aria-label="Seleccionar todos los filtrados"
-                  checked={
-                    filtrados.length > 0 &&
-                    seleccionActiva.length === filtrados.length
-                  }
-                  onChange={alternarTodos}
-                />
-                <span>Negocio</span>
-                <span>Ciudad</span>
-                <span>Teléfono</span>
-                <span>Sitio web</span>
-                <span>Estado</span>
-                <span aria-label="Acciones" />
-              </div>
-              {filtrados.map((n) => {
-                const link = linkChatZak(n);
-                return (
-                  <ListRow
-                    key={n.id}
-                    interactiva={link !== null}
-                    activa={seleccionados.has(n.id)}
-                    className={`${GRID_FILA} py-3.5`}
-                    // Conveniencia de mouse: la fila navega, pero cede ante los
-                    // controles (checkbox/select/link) y ante una selección de
-                    // texto (copiar el teléfono no debe botarte al chat). El
-                    // link accesible/real es el ícono del final de la fila.
-                    onClick={
-                      link === null
-                        ? undefined
-                        : (e) => {
-                            const objetivo = e.target as HTMLElement;
-                            if (objetivo.closest("a, input, select, label, button")) return;
-                            if (window.getSelection()?.toString()) return;
-                            router.push(link);
-                          }
-                    }
-                  >
-                    <input
-                      type="checkbox"
-                      className="accent-acento"
-                      aria-label={`Seleccionar ${n.nombre}`}
-                      checked={seleccionados.has(n.id)}
-                      onChange={() => alternar(n.id)}
-                    />
-                    <span className="min-w-0">
-                      <span className="block truncate text-[15px] font-medium text-tinta">
-                        {n.nombre}
-                      </span>
-                      {n.categoria ? (
-                        <span className="block truncate text-xs text-tinta-40">
-                          {n.categoria.replaceAll("_", " ")}
-                        </span>
-                      ) : null}
-                    </span>
-                    <span className="truncate text-sm text-tinta-60">
-                      {n.ciudad ?? <span className="text-tinta-40">—</span>}
-                    </span>
-                    <span className="text-sm tabular-nums text-tinta-60">
-                      {n.telefono ?? <span className="text-tinta-40">—</span>}
-                      {n.tipo_telefono === "fijo" ? (
-                        <span className="text-xs text-tinta-40"> fijo</span>
-                      ) : null}
-                    </span>
-                    <span className="min-w-0 truncate text-sm">
-                      {n.sitio_web ? (
-                        <a
-                          href={n.sitio_web}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="truncate text-tinta-60 underline-offset-2 hover:text-tinta hover:underline"
-                        >
-                          {dominioDe(n.sitio_web)}
-                        </a>
-                      ) : (
-                        // Es la señal que se está buscando, no un dato
-                        // secundario: se marca con el acento.
-                        <span className="font-medium text-acento">Sin web</span>
-                      )}
-                    </span>
-                    <label className="flex items-center gap-1.5">
-                      <span
-                        aria-hidden
-                        className={`h-2 w-2 shrink-0 rounded-full ${COLOR_ESTADO[n.estado]}`}
-                      />
-                      <Select
-                        className="h-8 w-36 text-xs"
-                        value={n.estado}
-                        aria-label={`Estado de ${n.nombre}`}
-                        disabled={guardando}
-                        onChange={(e) => {
-                          startGuardar(async () => {
-                            await actualizarNegocio(n.id, {
-                              estado: e.target.value as EstadoNegocio,
-                            });
-                            router.refresh();
-                          });
-                        }}
-                      >
-                        {ESTADOS.map((e) => (
-                          <option key={e.valor} value={e.valor}>
-                            {e.label}
-                          </option>
-                        ))}
-                      </Select>
-                    </label>
-                    <span className="flex justify-end">
-                      {link !== null ? (
-                        <Link
-                          title="Chat Zak"
-                          aria-label={`Chat de Zak con ${n.nombre}`}
-                          href={link}
-                          className="inline-flex h-9 w-9 items-center justify-center rounded-full text-tinta-60 transition-colors hover:bg-isla-alta hover:text-tinta"
-                        >
-                          <MessageSquare className="h-4 w-4" />
-                        </Link>
-                      ) : null}
-                    </span>
-                  </ListRow>
-                );
-              })}
-            </div>
-          </div>
+          <TablaLeads
+            negocios={filtrados}
+            seleccionados={seleccionados}
+            guardando={guardando}
+            onAlternar={alternar}
+            onAlternarTodos={alternarTodos}
+            onEstado={cambiarEstado}
+            onAbrir={onAbrirLead}
+          />
         )}
       </CockpitBody>
     </Cockpit>

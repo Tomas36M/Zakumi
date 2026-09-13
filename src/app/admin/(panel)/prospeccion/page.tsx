@@ -2,19 +2,21 @@ import { ProspeccionView } from "@/components/admin/prospeccion/ProspeccionView"
 import { verifySession } from "@/lib/admin/dal";
 import { TOPE_LEADS, type Negocio } from "@/lib/admin/negocios";
 import { consultasDelMes, type Territorio } from "@/lib/admin/territorios";
+import { agenteZakVoz } from "@/lib/admin/voz";
+import { estadoVozZak } from "@/lib/admin/voz-estado";
 
 export const metadata = { title: "Encontrar clientes" };
 
 export default async function ProspeccionPage({
   searchParams,
 }: {
-  searchParams: Promise<{ tab?: string }>;
+  searchParams: Promise<{ tab?: string; territorio?: string }>;
 }) {
   // Next 16: los layouts NO se re-renderizan — el check va en CADA page.
   const { supabase } = await verifySession();
-  const { tab } = await searchParams;
+  const { tab, territorio } = await searchParams;
 
-  const [negocios, cuenta, territorios, consultasMes] = await Promise.all([
+  const [negocios, cuenta, territorios, consultasMes, zakVoz] = await Promise.all([
     supabase
       .from("negocios")
       .select("*")
@@ -26,6 +28,9 @@ export default async function ProspeccionPage({
     // diálogo de barrer, que no puede afirmar cuota gratis sobre un dato que
     // no tiene.
     consultasDelMes(supabase),
+    // La voz de Zak para «Llamar con IA» desde la ficha de un lead: una
+    // consulta a agentes_voz, sin tocar ElevenLabs.
+    agenteZakVoz(supabase),
   ]);
 
   // El detalle del error va al log del servidor; a la vista solo baja el hecho
@@ -49,6 +54,10 @@ export default async function ProspeccionPage({
       fallaNegocios={negocios.error !== null}
       fallaTerritorios={territorios.error !== null}
       consultasMes={consultasMes}
+      vozZak={estadoVozZak(zakVoz, Boolean(process.env.ELEVENLABS_PHONE_NUMBER_ID))}
+      // Deep-link desde la página Territorios («Ver en el mapa» / «Barrer»):
+      // abre la ficha del territorio y encuadra el mapa en él.
+      territorioInicial={territorio ?? null}
     />
   );
 }
