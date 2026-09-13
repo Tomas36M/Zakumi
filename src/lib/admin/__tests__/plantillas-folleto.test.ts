@@ -1,10 +1,25 @@
 import { describe, expect, it } from "vitest";
 import {
   FOLLETO_MAX_BYTES,
+  hayCambiosParaMeta,
   rutaFolleto,
   rutaFolletoValida,
   validarFolleto,
 } from "../plantillas";
+
+describe("hayCambiosParaMeta", () => {
+  const vigente = { texto_vigente: "Hola 👋", folleto_url_vigente: "https://x/a.png" };
+
+  it("sin cambios de texto ni de folleto no hay nada que mandar", () => {
+    expect(hayCambiosParaMeta(vigente, "Hola 👋", "https://x/a.png")).toBe(false);
+    expect(hayCambiosParaMeta(vigente, "  Hola 👋  ", "https://x/a.png")).toBe(false);
+  });
+
+  it("basta con que cambie el texto O el folleto", () => {
+    expect(hayCambiosParaMeta(vigente, "Hola, soy Zak", "https://x/a.png")).toBe(true);
+    expect(hayCambiosParaMeta(vigente, "Hola 👋", "https://x/b.jpg")).toBe(true);
+  });
+});
 
 describe("validarFolleto", () => {
   it("acepta PNG y JPG de hasta 5 MB", () => {

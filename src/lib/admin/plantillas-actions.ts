@@ -11,6 +11,7 @@ import {
   BUCKET_FOLLETOS,
   conciliarPlantillas,
   edicionesRestantes,
+  hayCambiosParaMeta,
   rutaFolletoValida,
   validarCuerpo,
   type PlantillaZakFila,
@@ -94,13 +95,19 @@ export async function anotarFolletoBorrador(
 }
 
 /**
- * Manda la edición a aprobación de Meta (vía el bot). El texto/folleto que
- * viajan son los del borrador con fallback a los vigentes. Mientras Meta
- * revisa, el envío de saludos sigue usando la versión aprobada — pero la
- * plantilla puede fallar si se usa: el selector la deshabilita.
+ * Manda la edición a aprobación de Meta (vía el bot). El texto que viaja es
+ * `texto` (lo que está en el cuadro de texto AHORA, que se guarda como
+ * borrador en el mismo paso) o, si no llega, el borrador guardado con
+ * fallback al vigente; el folleto, el borrador con fallback al vigente.
+ * Mientras Meta revisa, el envío de saludos sigue usando la versión aprobada
+ * — pero la plantilla puede fallar si se usa: el selector la deshabilita.
+ *
+ * Se niega a mandar una edición sin cambios: Meta la acepta «sin cambios»
+ * (sigue APPROVED) pero la cuenta igual en su límite de 1 cada 24 h.
  */
 export async function enviarARevisionPlantilla(
   slug: string,
+  texto?: string,
 ): Promise<{ ok: true } | { error: string }> {
   const { supabase } = await verifySession();
 
@@ -110,10 +117,20 @@ export async function enviarARevisionPlantilla(
   const limites = edicionesRestantes(fila.envios_revision, Date.now());
   if (!limites.puedeEnviar) return { error: limites.motivo ?? "Límite de ediciones." };
 
-  const cuerpo = (fila.texto_borrador ?? fila.texto_vigente).trim();
+  const cuerpo = (
+    typeof texto === "string" && texto.trim() !== ""
+      ? texto
+      : (fila.texto_borrador ?? fila.texto_vigente)
+  ).trim();
   const invalido = validarCuerpo(cuerpo);
   if (invalido) return { error: invalido };
   const folletoUrl = fila.folleto_url_borrador ?? fila.folleto_url_vigente;
+  if (!hayCambiosParaMeta(fila, cuerpo, folletoUrl)) {
+    return {
+      error:
+        "No hay cambios que mandar: el texto y el folleto son los mismos que ya están aprobados.",
+    };
+  }
 
   const r = await editarPlantillaMeta(ID_ZAK, fila.plantilla, {
     cuerpo,

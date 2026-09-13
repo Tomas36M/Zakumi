@@ -157,10 +157,13 @@ export function PlantillasZak({ filas: filasIniciales }: Props) {
     });
   }
 
+  // Lo que está en el cuadro de texto es lo que el usuario cree que manda: la
+  // action lo guarda como borrador en el mismo paso. Antes había que pulsar
+  // «Guardar borrador» primero y, si no, se mandaba el texto viejo de la base.
   function enviarAMeta(slug: string) {
     setErrorAviso(null);
     startOperar(async () => {
-      const r = await enviarARevisionPlantilla(slug);
+      const r = await enviarARevisionPlantilla(slug, textoEdit);
       if ("error" in r) {
         setErrorAviso(r.error);
         return;
