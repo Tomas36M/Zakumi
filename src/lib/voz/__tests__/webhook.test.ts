@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseEventoPostCall } from "../webhook";
+import { parseEventoPostCall, hayIntencion } from "../webhook";
 
 /** Evento post_call_transcription con el shape de los fixtures de la doc
  * oficial (los mismos que usa Luci). */
@@ -184,5 +184,53 @@ describe("parseEventoPostCall — fixture de agente de CLIENTE (no cambió nada)
       "lead_interesado",
       "lead_detalle",
     ]);
+  });
+});
+
+describe("hayIntencion — cuándo una llamada de Zak se vuelve solicitud", () => {
+  it("decir solo el nombre y colgar NO es una solicitud (la llamada del 12 sep)", () => {
+    expect(
+      hayIntencion({
+        lead_nombre: "Tomás",
+        lead_telefono: null,
+        lead_detalle: null,
+        lead_interesado: null,
+        servicio_interes: null,
+        mejor_horario: null,
+        cita_fecha_hora: null,
+        cita_confirmada: null,
+      }),
+    ).toBe(false);
+  });
+
+  it("nombre, teléfono y un detalle suelto tampoco bastan", () => {
+    expect(
+      hayIntencion({
+        lead_nombre: "Ana",
+        lead_telefono: "+573001112233",
+        lead_detalle: "preguntó qué es Zakumi",
+      }),
+    ).toBe(false);
+  });
+
+  it("interés explícito sí", () => {
+    expect(hayIntencion({ lead_nombre: "Ana", lead_interesado: true })).toBe(true);
+  });
+
+  it("nombrar un servicio sí", () => {
+    expect(hayIntencion({ servicio_interes: "página web" })).toBe(true);
+  });
+
+  it("dar un horario o una cita (aunque sea vaga) sí", () => {
+    expect(hayIntencion({ mejor_horario: "mañana en la tarde" })).toBe(true);
+    expect(hayIntencion({ cita_fecha_hora: "el jueves por la tarde" })).toBe(true);
+    expect(hayIntencion({ cita_fecha_hora: "2026-09-15T10:00" })).toBe(true);
+  });
+
+  it("cadenas vacías, false y basura no cuentan", () => {
+    expect(hayIntencion({ servicio_interes: "", mejor_horario: "   ", lead_interesado: false })).toBe(false);
+    expect(hayIntencion({ lead_interesado: "true", cita_fecha_hora: 42 })).toBe(false);
+    expect(hayIntencion({})).toBe(false);
+    expect(hayIntencion(undefined)).toBe(false);
   });
 });

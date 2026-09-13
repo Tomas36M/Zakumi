@@ -137,3 +137,24 @@ export function parseEventoPostCall(json: unknown): EventoParseado {
 
   return { tipo: "llamada", params, esPrueba: params.p_direccion === "prueba" };
 }
+
+/**
+ * Una llamada de Zak se vuelve solicitud SOLO si hubo intención: la persona
+ * mostró interés explícito, nombró un servicio, o dio un horario o una cita
+ * (aunque sea vaga: «el jueves por la tarde» también es querer hablar).
+ * Nombre, teléfono o un detalle suelto NO bastan: el 12 sep una llamada de
+ * 21 s en la que la persona dijo su nombre y colgó llenó la bandeja y mandó
+ * WhatsApp a los dos. Lo que no llega a solicitud queda igual en
+ * llamadas_voz.datos, visible en el historial de llamadas.
+ */
+export function hayIntencion(datos: unknown): boolean {
+  if (typeof datos !== "object" || datos === null) return false;
+  const d = datos as Record<string, unknown>;
+  const lleno = (v: unknown) => typeof v === "string" && v.trim() !== "";
+  return (
+    d.lead_interesado === true ||
+    lleno(d.servicio_interes) ||
+    lleno(d.mejor_horario) ||
+    lleno(d.cita_fecha_hora)
+  );
+}

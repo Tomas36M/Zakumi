@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { verificarFirma } from "@/lib/voz/hmac";
-import { parseEventoPostCall } from "@/lib/voz/webhook";
+import { parseEventoPostCall, hayIntencion } from "@/lib/voz/webhook";
 import { createSupabaseService } from "@/lib/voz/supabase-service";
 import { avisarAdmin } from "@/lib/portal/avisos";
 import { registrarSolicitudEntrante } from "@/lib/solicitudes/entrada";
@@ -77,18 +77,13 @@ export async function POST(request: Request) {
   const dir = evento.params.p_direccion;
   const texto = (v: unknown) => (typeof v === "string" && v !== "" ? v : null);
 
-  const hayDatosLead =
-    texto(d.lead_nombre) !== null ||
-    texto(d.lead_telefono) !== null ||
-    texto(d.lead_detalle) !== null ||
-    texto(d.servicio_interes) !== null ||
-    d.lead_interesado === true;
-
   if (r.status === "ok" && dir !== "prueba") {
     // '' del extractor no es un teléfono: cae al número marcado del evento.
     const telLead = texto(d.lead_telefono) ?? evento.params.p_telefono;
 
-    if (r.sin_cliente === true && hayDatosLead && (dir === "saliente" || dir === "entrante")) {
+    // Solo con intención (interés, servicio, horario o cita — ver hayIntencion):
+    // un nombre suelto y colgar no es una solicitud.
+    if (r.sin_cliente === true && hayIntencion(d) && (dir === "saliente" || dir === "entrante")) {
       // La propia RPC devuelve el id de la fila que acaba de insertar en
       // llamadas_voz (v_llamada_id) — no hace falta ir a buscarlo aparte.
       await registrarSolicitudEntrante(supabase, {
