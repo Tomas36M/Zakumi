@@ -126,6 +126,20 @@ export function rutaFolletoValida(slug: string, ruta: string): boolean {
   return new RegExp(`^${slug}/\\d{10,16}\\.(png|jpg)$`).test(ruta);
 }
 
+/**
+ * ¿Hay algo distinto de lo ya aprobado? Meta acepta una edición idéntica
+ * como «sin cambios» (la plantilla sigue APPROVED) pero igual la cuenta en
+ * sus límites (1 cada 24 h, 10 al mes). Pasó el 13 sep 2026: se mandó el
+ * texto viejo y el cupo del día se perdió.
+ */
+export function hayCambiosParaMeta(
+  fila: Pick<PlantillaZakFila, "texto_vigente" | "folleto_url_vigente">,
+  cuerpo: string,
+  folletoUrl: string,
+): boolean {
+  return cuerpo.trim() !== fila.texto_vigente.trim() || folletoUrl !== fila.folleto_url_vigente;
+}
+
 /** Validación del cuerpo antes de mandarlo a Meta. Null = válido. */
 export function validarCuerpo(textoCuerpo: string): string | null {
   const t = textoCuerpo.trim();
