@@ -3,6 +3,8 @@
 // con RLS que el cliente crea en 'nueva' y no muta nada después.
 
 import type { Ciclo } from "@/lib/admin/cartera";
+import { normalizarTelefonoCO } from "@/lib/admin/telefono";
+import { servicioDelSlug, SLUG_POR_DEFINIR } from "@/lib/catalogo";
 
 export type EstadoSolicitud =
   | "nueva"
@@ -94,4 +96,74 @@ export const ESTADOS_EN_CURSO: readonly EstadoSolicitud[] = [
 
 export function labelEstado(estado: EstadoSolicitud): string {
   return ESTADOS_SOLICITUD.find((e) => e.valor === estado)?.label ?? estado;
+}
+
+/** Lo que el panel puede editar de una solicitud a mano. */
+export type CambiosSolicitud = {
+  contacto_nombre?: string | null;
+  contacto_telefono?: string | null;
+  contacto_email?: string | null;
+  servicio_slug?: string;
+  mensaje?: string | null;
+};
+
+const TOPE_NOMBRE = 200;
+const TOPE_EMAIL = 200;
+const TOPE_MENSAJE = 2000;
+
+function texto(v: string | null | undefined, tope: number): string | null {
+  const t = (v ?? "").trim();
+  return t === "" ? null : t.slice(0, tope);
+}
+
+/**
+ * Whitelist y validación de `actualizarSolicitud`, pura para probarla:
+ * - el teléfono se normaliza (la columna no tiene CHECK de formato) y NO
+ *   puede quedar vacío en una solicitud sin cuenta del portal
+ *   (`solicitudes_identifica_chk`: cuenta o teléfono, uno de los dos);
+ * - el servicio tiene que existir en el catálogo (o ser «por definir») y
+ *   no se cambia cuando ya hay un producto contratado con él.
+ */
+export function validarCambiosSolicitud(
+  cambios: CambiosSolicitud,
+  sol: Pick<Solicitud, "user_id" | "producto_id">,
+): { fila: Record<string, unknown> } | { error: string } {
+  const fila: Record<string, unknown> = {};
+
+  if ("contacto_nombre" in cambios) fila.contacto_nombre = texto(cambios.contacto_nombre, TOPE_NOMBRE);
+
+  if ("contacto_telefono" in cambios) {
+    const bruto = texto(cambios.contacto_telefono, 40);
+    if (bruto === null) {
+      if (sol.user_id === null) {
+        return { error: "Una solicitud de llamada o WhatsApp necesita teléfono de contacto." };
+      }
+      fila.contacto_telefono = null;
+    } else {
+      const { telefono } = normalizarTelefonoCO(bruto);
+      if (telefono === null) return { error: "Ese teléfono no se entiende. Usa 10 dígitos o +57…" };
+      fila.contacto_telefono = telefono;
+    }
+  }
+
+  if ("contacto_email" in cambios) {
+    const email = texto(cambios.contacto_email, TOPE_EMAIL);
+    if (email !== null && !email.includes("@")) return { error: "Ese correo no se entiende." };
+    fila.contacto_email = email;
+  }
+
+  if ("servicio_slug" in cambios) {
+    const slug = (cambios.servicio_slug ?? "").trim();
+    if (slug !== SLUG_POR_DEFINIR && !servicioDelSlug(slug)) {
+      return { error: "Ese servicio no está en el catálogo." };
+    }
+    if (sol.producto_id) {
+      return { error: "Ya tiene un producto contratado: el servicio no se cambia." };
+    }
+    fila.servicio_slug = slug;
+  }
+
+  if ("mensaje" in cambios) fila.mensaje = texto(cambios.mensaje, TOPE_MENSAJE);
+
+  return { fila };
 }

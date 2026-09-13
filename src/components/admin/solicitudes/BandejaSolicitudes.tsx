@@ -1,401 +1,88 @@
 "use client";
 
-import Link from "next/link";
-import { useState, useTransition } from "react";
-import { useConfirmar } from "@/components/admin/ui/Confirmar";
-import { CICLOS, formatearCOP, type Ciclo } from "@/lib/admin/cartera";
-import {
-  activarSolicitud,
-  cotizarSolicitud,
-  marcarLinkEnviado,
-  rechazarSolicitud,
-} from "@/lib/admin/solicitudes-actions";
-import { servicioDelSlug } from "@/lib/catalogo";
-import { fechaLegible } from "@/lib/solicitudes/mensaje";
-import {
-  esTerminal,
-  labelEstado,
-  type EstadoSolicitud,
-  type OrigenSolicitud,
-  type Solicitud,
-} from "@/lib/portal/solicitudes";
-import { Badge, type TonoBadge } from "@/components/admin/ui/Badge";
-import { Banner } from "@/components/admin/ui/Banner";
-import { Button } from "@/components/admin/ui/Button";
+import { useRouter } from "next/navigation";
+import { esTerminal, type Solicitud } from "@/lib/portal/solicitudes";
 import { EmptyState } from "@/components/admin/ui/EmptyState";
-import { Field, Input, Select } from "@/components/admin/ui/Field";
-import { Island } from "@/components/admin/ui/Island";
+import { GridCards } from "@/components/admin/ui/GridCards";
+import { useParametroUrl } from "@/components/admin/ui/useParametroUrl";
+import { SolicitudModal } from "./SolicitudModal";
+import { TarjetaSolicitud } from "./TarjetaSolicitud";
+import type { PerfilResumen } from "./solicitud-ui";
 
-export type PerfilResumen = {
-  email: string | null;
-  nombre: string | null;
-  clienteId: string | null;
-};
-
-// El funnel de venta reusa la paleta del pipeline del CRM.
-const TONO_SOLICITUD: Record<EstadoSolicitud, TonoBadge> = {
-  nueva: "nuevo",
-  cotizada: "contactado",
-  link_enviado: "respondido",
-  pagada: "interesado",
-  activa: "cliente",
-  rechazada: "descartado",
-};
-
-// Solo las solicitudes que NO vienen del portal necesitan decir por dónde
-// entraron — las del portal ya se identifican por tener perfil.
-const CANAL_SOLICITUD: Record<
-  Exclude<OrigenSolicitud, "portal">,
-  { label: string; tono: TonoBadge }
-> = {
-  voz: { label: "Llamada", tono: "contactado" },
-  whatsapp: { label: "WhatsApp", tono: "respondido" },
-};
+export type { PerfilResumen } from "./solicitud-ui";
 
 type Props = {
   solicitudes: Solicitud[];
   perfiles: Record<string, PerfilResumen>;
+  /** A qué número avisar un cambio de cita, por solicitud (E.164 o null). */
+  telefonosAviso: Record<string, string | null>;
 };
 
-export function BandejaSolicitudes({ solicitudes, perfiles }: Props) {
+/** La bandeja: las abiertas en un grid, las cerradas recientes debajo, y
+ * una sola ficha (modal, `?solicitud=<id>`) para trabajar cada una. */
+export function BandejaSolicitudes({ solicitudes, perfiles, telefonosAviso }: Props) {
+  const router = useRouter();
+  const [solicitudId, abrir] = useParametroUrl("solicitud");
   const abiertas = solicitudes.filter((s) => !esTerminal(s.estado));
   const cerradas = solicitudes.filter((s) => esTerminal(s.estado)).slice(0, 20);
+  const abierta = solicitudId ? (solicitudes.find((s) => s.id === solicitudId) ?? null) : null;
 
-  if (solicitudes.length === 0) {
-    return (
-      <EmptyState
-        titulo="Nada por ahora."
-        detalle="Cuando alguien pida un servicio —en la tienda, por llamada o por WhatsApp— aparece aquí y te llega el aviso."
-      />
-    );
-  }
+  const perfilDe = (s: Solicitud) => (s.user_id ? perfiles[s.user_id] : undefined);
 
   return (
     <>
-      <div className="flex flex-col gap-aire">
-        {abiertas.length === 0 ? (
-          <p className="text-sm text-tinta-40">Sin solicitudes por atender.</p>
-        ) : (
-          abiertas.map((s) => (
-            <TarjetaSolicitud
-              key={s.id}
-              solicitud={s}
-              perfil={s.user_id ? perfiles[s.user_id] : undefined}
-            />
-          ))
-        )}
-      </div>
-
-      {cerradas.length > 0 && (
+      {solicitudes.length === 0 ? (
+        <EmptyState
+          titulo="Nada por ahora."
+          detalle="Cuando alguien pida un servicio —en la tienda, por llamada o por WhatsApp— aparece aquí y te llega el aviso."
+        />
+      ) : (
         <>
-          <h2 className="mt-6 mb-3 text-xs font-semibold tracking-wide text-tinta-60 uppercase">
-            Cerradas recientes
-          </h2>
-          <div className="flex flex-col gap-aire">
-            {cerradas.map((s) => (
-              <TarjetaSolicitud
-                key={s.id}
-                solicitud={s}
-                perfil={s.user_id ? perfiles[s.user_id] : undefined}
-              />
-            ))}
-          </div>
+          {abiertas.length === 0 ? (
+            <p className="text-sm text-tinta-40">Sin solicitudes por atender.</p>
+          ) : (
+            <GridCards>
+              {abiertas.map((s) => (
+                <TarjetaSolicitud
+                  key={s.id}
+                  solicitud={s}
+                  perfil={perfilDe(s)}
+                  activa={s.id === solicitudId}
+                  onAbrir={abrir}
+                />
+              ))}
+            </GridCards>
+          )}
+
+          {cerradas.length > 0 && (
+            <>
+              <h2 className="mt-4 text-xs font-semibold tracking-wide text-tinta-60 uppercase">
+                Cerradas recientes
+              </h2>
+              <GridCards>
+                {cerradas.map((s) => (
+                  <TarjetaSolicitud
+                    key={s.id}
+                    solicitud={s}
+                    perfil={perfilDe(s)}
+                    activa={s.id === solicitudId}
+                    onAbrir={abrir}
+                  />
+                ))}
+              </GridCards>
+            </>
+          )}
         </>
       )}
-    </>
-  );
-}
 
-function fechaCorta(iso: string): string {
-  return new Intl.DateTimeFormat("es-CO", {
-    day: "numeric",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone: "America/Bogota",
-  }).format(new Date(iso));
-}
-
-function TarjetaSolicitud({
-  solicitud: s,
-  perfil,
-}: {
-  solicitud: Solicitud;
-  perfil: PerfilResumen | undefined;
-}) {
-  const [error, setError] = useState<string | null>(null);
-  const [ocupado, startTransition] = useTransition();
-  const { confirmar, dialogo } = useConfirmar();
-  const servicio = servicioDelSlug(s.servicio_slug);
-  // Solo las del portal tienen perfil que buscar; el resto trae su propio
-  // contacto (quien llamó o escribió, no quien tiene cuenta).
-  const quien =
-    s.origen === "portal"
-      ? perfil?.nombre || perfil?.email || "sin perfil"
-      : [s.contacto_nombre, s.contacto_telefono].filter(Boolean).join(" · ") ||
-        "sin contacto";
-
-  function correr(accion: () => Promise<{ error: string | null }>) {
-    setError(null);
-    startTransition(async () => {
-      const r = await accion();
-      if (r.error) setError(r.error);
-    });
-  }
-
-  return (
-    <Island className="bg-isla-alta/50">
-      <article className="flex flex-col gap-3">
-        <header className="flex flex-wrap items-start justify-between gap-2">
-          <div className="text-sm text-tinta">
-            <strong>{servicio?.nombre ?? s.servicio_slug}</strong>
-            <span className="text-xs text-tinta-40"> · {quien}</span>
-            {perfil?.clienteId && (
-              <Link
-                className="ml-2 text-sm font-medium text-acento hover:underline"
-                href={`/admin/clientes/${perfil.clienteId}`}
-              >
-                ficha 360 →
-              </Link>
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-            {s.origen !== "portal" && (
-              <Badge tono={CANAL_SOLICITUD[s.origen].tono}>
-                {CANAL_SOLICITUD[s.origen].label}
-              </Badge>
-            )}
-            <Badge tono={TONO_SOLICITUD[s.estado]}>{labelEstado(s.estado)}</Badge>
-            <span className="text-xs text-tinta-40">{fechaCorta(s.created_at)}</span>
-          </div>
-        </header>
-
-        {s.mensaje && <p className="text-sm text-tinta-85 italic">“{s.mensaje}”</p>}
-
-        {s.cita_inicio && (
-          <p className="text-xs text-tinta-60">
-            📅 {fechaLegible(s.cita_inicio)}
-            {s.cita_meet_url && (
-              <>
-                {" — "}
-                <a
-                  href={s.cita_meet_url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="font-medium text-acento hover:underline"
-                >
-                  Meet
-                </a>
-              </>
-            )}
-          </p>
-        )}
-        {s.cita_texto_crudo && (
-          <p className="text-xs text-tinta-60">
-            Quiere agendar: «{s.cita_texto_crudo}» — sin hora
-          </p>
-        )}
-
-        {s.cotizacion_monto !== null && (
-          <p className="text-xs text-tinta-60">
-            Cotizado:{" "}
-            <strong className="text-tinta">
-              {formatearCOP(Number(s.cotizacion_monto))}
-            </strong>
-            {s.cotizacion_ciclo ? ` (${s.cotizacion_ciclo})` : ""}
-            {s.cotizacion_nota ? ` — ${s.cotizacion_nota}` : ""}
-          </p>
-        )}
-        {s.link_pago && (
-          <p className="text-xs text-tinta-60">
-            Link: <span className="break-all text-tinta-85">{s.link_pago}</span>
-          </p>
-        )}
-
-        {error && <Banner variante="error">{error}</Banner>}
-
-        {s.estado === "nueva" && (
-          <FormCotizar
-            ocupado={ocupado}
-            sugerida={servicio?.tarifaSugerida ?? 0}
-            cicloSugerido={servicio?.cicloSugerido ?? "mensual"}
-            onCotizar={(monto, ciclo, nota) =>
-              correr(() => cotizarSolicitud(s.id, { monto, ciclo, nota }))
-            }
-            onRechazar={(motivo) => correr(() => rechazarSolicitud(s.id, motivo))}
-          />
-        )}
-
-        {s.estado === "cotizada" && (
-          <FormLink
-            ocupado={ocupado}
-            onEnviar={(link) => correr(() => marcarLinkEnviado(s.id, link))}
-            onRechazar={(motivo) => correr(() => rechazarSolicitud(s.id, motivo))}
-          />
-        )}
-
-        {(s.estado === "link_enviado" || s.estado === "pagada") && (
-          <div className="flex flex-wrap items-center gap-2">
-            {dialogo}
-            {s.user_id === null ? (
-              // activarSolicitud busca el perfil por user_id: en una solicitud
-              // de voz o WhatsApp no hay cuenta que buscar, así que el botón
-              // fallaría siempre. Crear el cliente y darle acceso al portal es
-              // un paso aparte que hoy no hace esta pantalla.
-              <p className="text-xs text-tinta-60">
-                Para activar, primero crea el cliente y dale acceso al portal —
-                esta solicitud no tiene cuenta que vincular.
-              </p>
-            ) : (
-              <Button
-                variante="primaria"
-                disabled={ocupado}
-                onClick={async () => {
-                  const ok = await confirmar({
-                    titulo: "¿Confirmas que el pago llegó?",
-                    mensaje:
-                      "Esto crea el cliente y su producto, registra el primer pago y activa el servicio.",
-                    accion: "Confirmar y activar",
-                  });
-                  if (ok) correr(() => activarSolicitud(s.id));
-                }}
-              >
-                {ocupado ? "Activando…" : "Confirmar pago y activar"}
-              </Button>
-            )}
-            <BotonRechazar
-              ocupado={ocupado}
-              onRechazar={(motivo) => correr(() => rechazarSolicitud(s.id, motivo))}
-            />
-          </div>
-        )}
-      </article>
-    </Island>
-  );
-}
-
-function FormCotizar({
-  ocupado,
-  sugerida,
-  cicloSugerido,
-  onCotizar,
-  onRechazar,
-}: {
-  ocupado: boolean;
-  sugerida: number;
-  cicloSugerido: Ciclo;
-  onCotizar: (monto: number, ciclo: Ciclo, nota: string) => void;
-  onRechazar: (motivo: string) => void;
-}) {
-  const [monto, setMonto] = useState(sugerida > 0 ? String(sugerida) : "");
-  const [ciclo, setCiclo] = useState<Ciclo>(cicloSugerido);
-  const [nota, setNota] = useState("");
-
-  return (
-    <div className="flex flex-col gap-3">
-      <div className="grid gap-3 sm:grid-cols-2">
-        <Field label="Monto (COP)">
-          <Input
-            inputMode="numeric"
-            value={monto}
-            onChange={(e) => setMonto(e.target.value)}
-          />
-        </Field>
-        <Field label="Ciclo">
-          <Select value={ciclo} onChange={(e) => setCiclo(e.target.value as Ciclo)}>
-            {CICLOS.map((c) => (
-              <option key={c.valor} value={c.valor}>
-                {c.label}
-              </option>
-            ))}
-          </Select>
-        </Field>
-      </div>
-      <Field label="Nota para el cliente (opcional)">
-        <Input
-          value={nota}
-          maxLength={2000}
-          onChange={(e) => setNota(e.target.value)}
-          placeholder="Qué incluye, tiempos, condiciones…"
-        />
-      </Field>
-      <div className="flex flex-wrap items-center gap-2">
-        <Button
-          variante="primaria"
-          disabled={ocupado || !Number.isFinite(Number(monto)) || Number(monto) <= 0}
-          onClick={() => onCotizar(Number(monto), ciclo, nota)}
-        >
-          {ocupado ? "Guardando…" : "Cotizar"}
-        </Button>
-        <BotonRechazar ocupado={ocupado} onRechazar={onRechazar} />
-      </div>
-    </div>
-  );
-}
-
-function FormLink({
-  ocupado,
-  onEnviar,
-  onRechazar,
-}: {
-  ocupado: boolean;
-  onEnviar: (link: string) => void;
-  onRechazar: (motivo: string) => void;
-}) {
-  const [link, setLink] = useState("");
-  return (
-    <div className="flex flex-col gap-3">
-      <Field label="Link de pago (Wompi / Bold)">
-        <Input
-          type="url"
-          value={link}
-          onChange={(e) => setLink(e.target.value)}
-          placeholder="https://checkout.wompi.co/…"
-        />
-      </Field>
-      <div className="flex flex-wrap items-center gap-2">
-        <Button
-          variante="primaria"
-          disabled={ocupado || !/^https:\/\/\S+$/i.test(link.trim())}
-          onClick={() => onEnviar(link.trim())}
-        >
-          {ocupado ? "Publicando…" : "Publicar link al cliente"}
-        </Button>
-        <BotonRechazar ocupado={ocupado} onRechazar={onRechazar} />
-      </div>
-    </div>
-  );
-}
-
-function BotonRechazar({
-  ocupado,
-  onRechazar,
-}: {
-  ocupado: boolean;
-  onRechazar: (motivo: string) => void;
-}) {
-  const [abierto, setAbierto] = useState(false);
-  const [motivo, setMotivo] = useState("");
-
-  if (!abierto) {
-    return (
-      <Button disabled={ocupado} onClick={() => setAbierto(true)}>
-        Rechazar
-      </Button>
-    );
-  }
-  return (
-    <span className="flex flex-1 flex-wrap items-center gap-2">
-      <Input
-        className="min-w-48 flex-1"
-        value={motivo}
-        maxLength={2000}
-        onChange={(e) => setMotivo(e.target.value)}
-        placeholder="Motivo (el cliente lo ve)"
+      <SolicitudModal
+        solicitudId={solicitudId}
+        solicitud={abierta}
+        perfil={abierta ? perfilDe(abierta) : undefined}
+        telefonoAviso={abierta ? (telefonosAviso[abierta.id] ?? null) : null}
+        onCerrar={() => abrir(null)}
+        onCambio={() => router.refresh()}
       />
-      <Button variante="peligro" disabled={ocupado} onClick={() => onRechazar(motivo)}>
-        Confirmar rechazo
-      </Button>
-    </span>
+    </>
   );
 }

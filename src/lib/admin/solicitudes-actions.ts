@@ -8,6 +8,8 @@ import { servicioDelSlug } from "@/lib/catalogo";
 import {
   esTerminal,
   puedeTransicionar,
+  validarCambiosSolicitud,
+  type CambiosSolicitud,
   type Solicitud,
 } from "@/lib/portal/solicitudes";
 
@@ -19,6 +21,8 @@ function esCiclo(v: unknown): v is Ciclo {
 
 function revalidarBandeja() {
   revalidatePath("/admin/solicitudes");
+  // La cita y el contacto de una solicitud también se ven en la agenda.
+  revalidatePath("/admin/agenda");
 }
 
 type SupabaseSesion = Awaited<ReturnType<typeof verifySession>>["supabase"];
@@ -137,6 +141,48 @@ export async function rechazarSolicitud(
   if (error) {
     console.error("[rechazarSolicitud]", error.message);
     return { error: "No se pudo rechazar." };
+  }
+  revalidarBandeja();
+  return { error: null };
+}
+
+/** Editar a mano el contacto, el servicio o el mensaje (la validación es
+ * pura: `validarCambiosSolicitud`). No toca el estado ni la cotización. */
+export async function actualizarSolicitud(
+  id: string,
+  cambios: CambiosSolicitud,
+): Promise<{ error: string | null }> {
+  const { supabase } = await verifySession();
+
+  const sol = await obtenerSolicitud(supabase, id);
+  if (!sol) return { error: "La solicitud no existe." };
+
+  const v = validarCambiosSolicitud(cambios ?? {}, sol);
+  if ("error" in v) return { error: v.error };
+  if (Object.keys(v.fila).length === 0) return { error: null };
+
+  const { error } = await supabase.from("solicitudes").update(v.fila).eq("id", id);
+  if (error) {
+    console.error("[actualizarSolicitud]", error.message);
+    return { error: "No se pudo guardar el cambio." };
+  }
+  revalidarBandeja();
+  return { error: null };
+}
+
+/** Borrar la solicitud. Si estaba activa, el producto del cliente NO se
+ * borra (`producto_id` es `on delete set null` hacia productos, no al
+ * revés): solo desaparece de la bandeja. La UI confirma antes. */
+export async function eliminarSolicitud(id: string): Promise<{ error: string | null }> {
+  const { supabase } = await verifySession();
+
+  const sol = await obtenerSolicitud(supabase, id);
+  if (!sol) return { error: "La solicitud no existe." };
+
+  const { error } = await supabase.from("solicitudes").delete().eq("id", id);
+  if (error) {
+    console.error("[eliminarSolicitud]", error.message);
+    return { error: "No se pudo eliminar la solicitud." };
   }
   revalidarBandeja();
   return { error: null };
