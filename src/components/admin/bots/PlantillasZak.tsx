@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { fechaCorta } from "@/lib/admin/formato";
+import { cn } from "@/lib/cn";
 import {
   BUCKET_FOLLETOS,
   edicionesRestantes,
@@ -209,7 +210,7 @@ export function PlantillasZak({ filas: filasIniciales }: Props) {
       {aviso && <Banner>{aviso}</Banner>}
       {errorAviso && <Banner variante="error">{errorAviso}</Banner>}
 
-      <div className="barra-fina flex flex-col gap-4 min-[900px]:min-h-0 min-[900px]:flex-1 min-[900px]:overflow-y-auto min-[900px]:pr-1">
+      <div className="barra-fina grid grid-cols-1 gap-4 min-[700px]:grid-cols-2 min-[1200px]:grid-cols-3 min-[900px]:min-h-0 min-[900px]:flex-1 min-[900px]:overflow-y-auto min-[900px]:pr-1">
       {filas.map((f) => {
         const vertical = verticalDeFila(f);
         const local = estadoLocal(f);
@@ -218,7 +219,7 @@ export function PlantillasZak({ filas: filasIniciales }: Props) {
         return (
           <Island
             key={f.slug}
-            className="bg-isla-alta"
+            className={cn("bg-isla-alta", editando && "col-span-full")}
             titulo={
               <span className="flex flex-wrap items-center gap-2">
                 {f.label}
