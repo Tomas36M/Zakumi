@@ -118,7 +118,6 @@ export function ZakView({
   const [tab, setTab] = useState<PestanaZak>(tabInicial);
   const [, ponerTab] = useParametroUrl("tab");
   const [, startSync] = useTransition();
-  const [avisoSync, setAvisoSync] = useState<string | null>(null);
   const syncHecho = useRef(false);
   // El Lab de voz se monta en la primera visita y NO se desmonta después:
   // destruirlo cortaría el polling de una prueba en vuelo.
@@ -126,22 +125,12 @@ export function ZakView({
 
   const cara = caraDe(tab);
 
-  function sincronizar(silencioso: boolean) {
+  function sincronizar() {
     startSync(async () => {
       const res = await sincronizarEstadosZak();
-      if ("error" in res) {
-        if (!silencioso) setAvisoSync(res.error);
-        return;
-      }
+      if ("error" in res) return;
       if (res.respondidos + res.interesados > 0) {
-        if (!silencioso) {
-          setAvisoSync(
-            `CRM al día: ${res.respondidos} pasaron a Respondió y ${res.interesados} a Interesado.`,
-          );
-        }
         router.refresh();
-      } else if (!silencioso) {
-        setAvisoSync("El CRM ya estaba al día con la prospección.");
       }
     });
   }
@@ -151,7 +140,7 @@ export function ZakView({
   useEffect(() => {
     if (syncHecho.current) return;
     syncHecho.current = true;
-    sincronizar(true);
+    sincronizar();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -229,7 +218,6 @@ export function ZakView({
             Sin conexión con el bot: se muestra lo último conocido. Recarga en un momento.
           </Banner>
         )}
-        {avisoSync && <Banner>{avisoSync}</Banner>}
 
         {/* Sin agente de voz no hay pestañas que enseñar: solo el alta. */}
         {(cara === "chat" || agenteVoz !== null) && (
@@ -251,7 +239,7 @@ export function ZakView({
             abrirInicial={telefonoInicial}
             verticales={verticales}
             vozZak={vozZak}
-            onTickLista={() => sincronizar(true)}
+            onTickLista={sincronizar}
           />
         )}
 
