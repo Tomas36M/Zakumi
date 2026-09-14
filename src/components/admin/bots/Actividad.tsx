@@ -1,27 +1,30 @@
 "use client";
 
 import { useCallback, useEffect, useState, useTransition } from "react";
+import { borrarLead, editarLead, vincularLead } from "@/lib/admin/leads-actions";
 import { reintentarJob } from "@/lib/admin/bots-actions";
 import { fechaCorta } from "@/lib/admin/formato";
-import {
-  esLabs,
-  type JobFallido,
-  type Lead,
-  type StatusInstancia,
-} from "@/lib/bots/tipos";
+import { labelEstado } from "@/lib/admin/negocios";
+import type { LeadConOverride } from "@/lib/admin/leads-overrides";
+import { type FichaNegocio } from "@/lib/admin/zak";
+import { esLabs, type JobFallido, type StatusInstancia } from "@/lib/bots/tipos";
 import { Badge } from "@/components/admin/ui/Badge";
 import { Banner } from "@/components/admin/ui/Banner";
 import { Button } from "@/components/admin/ui/Button";
+import { IconButton } from "@/components/admin/ui/IconButton";
 import { Island } from "@/components/admin/ui/Island";
+import { Input } from "@/components/admin/ui/Field";
 import { ListRow } from "@/components/admin/ui/ListRow";
 import { Skeleton } from "@/components/admin/ui/Skeleton";
+import { useConfirmar } from "@/components/admin/ui/Confirmar";
+import { Trash2, X } from "lucide-react";
 
 type Props = { instanciaId: number };
 
 type Datos = {
   status: StatusInstancia;
   jobs: JobFallido[];
-  leads: Lead[];
+  leads: LeadConOverride[];
 };
 
 const ERROR_CARGA = "No se pudo cargar la actividad. ¿Railway está arriba?";
@@ -39,6 +42,13 @@ export function Actividad({ instanciaId }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [avisoJob, setAvisoJob] = useState<string | null>(null);
   const [operando, startOperar] = useTransition();
+  const { confirmar, dialogo } = useConfirmar();
+  const [editando, setEditando] = useState<string | null>(null);
+  const [textoEdit, setTextoEdit] = useState("");
+  const [errorEdit, setErrorEdit] = useState<string | null>(null);
+  const [vinculando, setVinculando] = useState<string | null>(null);
+  const [busquedaNegocio, setBusquedaNegocio] = useState("");
+  const [resultadosNegocio, setResultadosNegocio] = useState<FichaNegocio[]>([]);
 
   // El fetch no toca estado: así el efecto de montaje puede llamarlo y aplicar
   // el resultado en su propia continuación (con guarda de desmontaje), y
@@ -87,6 +97,84 @@ export function Actividad({ instanciaId }: Props) {
     });
   }
 
+  function abrirEdicion(l: LeadConOverride) {
+    setEditando(l.phone);
+    setErrorEdit(null);
+    setTextoEdit(JSON.stringify(l.datos, null, 2));
+  }
+
+  function guardarEdicion(phone: string) {
+    let datos: Record<string, unknown>;
+    try {
+      datos = JSON.parse(textoEdit) as Record<string, unknown>;
+    } catch {
+      setErrorEdit("Eso no es JSON válido.");
+      return;
+    }
+    setErrorEdit(null);
+    startOperar(async () => {
+      const res = await editarLead(instanciaId, phone, datos);
+      if (res.error) {
+        setErrorEdit(res.error);
+        return;
+      }
+      setEditando(null);
+      await cargar();
+    });
+  }
+
+  async function borrar(phone: string) {
+    const ok = await confirmar({
+      titulo: "¿Borrar este lead?",
+      mensaje: "Se oculta de esta lista — no toca nada en el bot.",
+      accion: "Borrar",
+      peligro: true,
+    });
+    if (!ok) return;
+    startOperar(async () => {
+      const res = await borrarLead(instanciaId, phone);
+      if (res.error) {
+        setAvisoJob(res.error);
+        return;
+      }
+      await cargar();
+    });
+  }
+
+  function abrirVinculo(phone: string) {
+    setVinculando(phone);
+    setBusquedaNegocio("");
+    setResultadosNegocio([]);
+  }
+
+  async function buscarNegocio(q: string) {
+    setBusquedaNegocio(q);
+    if (q.trim().length < 2) {
+      setResultadosNegocio([]);
+      return;
+    }
+    try {
+      const res = await fetch(`/admin/api/zak/negocios?q=${encodeURIComponent(q)}`);
+      if (!res.ok) throw new Error(String(res.status));
+      const data = (await res.json()) as { fichas: FichaNegocio[] };
+      setResultadosNegocio(data.fichas);
+    } catch {
+      setResultadosNegocio([]);
+    }
+  }
+
+  function vincular(phone: string, negocioId: string | null) {
+    startOperar(async () => {
+      const res = await vincularLead(instanciaId, phone, negocioId);
+      if (res.error) {
+        setAvisoJob(res.error);
+        return;
+      }
+      setVinculando(null);
+      await cargar();
+    });
+  }
+
   if (error) return <Banner>{error}</Banner>;
   if (!datos) {
     return (
@@ -111,7 +199,9 @@ export function Actividad({ instanciaId }: Props) {
   ];
 
   return (
-    <div className="flex flex-col gap-aire">
+    <>
+      {dialogo}
+      <div className="flex flex-col gap-aire">
       <div className="grid grid-cols-2 gap-aire md:grid-cols-4">
         {cifras.map((c) => (
           <div key={c.label} className="rounded-fila bg-isla-alta px-4 py-3">
@@ -161,23 +251,107 @@ export function Actividad({ instanciaId }: Props) {
         {datos.leads.length === 0 ? (
           <p className="text-sm text-tinta-40">Todavía no hay leads.</p>
         ) : (
-          <ul className="flex flex-col gap-1">
+          <ul className="flex flex-col gap-2">
             {datos.leads.map((l, i) => (
               <li key={`${l.phone}-${i}`}>
-                <ListRow interactiva={false} className="text-sm text-tinta">
-                  <strong>{l.phone}</strong>
-                  {esLabs(l.phone) && (
-                    <Badge tono="neutro" className="ml-1.5">
-                      Prueba
-                    </Badge>
+                <ListRow interactiva={false} className="flex-col items-stretch gap-2 text-sm text-tinta">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <strong>{l.phone}</strong>
+                    {esLabs(l.phone) && <Badge tono="neutro">Prueba</Badge>}
+                    {l.negocioId && <Badge tono="neutro">vinculado a un negocio</Badge>}
+                    <span className="text-tinta-60"> — {resumenLead(l.datos)}</span>
+                    <div className="ml-auto flex items-center gap-1">
+                      <Button disabled={operando} onClick={() => abrirEdicion(l)}>
+                        Editar
+                      </Button>
+                      <Button disabled={operando} onClick={() => abrirVinculo(l.phone)}>
+                        {l.negocioId ? "Cambiar negocio" : "Vincular a negocio"}
+                      </Button>
+                      <IconButton
+                        etiqueta="Borrar lead"
+                        disabled={operando}
+                        onClick={() => void borrar(l.phone)}
+                        className="hover:bg-peligro/10 hover:text-peligro"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </IconButton>
+                    </div>
+                  </div>
+
+                  {editando === l.phone && (
+                    <div className="flex flex-col gap-2 rounded-fila border border-hairline p-3">
+                      {errorEdit && <Banner variante="error">{errorEdit}</Banner>}
+                      <textarea
+                        className="min-h-32 rounded-fila border border-hairline bg-isla p-2 font-mono text-xs text-tinta"
+                        value={textoEdit}
+                        onChange={(e) => setTextoEdit(e.target.value)}
+                        disabled={operando}
+                      />
+                      <div className="flex gap-2">
+                        <Button
+                          variante="primaria"
+                          disabled={operando}
+                          onClick={() => guardarEdicion(l.phone)}
+                        >
+                          Guardar
+                        </Button>
+                        <Button disabled={operando} onClick={() => setEditando(null)}>
+                          Cancelar
+                        </Button>
+                      </div>
+                    </div>
                   )}
-                  <span className="text-tinta-60"> — {resumenLead(l.datos)}</span>
+
+                  {vinculando === l.phone && (
+                    <div className="flex flex-col gap-2 rounded-fila border border-hairline p-3">
+                      <div className="flex items-center gap-2">
+                        <Input
+                          className="flex-1"
+                          placeholder="Buscar negocio por nombre…"
+                          value={busquedaNegocio}
+                          onChange={(e) => void buscarNegocio(e.target.value)}
+                          disabled={operando}
+                          autoFocus
+                        />
+                        {l.negocioId && (
+                          <Button disabled={operando} onClick={() => vincular(l.phone, null)}>
+                            Quitar vínculo
+                          </Button>
+                        )}
+                        <IconButton etiqueta="Cancelar" onClick={() => setVinculando(null)}>
+                          <X className="h-4 w-4" />
+                        </IconButton>
+                      </div>
+                      {resultadosNegocio.length > 0 && (
+                        <ul className="flex max-h-48 flex-col gap-1 overflow-y-auto">
+                          {resultadosNegocio.map((f) => (
+                            <li key={f.negocioId}>
+                              <button
+                                type="button"
+                                className="flex w-full flex-col gap-0.5 rounded-fila px-3 py-2 text-left text-sm hover:bg-isla"
+                                onClick={() => vincular(l.phone, f.negocioId)}
+                                disabled={operando}
+                              >
+                                <span className="flex items-center gap-1.5 font-medium text-tinta">
+                                  {f.nombre}
+                                  <Badge tono="neutro">{f.verticalLabel}</Badge>
+                                  <Badge tono={f.estado}>{labelEstado(f.estado)}</Badge>
+                                </span>
+                                <span className="text-xs text-tinta-40">{f.telefono}</span>
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  )}
                 </ListRow>
               </li>
             ))}
           </ul>
         )}
       </Island>
-    </div>
+      </div>
+    </>
   );
 }
