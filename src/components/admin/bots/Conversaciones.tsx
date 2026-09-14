@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
-import { Trash2 } from "lucide-react";
+import { Pause, Play, Trash2 } from "lucide-react";
 import {
   borrarConversacion,
   enviarManual,
@@ -28,6 +28,7 @@ import { Button } from "@/components/admin/ui/Button";
 import { ChatBubble } from "@/components/admin/ui/ChatBubble";
 import { EmptyState } from "@/components/admin/ui/EmptyState";
 import { Input } from "@/components/admin/ui/Field";
+import { IconButton } from "@/components/admin/ui/IconButton";
 import { ListRow } from "@/components/admin/ui/ListRow";
 import { Skeleton } from "@/components/admin/ui/Skeleton";
 import { NuevoChatZak } from "./NuevoChatZak";
@@ -542,9 +543,10 @@ export function Conversaciones({
                 )}
               </span>
               {historial && (
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="flex flex-wrap items-center gap-1">
                   {esZak && vozZak && telefono && !esLabs(telefono) && (
                     <BotonLlamarZak
+                      compacto
                       vozZak={vozZak}
                       telefono={fichaActual?.telefono ?? `+${telefono}`}
                       nombre={fichaActual?.nombre ?? null}
@@ -552,12 +554,21 @@ export function Conversaciones({
                       cargando={!telsResueltos.has(telefono)}
                     />
                   )}
-                  <Button disabled={operando} onClick={alternarPausa}>
-                    {historial.paused ? "Reanudar bot" : "Pausar bot (lo tomo yo)"}
-                  </Button>
-                  <Button variante="peligro" disabled={operando} onClick={() => void borrar()}>
-                    <Trash2 className="h-4 w-4" /> Borrar
-                  </Button>
+                  <IconButton
+                    etiqueta={historial.paused ? "Reanudar bot" : "Pausar bot (lo tomo yo)"}
+                    disabled={operando}
+                    onClick={alternarPausa}
+                  >
+                    {historial.paused ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
+                  </IconButton>
+                  <IconButton
+                    etiqueta="Borrar conversación"
+                    disabled={operando}
+                    onClick={() => void borrar()}
+                    className="hover:bg-peligro/10 hover:text-peligro"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </IconButton>
                 </div>
               )}
             </div>
