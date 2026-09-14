@@ -14,6 +14,7 @@ import {
   contactables,
   verticalPorSlug,
 } from "./zak";
+import { avanzarEstadosNegocio } from "./estado-negocio";
 import { catalogoVerticales } from "./zak-verticales";
 import type { EstadoNegocio, Negocio } from "./negocios";
 import { crearTanda, enviarPlantillaDirecta, listarProspectos } from "@/lib/bots/api";
@@ -113,18 +114,13 @@ export async function enviarTandaZak(negocioIds: string[]): Promise<
     };
   }
 
-  // 'contactado' solo para los creados y solo desde 'nuevo': un negocio que ya
-  // respondió o se interesó por otra vía no retrocede.
+  // 'contactado' solo para los creados: avanzarEstadosNegocio ya es
+  // forward-only y respeta el candado manual.
   const idsCreados = procesados
     .filter((n) => !duplicadosTels.has(sinMas(n.telefono as string)))
     .map((n) => n.id);
   if (idsCreados.length > 0) {
-    const { error: e2 } = await supabase
-      .from("negocios")
-      .update({ estado: "contactado" })
-      .in("id", idsCreados)
-      .eq("estado", "nuevo");
-    if (e2) console.error("[enviarTandaZak] estados:", e2.message);
+    await avanzarEstadosNegocio(supabase, idsCreados, "contactado");
   }
 
   revalidatePath("/admin/prospeccion");
