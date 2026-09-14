@@ -330,7 +330,7 @@ export function Conversaciones({
     if (!telefono || !mensaje.trim()) return;
     setAvisoChat(null);
     startOperar(async () => {
-      const res = await enviarManual(instanciaId, telefono, mensaje);
+      const res = await enviarManual(instanciaId, telefono, mensaje, fichaActual?.negocioId);
       if (res.error) {
         setAvisoChat(res.error);
         return;
