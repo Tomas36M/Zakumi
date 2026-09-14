@@ -63,7 +63,7 @@ export function FichaLeadModal({
       descripcion={subtitulo || undefined}
       tamano="ancho"
     >
-      {cargando ? (
+      {cargando && negocio?.id !== leadId ? (
         <div className="grid gap-5 min-[720px]:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
           <div className="flex flex-col gap-3">
             <Skeleton className="h-4 w-2/3" />

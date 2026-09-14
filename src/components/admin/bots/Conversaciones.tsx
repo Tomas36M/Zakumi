@@ -1,7 +1,6 @@
 "use client";
 
 import Image from "next/image";
-import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { IdCard, Pause, Play, Trash2 } from "lucide-react";
 import {
@@ -411,7 +410,6 @@ export function Conversaciones({
   const fichaActual = telefono ? fichas[telefono] : undefined;
   const slugParaReabrir = slugReabrir ?? fichaActual?.verticalSlug ?? "generico";
 
-  const router = useRouter();
   const [leadId, abrirLead] = useFichaLead();
   const negocioIdActual = fichaActual?.negocioId ?? null;
   const [negocioFicha, setNegocioFicha] = useState<Negocio | null>(null);
@@ -461,12 +459,20 @@ export function Conversaciones({
           vozZak={vozZak}
           onCerrar={() => abrirLead(null)}
           onCambio={() => {
-            router.refresh();
             setNegocioVersion((v) => v + 1);
+            if (telefono) {
+              pedidasRef.current.delete(telefono);
+              void cruzarConCrm([telefono]);
+            }
           }}
           onEliminado={() => {
             abrirLead(null);
-            router.refresh();
+            if (telefono) {
+              setFichas((prev) => {
+                const { [telefono]: _quitada, ...resto } = prev;
+                return resto;
+              });
+            }
           }}
         />
       )}
