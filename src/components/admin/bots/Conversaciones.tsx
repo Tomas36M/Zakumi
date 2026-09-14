@@ -45,6 +45,10 @@ type Props = {
   verticales?: readonly VerticalProspeccion[];
   /** Estado de la voz de Zak — presente solo en el cockpit de Zak. */
   vozZak?: EstadoVozZak;
+  /** Se llama al final de cada tick del polling de la lista (12s). Hoy lo
+   *  usa Zak para mantener el CRM al día (respondido/interesado) sin
+   *  depender de que alguien reabra la consola. */
+  onTickLista?: () => void;
 };
 
 // El "visto" de no-leídos vive en localStorage: por browser y por admin, a
@@ -77,6 +81,7 @@ export function Conversaciones({
   abrirInicial = null,
   verticales,
   vozZak,
+  onTickLista,
 }: Props) {
   const [conversaciones, setConversaciones] = useState<Conversacion[] | null>(null);
   const [offset, setOffset] = useState(0);
@@ -225,8 +230,10 @@ export function Conversaciones({
       void cruzarConCrm(data.conversaciones.map((c) => c.phone));
     } catch {
       // tick silencioso: se reintenta en el próximo
+    } finally {
+      onTickLista?.();
     }
-  }, [instanciaId, cruzarConCrm]);
+  }, [instanciaId, cruzarConCrm, onTickLista]);
 
   // Solo la parte asíncrona de abrir un chat: nada de estado hasta que llega
   // la respuesta, así el efecto del deep-link puede llamarla directamente.

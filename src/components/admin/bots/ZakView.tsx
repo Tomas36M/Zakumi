@@ -269,6 +269,7 @@ export function ZakView({
             abrirInicial={telefonoInicial}
             verticales={verticales}
             vozZak={vozZak}
+            onTickLista={() => sincronizar(true)}
           />
         )}
 
