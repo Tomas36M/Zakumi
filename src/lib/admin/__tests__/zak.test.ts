@@ -151,9 +151,9 @@ describe("avancesDeEstado", () => {
         prospecto({ negocio_id: "c", estado_envio: "respondido", interesado: true }),
       ],
       [
-        { id: "a", estado: "contactado" },
-        { id: "b", estado: "nuevo" },
-        { id: "c", estado: "respondido" },
+        { id: "a", estado: "contactado", estado_fijado_manual: false },
+        { id: "b", estado: "nuevo", estado_fijado_manual: false },
+        { id: "c", estado: "respondido", estado_fijado_manual: false },
       ],
     );
     expect(avances).toEqual([
@@ -172,8 +172,8 @@ describe("avancesDeEstado", () => {
         prospecto({ negocio_id: "b", interesado: true }),
       ],
       [
-        { id: "a", estado: "interesado" },
-        { id: "b", estado: "interesado" },
+        { id: "a", estado: "interesado", estado_fijado_manual: false },
+        { id: "b", estado: "interesado", estado_fijado_manual: false },
       ],
     );
     expect(avances).toEqual([]);
@@ -187,9 +187,23 @@ describe("avancesDeEstado", () => {
         prospecto({ negocio_id: null, estado_envio: "respondido" }),
       ],
       [
-        { id: "a", estado: "cliente" },
-        { id: "b", estado: "descartado" },
-        { id: "sin-prospecto", estado: "nuevo" },
+        { id: "a", estado: "cliente", estado_fijado_manual: false },
+        { id: "b", estado: "descartado", estado_fijado_manual: false },
+        { id: "sin-prospecto", estado: "nuevo", estado_fijado_manual: false },
+      ],
+    );
+    expect(avances).toEqual([]);
+  });
+
+  it("ignora un negocio fijado a mano aunque el funnel diga que avanzó", () => {
+    const avances = avancesDeEstado(
+      [
+        prospecto({ negocio_id: "a", estado_envio: "respondido" }),
+        prospecto({ negocio_id: "b", interesado: true }),
+      ],
+      [
+        { id: "a", estado: "nuevo", estado_fijado_manual: true },
+        { id: "b", estado: "contactado", estado_fijado_manual: true },
       ],
     );
     expect(avances).toEqual([]);

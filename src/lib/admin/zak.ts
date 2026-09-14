@@ -401,7 +401,7 @@ export type AvanceEstado = { id: string; a: EstadoNegocio };
  */
 export function avancesDeEstado(
   prospectos: Prospecto[],
-  actuales: { id: string; estado: EstadoNegocio }[],
+  actuales: { id: string; estado: EstadoNegocio; estado_fijado_manual: boolean }[],
 ): AvanceEstado[] {
   const porNegocio = new Map(
     prospectos
@@ -413,6 +413,7 @@ export function avancesDeEstado(
     const p = porNegocio.get(n.id);
     if (!p) continue;
     if (n.estado === "cliente" || n.estado === "descartado") continue;
+    if (n.estado_fijado_manual) continue;
     if (p.interesado && n.estado !== "interesado") {
       avances.push({ id: n.id, a: "interesado" });
     } else if (
