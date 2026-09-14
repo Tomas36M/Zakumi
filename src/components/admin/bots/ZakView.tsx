@@ -157,7 +157,11 @@ export function ZakView({
         coletilla="el cerebro comercial"
         migas={[
           "Zak",
-          cara === "chat" ? LABEL_CHAT[tab as PestanaChat] : LABEL_VOZ[tab as PestanaVoz],
+          cara === "voz" && agenteVoz === null
+            ? "Voz"
+            : cara === "chat"
+              ? LABEL_CHAT[tab as PestanaChat]
+              : LABEL_VOZ[tab as PestanaVoz],
         ]}
         subtitulo={
           instancia && (

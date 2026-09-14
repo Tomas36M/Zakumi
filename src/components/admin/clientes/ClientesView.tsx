@@ -60,7 +60,9 @@ export function ClientesView({ productos, clientes, vistaInicial, hoy }: Props) 
       <PageHeader
         titulo="Clientes"
         coletilla="la cartera"
-        migas={["Clientes", VISTAS.find((v) => v.id === vista)?.label ?? "Clientes"]}
+        migas={
+          vista === "clientes" ? ["Clientes"] : ["Clientes", "Próximos cobros"]
+        }
         navegacion={<Tabs pestanas={VISTAS} activa={vista} onCambiar={cambiarVista} />}
         contador={
           <>
