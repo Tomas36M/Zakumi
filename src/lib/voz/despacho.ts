@@ -4,6 +4,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { agenteZakVoz, contarLlamadasHoy, type AgenteVozFila } from "@/lib/admin/voz";
+import { avanzarEstadoNegocio } from "@/lib/admin/estado-negocio";
 import { llamadaSaliente, type ErrorVoz } from "./api";
 import { normalizarTelefono, payloadLlamadaUnica, type VariablesLlamada } from "./eleven";
 
@@ -105,12 +106,7 @@ export async function despacharLlamadaZak(
   }
 
   if (negocioId) {
-    const { error } = await supabase
-      .from("negocios")
-      .update({ estado: "contactado" })
-      .eq("id", negocioId)
-      .eq("estado", "nuevo");
-    if (error) console.error("[despacharLlamadaZak] estado del negocio:", error.message);
+    await avanzarEstadoNegocio(supabase, negocioId, "contactado");
   }
 
   return { conversationId: r.data.conversation_id };
