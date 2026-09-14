@@ -5,6 +5,7 @@ import { verifySession } from "./dal";
 import { hoyBogota, CICLOS, type Ciclo } from "./cartera";
 import { crearProducto, registrarPago } from "./cartera-actions";
 import { servicioDelSlug } from "@/lib/catalogo";
+import { avanzarEstadoNegocio } from "./estado-negocio";
 import {
   esTerminal,
   puedeTransicionar,
@@ -296,6 +297,10 @@ export async function activarSolicitud(
   if (error) {
     console.error("[activarSolicitud] estado", error.message);
     return { error: "El servicio quedó creado pero la solicitud no cerró. Reintenta." };
+  }
+
+  if (sol.negocio_id) {
+    await avanzarEstadoNegocio(supabase, sol.negocio_id, "cliente");
   }
 
   revalidarBandeja();
