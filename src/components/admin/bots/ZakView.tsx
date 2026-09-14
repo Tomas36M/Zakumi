@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { AudioLines, MessageCircle } from "lucide-react";
 import { sincronizarEstadosZak } from "@/lib/admin/zak-actions";
@@ -14,15 +14,7 @@ import {
   type PestanaVoz,
   type PestanaZak,
 } from "@/lib/admin/zak-caras";
-import {
-  ID_ZAK,
-  type Instancia,
-  type PromptActivo,
-  type Prospecto,
-  type StatusInstancia,
-  type Tanda,
-  type VersionPrompt,
-} from "@/lib/bots/tipos";
+import { ID_ZAK, type Instancia, type PromptActivo, type VersionPrompt } from "@/lib/bots/tipos";
 import { Banner } from "@/components/admin/ui/Banner";
 import { Caras } from "@/components/admin/ui/Caras";
 import { Cockpit, CockpitBody } from "@/components/admin/ui/Cockpit";
@@ -36,7 +28,6 @@ import type { VozEleven } from "@/lib/voz/api";
 import type { LlamadaVoz } from "@/lib/voz/tipos";
 import { Conversaciones } from "./Conversaciones";
 import { LabsChat } from "./LabsChat";
-import { MetricasZak } from "./MetricasZak";
 import { PlantillasZak } from "./PlantillasZak";
 import { PromptEditor } from "./PromptEditor";
 import { ZakVoz } from "./ZakVoz";
@@ -47,7 +38,6 @@ const ICONOS_CARAS = { chat: MessageCircle, voz: AudioLines } as const;
 const LABEL_CHAT: Record<(typeof PESTANAS_CHAT)[number], string> = {
   bandeja: "Bandeja",
   plantillas: "Plantillas",
-  metricas: "Métricas",
   prompt: "Prompt",
   labs: "Labs",
 };
@@ -64,9 +54,6 @@ type Props = {
   instancia: Instancia | null;
   prompt: PromptActivo | null;
   versiones: VersionPrompt[];
-  status: StatusInstancia | null;
-  tandas: Tanda[];
-  prospectos: Prospecto[];
   tabInicial: PestanaZak;
   /** Deep-link desde el CRM: abrir la bandeja directo en este chat. */
   telefonoInicial?: string | null;
@@ -96,9 +83,6 @@ export function ZakView({
   instancia,
   prompt,
   versiones,
-  status,
-  tandas,
-  prospectos,
   tabInicial,
   telefonoInicial = null,
   verticales,
@@ -143,17 +127,6 @@ export function ZakView({
     sincronizar();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  const interesados = useMemo(() => prospectos.filter((p) => p.interesado), [prospectos]);
-  const uso = status?.uso_hoy;
-
-  // Tasa de respuesta agregada de la prospección (los fallidos no cuentan
-  // como enviados; los pendientes todavía no salieron).
-  const enviados = tandas.reduce(
-    (t, x) => t + x.funnel.enviado + x.funnel.entregado + x.funnel.leido + x.funnel.respondido,
-    0,
-  );
-  const respondidos = tandas.reduce((t, x) => t + x.funnel.respondido, 0);
 
   function cambiarCara(nueva: CaraZak) {
     if (nueva === cara) return;
@@ -200,14 +173,6 @@ export function ZakView({
             etiqueta="Las dos caras de Zak"
           />
         }
-        contador={
-          uso && (
-            <>
-              hoy: {uso.llamadas} llamadas · {uso.tokens_entrada + uso.tokens_salida} tokens ·{" "}
-              {interesados.length} interesados en total
-            </>
-          )
-        }
       />
 
       {/* Avisos y pestañas: alto natural, siempre a la vista. Fuera del body
@@ -244,15 +209,6 @@ export function ZakView({
         )}
 
         {tab === "plantillas" && <PlantillasZak filas={plantillas} />}
-
-        {tab === "metricas" && (
-          <MetricasZak
-            enviados={enviados}
-            respondidos={respondidos}
-            interesados={interesados.length}
-            tandas={tandas.length}
-          />
-        )}
 
         {tab === "prompt" && (
           <PromptEditor
