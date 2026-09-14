@@ -260,7 +260,7 @@ export function PlantillasZak({ filas: filasIniciales }: Props) {
                 </Banner>
               )}
 
-              <div className="grid gap-aire min-[900px]:grid-cols-2">
+              <div className="grid gap-aire">
                 <div className="flex items-start gap-3 rounded-fila bg-isla p-3">
                   <Image
                     src={srcFolleto(vertical)}
