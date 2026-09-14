@@ -1,8 +1,9 @@
 "use client";
 
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
-import { Pause, Play, Trash2 } from "lucide-react";
+import { IdCard, Pause, Play, Trash2 } from "lucide-react";
 import {
   borrarConversacion,
   enviarManual,
@@ -10,7 +11,7 @@ import {
   reanudarChat,
 } from "@/lib/admin/bots-actions";
 import { fechaCorta, horaDeIso } from "@/lib/admin/formato";
-import { labelEstado } from "@/lib/admin/negocios";
+import { labelEstado, type Negocio } from "@/lib/admin/negocios";
 import {
   fueraDeVentana,
   srcFolleto,
@@ -31,6 +32,8 @@ import { Input } from "@/components/admin/ui/Field";
 import { IconButton } from "@/components/admin/ui/IconButton";
 import { ListRow } from "@/components/admin/ui/ListRow";
 import { Skeleton } from "@/components/admin/ui/Skeleton";
+import { FichaLeadModal } from "@/components/admin/leads/FichaLeadModal";
+import { useFichaLead } from "@/components/admin/leads/useFichaLead";
 import { NuevoChatZak } from "./NuevoChatZak";
 import { SelectorPlantilla } from "./SelectorPlantilla";
 import { useConfirmar } from "@/components/admin/ui/Confirmar";
@@ -408,6 +411,41 @@ export function Conversaciones({
   const fichaActual = telefono ? fichas[telefono] : undefined;
   const slugParaReabrir = slugReabrir ?? fichaActual?.verticalSlug ?? "generico";
 
+  const router = useRouter();
+  const [leadId, abrirLead] = useFichaLead();
+  const negocioIdActual = fichaActual?.negocioId ?? null;
+  const [negocioFicha, setNegocioFicha] = useState<Negocio | null>(null);
+  const [negocioCargando, setNegocioCargando] = useState(false);
+  const [negocioVersion, setNegocioVersion] = useState(0);
+
+  // La ficha completa del negocio abierto en el modal: a diferencia de
+  // Territorio/Prospección (que la sacan de una lista ya cargada), acá se
+  // trae por fetch — el chat no tiene esa lista. `negocioVersion` fuerza un
+  // refetch después de editar (ver onCambio más abajo).
+  useEffect(() => {
+    if (!leadId) {
+      setNegocioFicha(null);
+      return;
+    }
+    let cancelado = false;
+    setNegocioCargando(true);
+    void (async () => {
+      try {
+        const res = await fetch(`/admin/api/negocios/${leadId}`);
+        if (!res.ok) throw new Error(String(res.status));
+        const data = (await res.json()) as { negocio: Negocio | null };
+        if (!cancelado) setNegocioFicha(data.negocio);
+      } catch {
+        if (!cancelado) setNegocioFicha(null);
+      } finally {
+        if (!cancelado) setNegocioCargando(false);
+      }
+    })();
+    return () => {
+      cancelado = true;
+    };
+  }, [leadId, negocioVersion]);
+
   return (
     // En desktop la bandeja llena el alto que le da el <CockpitBody> del padre
     // y CADA columna scrollea por dentro — el compositor y el «Reabrir» quedan
@@ -415,6 +453,23 @@ export function Conversaciones({
     // calc() propio se descuadraba en cuanto aparecía un banner encima.
     <div className="grid items-start gap-aire min-[900px]:h-full min-[900px]:grid-cols-[340px_minmax(0,1fr)] min-[900px]:items-stretch">
       {dialogo}
+      {esZak && vozZak && (
+        <FichaLeadModal
+          leadId={leadId}
+          negocio={negocioFicha}
+          cargando={negocioCargando}
+          vozZak={vozZak}
+          onCerrar={() => abrirLead(null)}
+          onCambio={() => {
+            router.refresh();
+            setNegocioVersion((v) => v + 1);
+          }}
+          onEliminado={() => {
+            abrirLead(null);
+            router.refresh();
+          }}
+        />
+      )}
       <div className="flex min-h-0 flex-col gap-3 rounded-isla border border-hairline bg-isla-alta/40 p-3">
         {esZak && (
           abriendoChat ? (
@@ -544,6 +599,14 @@ export function Conversaciones({
               </span>
               {historial && (
                 <div className="flex flex-wrap items-center gap-1">
+                  {esZak && negocioIdActual && (
+                    <IconButton
+                      etiqueta="Ver ficha del negocio"
+                      onClick={() => abrirLead(negocioIdActual)}
+                    >
+                      <IdCard className="h-4 w-4" />
+                    </IconButton>
+                  )}
                   {esZak && vozZak && telefono && !esLabs(telefono) && (
                     <BotonLlamarZak
                       compacto
