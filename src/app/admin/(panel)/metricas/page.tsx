@@ -21,6 +21,14 @@ export default async function MetricasPage() {
     ),
   ]);
 
+  // Un conteo que falla y uno que da 0 de verdad son indistinguibles para
+  // quien mira la pantalla (mismo riesgo que prospeccion/page.tsx y
+  // negocios.ts ya nombran para esta misma tabla) — al menos que quede en
+  // el log del servidor.
+  for (const c of conteos) {
+    if (c.error) console.error("[metricas] conteo de negocios:", c.error.message);
+  }
+
   const embudo = Object.fromEntries(
     ESTADOS.map((e, i) => [e.valor, conteos[i]?.count ?? 0]),
   ) as Record<EstadoNegocio, number>;
