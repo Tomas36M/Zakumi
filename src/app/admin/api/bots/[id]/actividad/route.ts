@@ -32,6 +32,9 @@ export async function GET(
     return NextResponse.json({ error: status.error }, { status: 502 });
   }
   const leadsCrudos = leads.ok ? leads.data : [];
+  if (overrides.error) {
+    console.error("[actividad] overrides:", overrides.error.message);
+  }
   const overridesData = (overrides.data ?? []) as LeadOverride[];
   return NextResponse.json({
     status: status.data,

@@ -145,6 +145,10 @@ export function Actividad({ instanciaId }: Props) {
       setErrorEdit("Eso no es JSON válido.");
       return;
     }
+    if (typeof datos !== "object" || datos === null || Array.isArray(datos)) {
+      setErrorEdit("El JSON tiene que ser un objeto.");
+      return;
+    }
     setErrorEdit(null);
     startOperar(async () => {
       const res = await editarLead(instanciaId, phone, datos);

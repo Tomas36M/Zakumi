@@ -26,6 +26,10 @@ alter table public.leads_overrides enable row level security;
 -- Mismo helper que ya usa el resto del admin-only (supabase/perfiles.sql):
 -- STABLE + security definer, se llama como (select es_admin()) para que
 -- Postgres lo evalúe una sola vez por statement (initplan).
+drop policy if exists leads_overrides_solo_admin on public.leads_overrides;
 create policy leads_overrides_solo_admin on public.leads_overrides
-  for all using ((select public.es_admin()))
+  for all to authenticated
+  using ((select public.es_admin()))
   with check ((select public.es_admin()));
+
+revoke all on public.leads_overrides from anon;

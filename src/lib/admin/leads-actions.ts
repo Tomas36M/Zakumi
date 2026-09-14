@@ -5,7 +5,6 @@
 // hace mezclarLeads() del lado de lectura (src/lib/admin/leads-overrides.ts),
 // no acá.
 
-import { revalidatePath } from "next/cache";
 import { verifySession } from "./dal";
 
 function claveValida(
@@ -39,7 +38,6 @@ export async function editarLead(
     console.error("[editarLead]", error.message);
     return { error: "No se pudo guardar la edición." };
   }
-  revalidatePath("/admin/metricas");
   return { error: null };
 }
 
@@ -60,7 +58,6 @@ export async function borrarLead(
     console.error("[borrarLead]", error.message);
     return { error: "No se pudo borrar el lead." };
   }
-  revalidatePath("/admin/metricas");
   return { error: null };
 }
 
@@ -82,6 +79,5 @@ export async function vincularLead(
     console.error("[vincularLead]", error.message);
     return { error: "No se pudo vincular el negocio." };
   }
-  revalidatePath("/admin/metricas");
   return { error: null };
 }

@@ -25,6 +25,10 @@ export type LeadConOverride = {
  * Mezcla los leads crudos del Flask con sus overrides locales: oculta lo
  * borrado, pisa los campos editados, resuelve el negocio vinculado. El
  * Flask nunca se toca — esta función solo lee.
+ *
+ * `datos_editados` reemplaza `datos` entero (no mergea campo a campo): una
+ * vez editado, ese lead queda congelado y no muestra campos nuevos que el
+ * bot capture después para el mismo teléfono.
  */
 export function mezclarLeads(leads: Lead[], overrides: LeadOverride[]): LeadConOverride[] {
   const porTelefono = new Map(overrides.map((o) => [o.telefono, o]));

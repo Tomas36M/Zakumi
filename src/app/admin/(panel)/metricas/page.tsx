@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { verifySession } from "@/lib/admin/dal";
 import { ESTADOS, type EstadoNegocio } from "@/lib/admin/negocios";
-import { listarProspectos, listarTandas } from "@/lib/bots/api";
+import { listarTandas } from "@/lib/bots/api";
 import { ID_ZAK } from "@/lib/bots/tipos";
 import { Cockpit, CockpitBody } from "@/components/admin/ui/Cockpit";
 import { PageHeader } from "@/components/admin/ui/PageHeader";
@@ -13,9 +13,8 @@ export const metadata: Metadata = { title: "Métricas" };
 export default async function MetricasPage() {
   const { supabase } = await verifySession();
 
-  const [tandas, prospectos, ...conteos] = await Promise.all([
+  const [tandas, ...conteos] = await Promise.all([
     listarTandas(ID_ZAK),
-    listarProspectos(ID_ZAK),
     ...ESTADOS.map((e) =>
       supabase.from("negocios").select("*", { count: "exact", head: true }).eq("estado", e.valor),
     ),
@@ -24,26 +23,25 @@ export default async function MetricasPage() {
   // Un conteo que falla y uno que da 0 de verdad son indistinguibles para
   // quien mira la pantalla (mismo riesgo que prospeccion/page.tsx y
   // negocios.ts ya nombran para esta misma tabla) — al menos que quede en
-  // el log del servidor.
+  // el log del servidor. Si falló, el tile se pinta como "—" en vez de 0
+  // (EmbudoEstados.tsx) para no mentir con un cero que no es real.
   for (const c of conteos) {
     if (c.error) console.error("[metricas] conteo de negocios:", c.error.message);
   }
 
   const embudo = Object.fromEntries(
-    ESTADOS.map((e, i) => [e.valor, conteos[i]?.count ?? 0]),
-  ) as Record<EstadoNegocio, number>;
+    ESTADOS.map((e, i) => [e.valor, conteos[i]?.error ? null : (conteos[i]?.count ?? 0)]),
+  ) as Record<EstadoNegocio, number | null>;
 
   // Tasa de respuesta agregada de la prospección — misma fórmula que
   // ZakView.tsx/MetricasZak.tsx (los fallidos no cuentan como enviados; los
   // pendientes todavía no salieron).
   const tandasData = tandas.ok ? tandas.data : [];
-  const prospectosData = prospectos.ok ? prospectos.data : [];
   const enviados = tandasData.reduce(
     (t, x) => t + x.funnel.enviado + x.funnel.entregado + x.funnel.leido + x.funnel.respondido,
     0,
   );
   const respondidos = tandasData.reduce((t, x) => t + x.funnel.respondido, 0);
-  const interesados = prospectosData.filter((p) => p.interesado).length;
   const tasa = enviados > 0 ? Math.round((respondidos / enviados) * 100) : 0;
 
   return (
@@ -53,7 +51,7 @@ export default async function MetricasPage() {
         coletilla="cómo le está yendo a Zak"
         contador={
           <>
-            {tasa}% tasa de respuesta ({respondidos}/{enviados}) · {interesados} interesados
+            {tasa}% tasa de respuesta ({respondidos}/{enviados})
           </>
         }
       />
