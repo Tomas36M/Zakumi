@@ -227,14 +227,10 @@ export async function sincronizarEstadosZak(): Promise<
   const aInteresado = avances.filter((a) => a.a === "interesado").map((a) => a.id);
 
   if (aRespondido.length > 0) {
-    const { error: e1 } = await supabase
-      .from("negocios").update({ estado: "respondido" }).in("id", aRespondido);
-    if (e1) console.error("[sincronizarEstadosZak] respondidos:", e1.message);
+    await avanzarEstadosNegocio(supabase, aRespondido, "respondido");
   }
   if (aInteresado.length > 0) {
-    const { error: e2 } = await supabase
-      .from("negocios").update({ estado: "interesado" }).in("id", aInteresado);
-    if (e2) console.error("[sincronizarEstadosZak] interesados:", e2.message);
+    await avanzarEstadosNegocio(supabase, aInteresado, "interesado");
   }
   if (avances.length > 0) revalidatePath("/admin/prospeccion");
 

@@ -139,9 +139,11 @@ export function ZakView({
         return;
       }
       if (res.respondidos + res.interesados > 0) {
-        setAvisoSync(
-          `CRM al día: ${res.respondidos} pasaron a Respondió y ${res.interesados} a Interesado.`,
-        );
+        if (!silencioso) {
+          setAvisoSync(
+            `CRM al día: ${res.respondidos} pasaron a Respondió y ${res.interesados} a Interesado.`,
+          );
+        }
         router.refresh();
       } else if (!silencioso) {
         setAvisoSync("El CRM ya estaba al día con la prospección.");
