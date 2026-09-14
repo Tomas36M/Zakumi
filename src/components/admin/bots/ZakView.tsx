@@ -29,19 +29,16 @@ import { Cockpit, CockpitBody } from "@/components/admin/ui/Cockpit";
 import { PageHeader } from "@/components/admin/ui/PageHeader";
 import { Tabs } from "@/components/admin/ui/Tabs";
 import { useParametroUrl } from "@/components/admin/ui/useParametroUrl";
-import { cn } from "@/lib/cn";
 import type { PlantillaZakFila } from "@/lib/admin/plantillas";
 import type { VerticalProspeccion } from "@/lib/admin/zak";
 import type { AgenteVozFila } from "@/lib/admin/voz";
 import type { VozEleven } from "@/lib/voz/api";
 import type { LlamadaVoz } from "@/lib/voz/tipos";
 import { Conversaciones } from "./Conversaciones";
-import { InteresadosZak } from "./InteresadosZak";
 import { LabsChat } from "./LabsChat";
 import { MetricasZak } from "./MetricasZak";
 import { PlantillasZak } from "./PlantillasZak";
 import { PromptEditor } from "./PromptEditor";
-import { TandasZak } from "./TandasZak";
 import { ZakVoz } from "./ZakVoz";
 import type { EstadoVozZak } from "@/components/admin/voz/BotonLlamarZak";
 
@@ -49,8 +46,6 @@ const ICONOS_CARAS = { chat: MessageCircle, voz: AudioLines } as const;
 
 const LABEL_CHAT: Record<(typeof PESTANAS_CHAT)[number], string> = {
   bandeja: "Bandeja",
-  interesados: "Interesados",
-  tandas: "Tandas",
   plantillas: "Plantillas",
   metricas: "Métricas",
   prompt: "Prompt",
@@ -122,7 +117,7 @@ export function ZakView({
   // compartir y una recarga vuelva a la misma pestaña.
   const [tab, setTab] = useState<PestanaZak>(tabInicial);
   const [, ponerTab] = useParametroUrl("tab");
-  const [sincronizando, startSync] = useTransition();
+  const [, startSync] = useTransition();
   const [avisoSync, setAvisoSync] = useState<string | null>(null);
   const syncHecho = useRef(false);
   // El Lab de voz se monta en la primera visita y NO se desmonta después:
@@ -184,22 +179,7 @@ export function ZakView({
 
   const pestanasChat = PESTANAS_CHAT.map((p) => ({
     id: p as PestanaZak,
-    label:
-      p === "interesados" && interesados.length > 0 ? (
-        <span className="inline-flex items-center gap-1.5">
-          {LABEL_CHAT[p]}
-          <span
-            className={cn(
-              "rounded-full px-1.5 text-[0.7rem] font-bold",
-              tab === "interesados" ? "bg-white/25 text-white" : "bg-acento text-white",
-            )}
-          >
-            {interesados.length}
-          </span>
-        </span>
-      ) : (
-        LABEL_CHAT[p]
-      ),
+    label: LABEL_CHAT[p],
   }));
 
   const pestanasVoz = PESTANAS_VOZ.map((p) => ({
@@ -274,18 +254,6 @@ export function ZakView({
             onTickLista={() => sincronizar(true)}
           />
         )}
-
-        {tab === "interesados" && (
-          <InteresadosZak
-            interesados={interesados}
-            vozZak={vozZak}
-            sincronizando={sincronizando}
-            onSincronizar={() => sincronizar(false)}
-            onAbrirChat={() => irA("bandeja")}
-          />
-        )}
-
-        {tab === "tandas" && <TandasZak tandas={tandas} />}
 
         {tab === "plantillas" && <PlantillasZak filas={plantillas} />}
 
