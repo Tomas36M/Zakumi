@@ -13,7 +13,7 @@ import { createSupabaseService } from "@/lib/voz/supabase-service";
 // la puerta es el token, no la sesión. La DB entra por service-role.
 //
 // Body: { telefono, ref?, nombre?, email?, servicio?, detalle?, mejor_horario?,
-//         cita? }. Respuestas: 200 {status: 'creada'|'duplicada'} · 400 body
+//         cita?, negocio_id? }. Respuestas: 200 {status: 'creada'|'duplicada'} · 400 body
 // malo · 401 token malo · 500 error de dominio · 503 sin configurar.
 
 function tokenValido(header: string | null, esperado: string): boolean {
@@ -58,6 +58,7 @@ export async function POST(request: Request) {
   // calendario en Bogotá (no en UTC, donde corre el servidor): dos cierres
   // del mismo chat el mismo día para la persona son el mismo interés, no dos.
   const ref = texto(b.ref) ?? `${telefono}:${diaBogota(new Date())}`;
+  const negocioId = texto(b.negocio_id);
 
   const r = await registrarSolicitudEntrante(supabase, {
     origen: "whatsapp",
@@ -68,6 +69,7 @@ export async function POST(request: Request) {
     mejorHorario: texto(b.mejor_horario),
     citaCruda: b.cita,
     conversacion: telefono,
+    negocioId,
   });
 
   if (r.estado === "error") {
