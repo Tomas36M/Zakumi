@@ -11,6 +11,7 @@ import {
   caraDe,
   carasZak,
   type CaraZak,
+  type PestanaChat,
   type PestanaVoz,
   type PestanaZak,
 } from "@/lib/admin/zak-caras";
@@ -154,6 +155,10 @@ export function ZakView({
       <PageHeader
         titulo="Zak"
         coletilla="el cerebro comercial"
+        migas={[
+          "Zak",
+          cara === "chat" ? LABEL_CHAT[tab as PestanaChat] : LABEL_VOZ[tab as PestanaVoz],
+        ]}
         subtitulo={
           instancia && (
             <>

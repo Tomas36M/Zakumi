@@ -49,6 +49,7 @@ export default async function MetricasPage() {
       <PageHeader
         titulo="Métricas"
         coletilla="cómo le está yendo a Zak"
+        migas={["Métricas"]}
         contador={
           <>
             {tasa}% tasa de respuesta ({respondidos}/{enviados})

@@ -46,6 +46,7 @@ export function TerritoriosView({ territorios, cuentas, fallaTerritorios }: Prop
       <PageHeader
         titulo="Territorios"
         coletilla="lo que ya se barrió"
+        migas={["Territorios"]}
         contador={
           cuentas !== null && (
             <>
