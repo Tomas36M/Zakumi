@@ -53,12 +53,17 @@ modelo de datos.
 - Tres implementaciones del mismo update ad-hoc (`despacho.ts`,
   `enviarTandaZak`), ninguna sabe de un futuro candado manual — se
   consolidan en un solo helper (Decisión 1).
-- `FichaNegocio` (`src/components/admin/mapa/FichaNegocio.tsx:35-39`) recibe
-  `{ negocio, onCambio, onCerrar }`, sin nada de mapa/territorio en sus
-  imports — **es embebible tal cual** en el chat de Zak. El cambio manual de
-  estado pasa por `actualizarNegocio(id, cambios)`
-  (`src/lib/admin/actions.ts:174-185`), el único lugar donde hoy se edita
-  `estado` a mano.
+- **Corrección sobre una exploración anterior de este mismo documento:** no
+  existe `src/components/admin/mapa/FichaNegocio.tsx`. La ficha completa de
+  un negocio es `src/components/admin/leads/FichaLeadModal.tsx` (props
+  `{ leadId, negocio, vozZak, onCerrar, onCambio, onEliminado }`, sin nada
+  de mapa/territorio en sus imports), un modal compartido (Radix Dialog vía
+  `Modal.tsx`) controlado por `?lead=<id>` en la URL
+  (`useFichaLead()`/`useParametroUrl`). El cambio manual de estado pasa por
+  `actualizarNegocio(id, cambios)` (`src/lib/admin/actions.ts:174-185`) y
+  `cambiarEstadoLote` (`actions.ts:231-256`) — los dos únicos lugares donde
+  hoy se edita `estado` a mano, ambos invocados desde dentro de este modal
+  o de la lista que lo abre.
 - `Conversaciones.tsx:522-556` ya es un solo `<div className="flex flex-wrap
   ...">`, pero con nombre+teléfono+2 badges a la izquierda y 3 botones a la
   derecha, a los anchos típicos hace wrap a dos líneas (lo que se ve en la
@@ -104,7 +109,7 @@ modelo de datos.
 2. **Candado manual: `negocios.estado_fijado_manual`.** Las DOS puertas de
    edición manual de estado en `src/lib/admin/actions.ts` setean
    `estado_fijado_manual: true` en el mismo `update`: `actualizarNegocio`
-   (cuando `cambios.estado` viene en el payload, desde `FichaNegocio`) y
+   (cuando `cambios.estado` viene en el payload, desde `FichaLeadModal`) y
    `cambiarEstadoLote` (cambio de estado en lote sobre una selección, desde
    la lista de leads de Prospección) — se encontró este segundo call site
    al escribir el plan; sin él, un cambio manual en lote quedaría sin
@@ -152,14 +157,36 @@ modelo de datos.
    arriesgado (falso positivo = prospecto perdido); no hay señal existente
    para reusar como con respondido/interesado.
 
-7. **La ficha del negocio se ve desde el chat sin navegar.** `FichaNegocio`
-   (el componente, ya sin dependencias de mapa) se monta en un panel
-   deslizante nuevo dentro de `Conversaciones.tsx`, abierto por un botón en el
-   header del chat. Si `fichaActual` no tiene `negocioId` (número suelto sin
-   match en el CRM), el botón no aparece — no hay nada que mostrar.
-   Alternativa descartada: modal centrado en vez de drawer lateral. El drawer
-   dejando la lista de chats visible a la izquierda es más consistente con
-   cómo ya se usa `FichaLateral` en Prospección.
+7. **La ficha del negocio se ve desde el chat sin navegar, reusando el modal
+   que ya existe — no se construye un drawer nuevo.** Corrección sobre lo
+   escrito originalmente aquí: no hay ningún `FichaNegocio.tsx` de panel
+   lateral. La ficha completa ya está unificada en
+   `src/components/admin/leads/FichaLeadModal.tsx` — "la misma desde el
+   mapa, la lista de Leads y la página de un territorio" (comentario propio
+   del archivo) — controlada por el parámetro de URL `?lead=<id>` vía
+   `useFichaLead()`/`useParametroUrl` (`replaceState`, sin ida al servidor).
+   Cada página que la usa monta su PROPIA instancia de `<FichaLeadModal>` +
+   `useFichaLead()` (el hook documenta por qué: "el dueño es el shell de
+   cada página, nunca una vista"). `Conversaciones.tsx` monta una tercera
+   instancia igual, con dos diferencias respecto a Territorio/Prospección:
+   - Esas dos páginas resuelven `negocio: Negocio | null` con
+     `.find(n => n.id === leadId)` sobre una lista ya cargada en memoria;
+     Zak no tiene esa lista, así que resuelve el negocio con un fetch
+     individual nuevo (`GET /admin/api/negocios/[id]`, no existe hoy).
+   - Mientras ese fetch está en vuelo, `negocio` es `null` — pero
+     `FichaLeadModal` hoy interpreta cualquier `negocio: null` con el modal
+     abierto como "no está en la lista cargada" (un banner de error).
+     Gana un prop `cargando?: boolean` (default `false`, no rompe a los
+     otros dos consumidores) que, en `true`, pinta un esqueleto de carga en
+     vez de ese banner.
+   El botón "Ver ficha" del header del chat llama `abrirLead(negocioId)`
+   (el `abrir` que devuelve `useFichaLead()`), igual que ya hace
+   `FilaLeadCompacta` en las otras pantallas — no aparece si `fichaActual`
+   no tiene `negocioId`.
+   Alternativa descartada: un drawer/panel deslizante nuevo. Duplicaría el
+   formulario editable, las notas y las acciones que `FichaLeadModal` ya
+   tiene, por una preferencia estética (mantener la lista de chats visible)
+   que no pesa tanto como partir en dos la única ficha de negocio del panel.
 
 8. **Header del chat: una sola fila.** Nombre + teléfono + badges (vertical,
    estado) a la izquierda; a la derecha, el nuevo botón "Ver ficha" y los 3
@@ -230,7 +257,7 @@ alter table public.negocios
   add column if not exists estado_fijado_manual boolean not null default false;
 
 comment on column public.negocios.estado_fijado_manual is
-  'true en cuanto un humano cambia el estado a mano (FichaNegocio). '
+  'true en cuanto un humano cambia el estado a mano (FichaLeadModal). '
   'Desde ahí la automatización deja el negocio en paz para siempre.';
 
 alter table public.solicitudes
@@ -292,7 +319,7 @@ abrirChatZak / enviarManual         sincronizarEstadosZak()                 acci
 | `supabase/zak-automatizacion.sql` | `estado_fijado_manual` + `solicitudes.negocio_id` |
 | `supabase/leads-overrides.sql` | Tabla del overlay de CRUD de leads |
 | `src/lib/admin/estado-negocio.ts` | `avanzarEstadoNegocio()` — el único update con candado |
-| `src/components/admin/bots/FichaNegocioDrawer.tsx` | Envuelve `FichaNegocio` en un panel deslizante para el chat |
+| `src/app/admin/api/negocios/[id]/route.ts` | `GET` de un `Negocio` completo por id (no existía — Territorio/Prospección resuelven por lista en memoria, Zak no la tiene) |
 | `src/app/admin/(panel)/metricas/page.tsx` | Nueva página de nivel superior |
 | `src/components/admin/metricas/MetricasView.tsx` | Shell (reemplaza `MetricasZak.tsx` + `Actividad.tsx` como pestañas de Zak) |
 | `src/components/admin/metricas/EmbudoEstados.tsx` | El conteo de negocios por estado |
@@ -309,7 +336,9 @@ abrirChatZak / enviarManual         sincronizarEstadosZak()                 acci
 | `src/lib/admin/zak.ts` | `avancesDeEstado` filtra negocios con `estado_fijado_manual` |
 | `src/lib/admin/actions.ts` | `actualizarNegocio` y `cambiarEstadoLote` setean `estado_fijado_manual: true` cuando tocan `estado` |
 | `src/lib/admin/bots-actions.ts` | `enviarManual` gana `negocioId?` y el mismo hook de `contactado` |
-| `src/components/admin/bots/Conversaciones.tsx` | Header del chat en una fila + botón "Ver ficha" + monta `FichaNegocioDrawer` + pasa `fichaActual?.negocioId` a `abrirChatZak`/`enviarManual`; `sincronizarEstadosZak` se llama en el tick de `refrescarLista` |
+| `src/components/admin/bots/Conversaciones.tsx` | Header del chat en una fila (botones a íconos) + botón "Ver ficha" que llama `abrirLead(negocioId)` (`useFichaLead()`) + monta `<FichaLeadModal>` alimentado por un fetch propio a `/admin/api/negocios/[id]` + pasa `fichaActual?.negocioId` a `abrirChatZak`/`enviarManual`; `sincronizarEstadosZak` se llama en el tick de `refrescarLista` |
+| `src/components/admin/leads/FichaLeadModal.tsx` | Gana el prop opcional `cargando?: boolean` (default `false`): en `true` pinta un esqueleto en vez del banner "no está en la lista cargada" — lo usa el fetch por id de Zak, no cambia nada para Territorio/Prospección |
+| `src/components/admin/voz/BotonLlamarZak.tsx` | Gana el prop opcional `compacto?: boolean` (default `false`): en `true` se renderiza como `IconButton` en vez de `Button` con texto |
 | `src/components/admin/bots/ZakView.tsx` | Quita Interesados/Tandas/Métricas de `PESTANAS_CHAT`; deja de recibir `tandas`/`prospectos` (se mudan a la página de Métricas) |
 | `src/lib/admin/zak-caras.ts` | `PESTANAS_CHAT` sin `interesados`/`tandas`/`metricas` |
 | `src/components/admin/bots/PlantillasZak.tsx` | Contenedor pasa a grid responsive |
@@ -336,8 +365,9 @@ abrirChatZak / enviarManual         sincronizarEstadosZak()                 acci
    `avanzarEstadoNegocio`, refactor de `despacho.ts`/`enviarTandaZak`,
    `contactado` en `abrirChatZak`/`enviarManual`, candado en
    `actualizarNegocio`, sync de respondido/interesado en cada tick.
-2. **Ficha desde el chat + header de una fila** — `FichaNegocioDrawer`,
-   reordenar `Conversaciones.tsx`.
+2. **Ficha desde el chat + header de una fila** — endpoint `GET
+   /admin/api/negocios/[id]`, `cargando` en `FichaLeadModal`, `compacto` en
+   `BotonLlamarZak`, reordenar `Conversaciones.tsx`.
 3. **Navegación** — quitar Interesados/Tandas, Plantillas a grid.
 4. **Métricas** — nueva ruta, embudo, `leads_overrides` + CRUD, vínculo
    `solicitudes.negocio_id` → `cliente`.
