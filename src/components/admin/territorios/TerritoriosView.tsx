@@ -28,8 +28,8 @@ type Props = {
   fallaTerritorios: boolean;
   pagina: number;
   totalPaginas: number;
-  /** Cuenta exacta de TODOS los territorios (no solo los de esta página). */
-  totalTerritorios: number;
+  /** Cuenta exacta de TODOS los territorios (no solo los de esta página), o `null` si esa consulta falló. */
+  totalTerritorios: number | null;
   /** Total de leads en TODOS los territorios, o `null` si esa consulta falló. */
   totalLeadsGlobal: number | null;
 };
@@ -59,17 +59,19 @@ export function TerritoriosView({
         coletilla="lo que ya se barrió"
         migas={["Territorios"]}
         contador={
-          <>
-            <strong className="text-tinta-85">{totalTerritorios}</strong>{" "}
-            {totalTerritorios === 1 ? "territorio" : "territorios"}
-            {totalLeadsGlobal !== null && (
-              <>
-                {" "}
-                ·{" "}
-                <strong className="text-tinta-85">{totalLeadsGlobal}</strong> leads
-              </>
-            )}
-          </>
+          totalTerritorios !== null && (
+            <>
+              <strong className="text-tinta-85">{totalTerritorios}</strong>{" "}
+              {totalTerritorios === 1 ? "territorio" : "territorios"}
+              {totalLeadsGlobal !== null && (
+                <>
+                  {" "}
+                  ·{" "}
+                  <strong className="text-tinta-85">{totalLeadsGlobal}</strong> leads
+                </>
+              )}
+            </>
+          )
         }
         acciones={
           <Link href="/admin/prospeccion?tab=territorio" className={LINK_DIBUJAR}>

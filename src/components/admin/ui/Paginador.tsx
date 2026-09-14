@@ -29,7 +29,9 @@ export function Paginador({ pagina, totalPaginas, hrefDePagina }: Props) {
           Anterior
         </Link>
       ) : (
-        <span className={cn(ESTILO_BASE, "text-tinta-40 opacity-50")}>Anterior</span>
+        <span className={cn(ESTILO_BASE, "text-tinta-40")} aria-disabled="true">
+          Anterior
+        </span>
       )}
 
       <span className="text-xs text-tinta-40">
@@ -44,7 +46,9 @@ export function Paginador({ pagina, totalPaginas, hrefDePagina }: Props) {
           Siguiente
         </Link>
       ) : (
-        <span className={cn(ESTILO_BASE, "text-tinta-40 opacity-50")}>Siguiente</span>
+        <span className={cn(ESTILO_BASE, "text-tinta-40")} aria-disabled="true">
+          Siguiente
+        </span>
       )}
     </nav>
   );
