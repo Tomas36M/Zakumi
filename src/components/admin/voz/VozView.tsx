@@ -16,6 +16,7 @@ import { EmptyState } from "@/components/admin/ui/EmptyState";
 import { Field, Input, Select, TextArea } from "@/components/admin/ui/Field";
 import { IconButton } from "@/components/admin/ui/IconButton";
 import { Island } from "@/components/admin/ui/Island";
+import { PageHeader } from "@/components/admin/ui/PageHeader";
 import { BibliotecaVoces } from "./BibliotecaVoces";
 import { Telefonia } from "./Telefonia";
 
@@ -222,25 +223,26 @@ export function VozView({
 
   return (
     <Cockpit>
-      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-hairline px-5 py-4">
-        <h1 className="text-lg font-semibold text-tinta">Voz</h1>
-        <span className="text-xs text-tinta-40">
-          {deClientes.length === 1 ? "1 agente" : `${deClientes.length} agentes`}
-        </span>
-        <div className="flex items-center gap-2">
-          <Button onClick={() => setTelefonia((v) => !v)}>Telefonía</Button>
-          <Button onClick={() => setBiblioteca((v) => !v)} disabled={voces === null}>
-            Voces en español
-          </Button>
-          <Button
-            variante="primaria"
-            onClick={() => setCreando((v) => !v)}
-            disabled={voces === null}
-          >
-            {creando ? "Cancelar" : "Nuevo agente de voz"}
-          </Button>
-        </div>
-      </header>
+      <PageHeader
+        titulo="Voz"
+        migas={["Voz"]}
+        contador={deClientes.length === 1 ? "1 agente" : `${deClientes.length} agentes`}
+        acciones={
+          <>
+            <Button onClick={() => setTelefonia((v) => !v)}>Telefonía</Button>
+            <Button onClick={() => setBiblioteca((v) => !v)} disabled={voces === null}>
+              Voces en español
+            </Button>
+            <Button
+              variante="primaria"
+              onClick={() => setCreando((v) => !v)}
+              disabled={voces === null}
+            >
+              {creando ? "Cancelar" : "Nuevo agente de voz"}
+            </Button>
+          </>
+        }
+      />
 
       <CockpitBody>
         {voces === null && (

@@ -10,6 +10,7 @@ import { Banner } from "@/components/admin/ui/Banner";
 import { Button } from "@/components/admin/ui/Button";
 import { Cockpit, CockpitBody } from "@/components/admin/ui/Cockpit";
 import { EmptyState } from "@/components/admin/ui/EmptyState";
+import { PageHeader } from "@/components/admin/ui/PageHeader";
 import { Skeleton } from "@/components/admin/ui/Skeleton";
 import { NuevoBotForm } from "./NuevoBotForm";
 
@@ -55,18 +56,23 @@ export function BotsView({ inicial }: { inicial: StatusGlobal | null }) {
 
   return (
     <Cockpit>
-      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-hairline px-5 py-4">
-        <h1 className="text-lg font-semibold text-tinta">Bots</h1>
-        {cola && (
-          <span className="text-xs text-tinta-40">
-            {cola.jobs_pendientes} en cola · {cola.jobs_trabajando} respondiendo ·{" "}
-            {cola.jobs_fallidos} fallidos
-          </span>
-        )}
-        <Button variante="primaria" onClick={() => setCreando(true)}>
-          Nuevo bot
-        </Button>
-      </header>
+      <PageHeader
+        titulo="Bots"
+        migas={["Bots"]}
+        contador={
+          cola && (
+            <>
+              {cola.jobs_pendientes} en cola · {cola.jobs_trabajando} respondiendo ·{" "}
+              {cola.jobs_fallidos} fallidos
+            </>
+          )
+        }
+        acciones={
+          <Button variante="primaria" onClick={() => setCreando(true)}>
+            Nuevo bot
+          </Button>
+        }
+      />
 
       <CockpitBody>
         {creando && (
