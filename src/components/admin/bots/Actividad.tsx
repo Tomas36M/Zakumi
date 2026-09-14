@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { borrarLead, editarLead, vincularLead } from "@/lib/admin/leads-actions";
 import { reintentarJob } from "@/lib/admin/bots-actions";
 import { fechaCorta } from "@/lib/admin/formato";
@@ -46,9 +46,16 @@ export function Actividad({ instanciaId }: Props) {
   const [editando, setEditando] = useState<string | null>(null);
   const [textoEdit, setTextoEdit] = useState("");
   const [errorEdit, setErrorEdit] = useState<string | null>(null);
+  const [avisoLead, setAvisoLead] = useState<string | null>(null);
   const [vinculando, setVinculando] = useState<string | null>(null);
   const [busquedaNegocio, setBusquedaNegocio] = useState("");
-  const [resultadosNegocio, setResultadosNegocio] = useState<FichaNegocio[]>([]);
+  // La última búsqueda completada, atada a SU término: si el término actual
+  // es otro, esa respuesta no se muestra (y «buscando» se deriva de ahí) —
+  // mismo patrón que NuevoChatZak.tsx.
+  const [busqueda, setBusqueda] = useState<
+    { q: string; fichas: FichaNegocio[]; fallo: boolean } | null
+  >(null);
+  const busquedaId = useRef(0);
 
   // El fetch no toca estado: así el efecto de montaje puede llamarlo y aplicar
   // el resultado en su propia continuación (con guarda de desmontaje), y
@@ -84,6 +91,33 @@ export function Actividad({ instanciaId }: Props) {
       activo = false;
     };
   }, [pedirDatos]);
+
+  const q = busquedaNegocio.trim();
+  const busquedaActiva = vinculando !== null && q.length >= 2;
+  const resultadosNegocio = busquedaActiva && busqueda?.q === q ? busqueda.fichas : null;
+  const falloBusqueda = busquedaActiva && busqueda?.q === q && busqueda.fallo;
+  const buscandoNegocio = busquedaActiva && busqueda?.q !== q;
+
+  // Búsqueda con debounce; el contador descarta respuestas viejas que
+  // llegan tarde (el CRM es chico, pero la red no promete orden) — mismo
+  // patrón que NuevoChatZak.tsx.
+  useEffect(() => {
+    if (!busquedaActiva) return;
+    const id = ++busquedaId.current;
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`/admin/api/zak/negocios?q=${encodeURIComponent(q)}`);
+        if (!res.ok) throw new Error(String(res.status));
+        const data = (await res.json()) as { fichas: FichaNegocio[] };
+        if (id !== busquedaId.current) return;
+        setBusqueda({ q, fichas: data.fichas, fallo: false });
+      } catch {
+        if (id !== busquedaId.current) return;
+        setBusqueda({ q, fichas: [], fallo: true });
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [q, busquedaActiva]);
 
   function reintentar(jobId: number) {
     setAvisoJob(null);
@@ -131,10 +165,11 @@ export function Actividad({ instanciaId }: Props) {
       peligro: true,
     });
     if (!ok) return;
+    setAvisoLead(null);
     startOperar(async () => {
       const res = await borrarLead(instanciaId, phone);
       if (res.error) {
-        setAvisoJob(res.error);
+        setAvisoLead(res.error);
         return;
       }
       await cargar();
@@ -144,30 +179,15 @@ export function Actividad({ instanciaId }: Props) {
   function abrirVinculo(phone: string) {
     setVinculando(phone);
     setBusquedaNegocio("");
-    setResultadosNegocio([]);
-  }
-
-  async function buscarNegocio(q: string) {
-    setBusquedaNegocio(q);
-    if (q.trim().length < 2) {
-      setResultadosNegocio([]);
-      return;
-    }
-    try {
-      const res = await fetch(`/admin/api/zak/negocios?q=${encodeURIComponent(q)}`);
-      if (!res.ok) throw new Error(String(res.status));
-      const data = (await res.json()) as { fichas: FichaNegocio[] };
-      setResultadosNegocio(data.fichas);
-    } catch {
-      setResultadosNegocio([]);
-    }
+    setBusqueda(null);
   }
 
   function vincular(phone: string, negocioId: string | null) {
+    setAvisoLead(null);
     startOperar(async () => {
       const res = await vincularLead(instanciaId, phone, negocioId);
       if (res.error) {
-        setAvisoJob(res.error);
+        setAvisoLead(res.error);
         return;
       }
       setVinculando(null);
@@ -248,6 +268,11 @@ export function Actividad({ instanciaId }: Props) {
       </Island>
 
       <Island className="bg-isla-alta/50" titulo="Leads capturados">
+        {avisoLead && (
+          <Banner variante="error" className="mb-2">
+            {avisoLead}
+          </Banner>
+        )}
         {datos.leads.length === 0 ? (
           <p className="text-sm text-tinta-40">Todavía no hay leads.</p>
         ) : (
@@ -309,7 +334,7 @@ export function Actividad({ instanciaId }: Props) {
                           className="flex-1"
                           placeholder="Buscar negocio por nombre…"
                           value={busquedaNegocio}
-                          onChange={(e) => void buscarNegocio(e.target.value)}
+                          onChange={(e) => setBusquedaNegocio(e.target.value)}
                           disabled={operando}
                           autoFocus
                         />
@@ -322,25 +347,38 @@ export function Actividad({ instanciaId }: Props) {
                           <X className="h-4 w-4" />
                         </IconButton>
                       </div>
-                      {resultadosNegocio.length > 0 && (
+                      {(buscandoNegocio || resultadosNegocio !== null) && (
                         <ul className="flex max-h-48 flex-col gap-1 overflow-y-auto">
-                          {resultadosNegocio.map((f) => (
-                            <li key={f.negocioId}>
-                              <button
-                                type="button"
-                                className="flex w-full flex-col gap-0.5 rounded-fila px-3 py-2 text-left text-sm hover:bg-isla"
-                                onClick={() => vincular(l.phone, f.negocioId)}
-                                disabled={operando}
-                              >
-                                <span className="flex items-center gap-1.5 font-medium text-tinta">
-                                  {f.nombre}
-                                  <Badge tono="neutro">{f.verticalLabel}</Badge>
-                                  <Badge tono={f.estado}>{labelEstado(f.estado)}</Badge>
-                                </span>
-                                <span className="text-xs text-tinta-40">{f.telefono}</span>
-                              </button>
+                          {buscandoNegocio && (
+                            <li className="px-3 py-2 text-xs text-tinta-40">
+                              Buscando en el CRM…
                             </li>
-                          ))}
+                          )}
+                          {!buscandoNegocio && resultadosNegocio?.length === 0 && (
+                            <li className="px-3 py-2 text-xs text-tinta-40">
+                              {falloBusqueda
+                                ? "La búsqueda en el CRM falló — reintenta."
+                                : "No se encontró ningún negocio con ese nombre."}
+                            </li>
+                          )}
+                          {!buscandoNegocio &&
+                            (resultadosNegocio ?? []).map((f) => (
+                              <li key={f.negocioId}>
+                                <button
+                                  type="button"
+                                  className="flex w-full flex-col gap-0.5 rounded-fila px-3 py-2 text-left text-sm hover:bg-isla"
+                                  onClick={() => vincular(l.phone, f.negocioId)}
+                                  disabled={operando}
+                                >
+                                  <span className="flex items-center gap-1.5 font-medium text-tinta">
+                                    {f.nombre}
+                                    <Badge tono="neutro">{f.verticalLabel}</Badge>
+                                    <Badge tono={f.estado}>{labelEstado(f.estado)}</Badge>
+                                  </span>
+                                  <span className="text-xs text-tinta-40">{f.telefono}</span>
+                                </button>
+                              </li>
+                            ))}
                         </ul>
                       )}
                     </div>
