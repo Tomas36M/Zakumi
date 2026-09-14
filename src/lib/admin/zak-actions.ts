@@ -210,7 +210,10 @@ export async function sincronizarEstadosZak(): Promise<
   if (relevantes.length === 0) return { respondidos: 0, interesados: 0 };
 
   const ids = [...new Set(relevantes.map((p) => p.negocio_id as string))];
-  const { data, error } = await supabase.from("negocios").select("id, estado").in("id", ids);
+  const { data, error } = await supabase
+    .from("negocios")
+    .select("id, estado, estado_fijado_manual")
+    .in("id", ids);
   if (error || !data) {
     console.error("[sincronizarEstadosZak] negocios:", error?.message);
     return { error: "No se pudieron leer los estados actuales del CRM." };
@@ -218,7 +221,7 @@ export async function sincronizarEstadosZak(): Promise<
 
   const avances = avancesDeEstado(
     r.data,
-    data as { id: string; estado: EstadoNegocio }[],
+    data as { id: string; estado: EstadoNegocio; estado_fijado_manual: boolean }[],
   );
   const aRespondido = avances.filter((a) => a.a === "respondido").map((a) => a.id);
   const aInteresado = avances.filter((a) => a.a === "interesado").map((a) => a.id);
