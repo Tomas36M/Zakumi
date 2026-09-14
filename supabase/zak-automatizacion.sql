@@ -11,3 +11,13 @@ alter table public.negocios
 comment on column public.negocios.estado_fijado_manual is
   'true en cuanto un humano cambia el estado a mano (actualizarNegocio o '
   'cambiarEstadoLote). Desde ahí la automatización deja el negocio en paz.';
+
+-- Fase 4: vincula una solicitud al negocio de prospección del que salió
+-- (cuando se conoce — el bot de WhatsApp todavía no lo manda siempre, ver
+-- Decisión 5 del spec). Cuando la solicitud llega a 'activa', esa columna
+-- es lo que le dice a activarSolicitud() a qué negocio avanzar a 'cliente'.
+alter table public.solicitudes
+  add column if not exists negocio_id uuid references public.negocios(id) on delete set null;
+
+create index if not exists solicitudes_negocio_id_idx
+  on public.solicitudes (negocio_id) where negocio_id is not null;
