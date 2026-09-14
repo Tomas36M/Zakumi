@@ -14,7 +14,7 @@ import {
   contactables,
   verticalPorSlug,
 } from "./zak";
-import { avanzarEstadosNegocio } from "./estado-negocio";
+import { avanzarEstadoNegocio, avanzarEstadosNegocio } from "./estado-negocio";
 import { catalogoVerticales } from "./zak-verticales";
 import type { EstadoNegocio, Negocio } from "./negocios";
 import { crearTanda, enviarPlantillaDirecta, listarProspectos } from "@/lib/bots/api";
@@ -142,6 +142,7 @@ export async function enviarTandaZak(negocioIds: string[]): Promise<
 export async function abrirChatZak(
   telefonoBruto: string,
   verticalSlug?: string,
+  negocioId?: string,
 ): Promise<{ ok: true } | { error: string }> {
   const { supabase } = await verifySession();
 
@@ -181,6 +182,9 @@ export async function abrirChatZak(
       };
     }
     return { error: "No hay conexión con el bot para enviar el saludo." };
+  }
+  if (negocioId) {
+    await avanzarEstadoNegocio(supabase, negocioId, "contactado");
   }
   revalidatePath("/admin/zak");
   return { ok: true };

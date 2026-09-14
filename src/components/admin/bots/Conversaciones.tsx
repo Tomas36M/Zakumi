@@ -347,7 +347,7 @@ export function Conversaciones({
     if (!telefono) return;
     setAvisoChat(null);
     startOperar(async () => {
-      const res = await abrirChatZak(telefono, slug);
+      const res = await abrirChatZak(telefono, slug, fichaActual?.negocioId);
       if ("error" in res) {
         setAvisoChat(res.error);
         return;

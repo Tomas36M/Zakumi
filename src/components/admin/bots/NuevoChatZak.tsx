@@ -81,7 +81,7 @@ export function NuevoChatZak({ onAbierto, onCancelar, verticales }: Props) {
     if (!puedeEnviar || !telefono) return;
     setAviso(null);
     startEnviar(async () => {
-      const res = await abrirChatZak(telefono, slug);
+      const res = await abrirChatZak(telefono, slug, elegido?.negocioId);
       if ("error" in res) {
         setAviso(res.error);
         return;
