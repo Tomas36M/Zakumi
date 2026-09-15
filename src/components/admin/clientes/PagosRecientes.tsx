@@ -2,43 +2,51 @@
 
 import { useEffect, useState } from "react";
 import { formatearCOP, type Pago, type ProductoContratado } from "@/lib/admin/cartera";
-import { createSupabaseBrowser } from "@/lib/supabase/browser";
+import { Banner } from "@/components/admin/ui/Banner";
 import { Island } from "@/components/admin/ui/Island";
 import { ListRow } from "@/components/admin/ui/ListRow";
 import { Skeleton } from "@/components/admin/ui/Skeleton";
 
-async function fetchPagos(productoIds: string[]): Promise<Pago[]> {
-  if (productoIds.length === 0) return [];
-  const supabase = createSupabaseBrowser();
-  const { data } = await supabase
-    .from("pagos")
-    .select("*")
-    .in("producto_id", productoIds)
-    .order("fecha", { ascending: false })
-    .limit(20);
-  return (data as Pago[]) ?? [];
+/**
+ * Lee por /admin/api (cliente de servidor), no con el SDK de Supabase en el
+ * navegador: ese SDK viajaba a /admin/clientes solo por esta lectura.
+ * `null` = la lectura falló, que no es lo mismo que "sin pagos".
+ */
+async function leerPagos(clienteId: string): Promise<Pago[] | null> {
+  try {
+    const res = await fetch(`/admin/api/clientes/${clienteId}/pagos`);
+    if (!res.ok) return null;
+    return ((await res.json()) as { pagos: Pago[] }).pagos;
+  } catch {
+    return null;
+  }
 }
 
 type Props = {
+  clienteId: string;
+  /** Los productos del cliente: solo para ponerle nombre a cada pago. */
   productos: ProductoContratado[];
   /** Cambia con cada pago registrado: se vuelven a leer. */
   version: number;
 };
 
-/** Los últimos 20 pagos del cliente, leídos desde el navegador. */
-export function PagosRecientes({ productos, version }: Props) {
-  const [pagos, setPagos] = useState<Pago[] | null>(null);
-  const ids = productos.map((p) => p.id).join(",");
+/** Los últimos 20 pagos del cliente. */
+export function PagosRecientes({ clienteId, productos, version }: Props) {
+  // null = primera lectura en curso; "error" = la última lectura falló. Un
+  // error nunca se pinta como "sin pagos": es plata.
+  const [pagos, setPagos] = useState<Pago[] | "error" | null>(null);
 
+  // Los pagos solo cambian al registrar uno (`version`): en el panel no se
+  // borran productos ni pagos, y un producto nuevo nace sin pagos.
   useEffect(() => {
     let activo = true;
-    fetchPagos(ids ? ids.split(",") : []).then((ps) => {
-      if (activo) setPagos(ps);
+    leerPagos(clienteId).then((ps) => {
+      if (activo) setPagos(ps ?? "error");
     });
     return () => {
       activo = false;
     };
-  }, [ids, version]);
+  }, [clienteId, version]);
 
   return (
     <Island className="bg-isla-alta/50" titulo="Pagos recientes" aria-label="Pagos recientes">
@@ -47,6 +55,10 @@ export function PagosRecientes({ productos, version }: Props) {
           <Skeleton className="h-3 w-2/3" />
           <Skeleton className="h-3 w-1/2" />
         </div>
+      ) : pagos === "error" ? (
+        <Banner variante="error">
+          No se pudieron cargar los pagos. Cierra la ficha y vuelve a abrirla en un momento.
+        </Banner>
       ) : pagos.length === 0 ? (
         <p className="text-sm text-tinta-40">Sin pagos registrados todavía.</p>
       ) : (

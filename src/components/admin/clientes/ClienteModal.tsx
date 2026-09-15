@@ -76,7 +76,7 @@ export function ClienteModal({ clienteId, cliente, productos, hoy, onCerrar, onC
               onCambio={onCambio}
               onPago={() => setVersionPagos((v) => v + 1)}
             />
-            <PagosRecientes productos={productos} version={versionPagos} />
+            <PagosRecientes clienteId={cliente.id} productos={productos} version={versionPagos} />
           </div>
         </div>
       ) : (
