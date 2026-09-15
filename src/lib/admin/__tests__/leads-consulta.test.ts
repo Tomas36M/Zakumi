@@ -102,6 +102,10 @@ function consultaFalsa() {
       llamadas.push(["eq", columna, valor]);
       return consulta;
     },
+    neq(columna: string, valor: unknown) {
+      llamadas.push(["neq", columna, valor]);
+      return consulta;
+    },
     in(columna: string, valores: unknown) {
       llamadas.push(["in", columna, valores]);
       return consulta;
@@ -112,6 +116,10 @@ function consultaFalsa() {
     },
     not(columna: string, operador: string, valor: unknown) {
       llamadas.push(["not", columna, operador, valor]);
+      return consulta;
+    },
+    or(condiciones: string) {
+      llamadas.push(["or", condiciones]);
       return consulta;
     },
     ilike(columna: string, patron: string) {
@@ -138,7 +146,7 @@ describe("aplicarFiltros", () => {
       ["eq", "territorio_id", TERRITORIO],
       ["in", "estado", ["respondido"]],
       ["not", "telefono", "is", null],
-      ["is", "sitio_web", null],
+      ["or", 'sitio_web.is.null,sitio_web.eq.""'],
       ["ilike", "nombre", "%el tornillo%"],
     ]);
   });
@@ -146,14 +154,14 @@ describe("aplicarFiltros", () => {
   it("sinEstado deja fuera solo el filtro de estado (los conteos de la franja)", () => {
     const { consulta, llamadas } = consultaFalsa();
     aplicarFiltros(consulta, COMPLETO, { sinEstado: true });
-    expect(llamadas.map((l) => l[1])).toEqual([
-      "ciudad",
-      "categoria",
-      "territorio_id",
-      "telefono",
-      "sitio_web",
-      "nombre",
-    ]);
+    expect(llamadas).toHaveLength(6);
+    expect(llamadas.filter((l) => l[1] === "estado")).toEqual([]);
+  });
+
+  it("«sin web» es nulo o texto vacío, lo mismo que esSinWeb en la pantalla", () => {
+    const { consulta, llamadas } = consultaFalsa();
+    aplicarFiltros(consulta, { ...FILTRO_VACIO, web: "sin" });
+    expect(llamadas).toEqual([["or", 'sitio_web.is.null,sitio_web.eq.""']]);
   });
 
   it("sin teléfono y con web son las condiciones contrarias", () => {
@@ -162,6 +170,7 @@ describe("aplicarFiltros", () => {
     expect(llamadas).toEqual([
       ["is", "telefono", null],
       ["not", "sitio_web", "is", null],
+      ["neq", "sitio_web", ""],
     ]);
   });
 

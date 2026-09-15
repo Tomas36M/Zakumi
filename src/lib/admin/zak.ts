@@ -243,9 +243,11 @@ export function verticalPorSlug(
 }
 
 /** Patrón para `ilike` de Supabase: el término va literal (se escapan sus
- * comodines) envuelto en % para buscar por pedazo del nombre. */
+ * comodines) envuelto en % para buscar por pedazo del nombre. El `*` no se
+ * puede escapar: PostgREST lo convierte en `%` antes de llegar a la base, así
+ * que pasa a `_` (un solo carácter cualquiera, que incluye al propio `*`). */
 export function patronBusqueda(q: string): string {
-  return `%${q.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
+  return `%${q.replace(/[\\%_]/g, (c) => `\\${c}`).replaceAll("*", "_")}%`;
 }
 
 /** Lo que la bandeja necesita saber de un negocio del CRM: quién es, en qué

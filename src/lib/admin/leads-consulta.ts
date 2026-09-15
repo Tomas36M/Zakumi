@@ -26,6 +26,16 @@ export type RespuestaLeads = {
   opciones?: OpcionesLeads;
 };
 
+/**
+ * «Sin web» en la base: nulo o texto vacío, lo mismo que `esSinWeb` en la
+ * pantalla (`!sitio_web`). Hoy los dos escritores de la columna la normalizan
+ * a URL válida o null, pero la columna no lo exige, y una fila vieja con texto
+ * vacío no puede decir «sin web» en el mapa y «con web» en la lista. Es un
+ * `or` de PostgREST; la sintaxis se verificó contra el proyecto (un filtro que
+ * no entiende responde 400).
+ */
+export const FILTRO_SIN_WEB = 'sitio_web.is.null,sitio_web.eq.""';
+
 const LARGO_MAX_TEXTO = 80;
 const ESTADOS_VALIDOS = new Set<string>(ESTADOS.map((e) => e.valor));
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -107,11 +117,8 @@ export function aplicarFiltros(
   if (!sinEstado && filtro.estados.length > 0) q = q.in("estado", [...filtro.estados]);
   if (filtro.telefono === "con") q = q.not("telefono", "is", null);
   if (filtro.telefono === "sin") q = q.is("telefono", null);
-  // «Sin web» es `sitio_web is null`: los dos escritores de la columna la
-  // normalizan con `urlHttpONull` (URL válida o null), así que coincide con
-  // `esSinWeb` y con la RPC `cuentas_por_territorio`.
-  if (filtro.web === "sin") q = q.is("sitio_web", null);
-  if (filtro.web === "con") q = q.not("sitio_web", "is", null);
+  if (filtro.web === "sin") q = q.or(FILTRO_SIN_WEB);
+  if (filtro.web === "con") q = q.not("sitio_web", "is", null).neq("sitio_web", "");
   const texto = filtro.q.trim();
   if (texto) q = q.ilike("nombre", patronBusqueda(texto));
   return q;

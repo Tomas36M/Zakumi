@@ -1,5 +1,6 @@
 import { ProspeccionView } from "@/components/admin/prospeccion/ProspeccionView";
 import { verifySession } from "@/lib/admin/dal";
+import { FILTRO_SIN_WEB } from "@/lib/admin/leads-consulta";
 import { TOPE_LEADS, type Negocio } from "@/lib/admin/negocios";
 import { consultasDelMes, type Territorio } from "@/lib/admin/territorios";
 import { agenteZakVoz } from "@/lib/admin/voz";
@@ -23,9 +24,9 @@ export default async function ProspeccionPage({
       .order("created_at", { ascending: false })
       .limit(TOPE_LEADS),
     supabase.from("negocios").select("*", { count: "exact", head: true }),
-    // «Sin web» de la base entera para la cabecera: la misma definición que la
-    // RPC cuentas_por_territorio (sitio_web is null).
-    supabase.from("negocios").select("*", { count: "exact", head: true }).is("sitio_web", null),
+    // «Sin web» de la base entera para la cabecera: la misma definición que el
+    // filtro de la lista y que `esSinWeb` (nulo o texto vacío).
+    supabase.from("negocios").select("*", { count: "exact", head: true }).or(FILTRO_SIN_WEB),
     supabase.from("territorios").select("*").order("created_at", { ascending: false }),
     // null = no se pudo leer el consumo del mes: llega tal cual hasta el
     // diálogo de barrer, que no puede afirmar cuota gratis sobre un dato que
