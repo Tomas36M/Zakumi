@@ -16,18 +16,23 @@ export type Servicio = {
   canal: Canal | null;
   tarifaSugerida: number; // COP; sugerencia editable al contratar
   cicloSugerido: Ciclo;
+  /** COP, pago único al empezar, aparte de la tarifa (el montaje del bot). */
+  montaje?: number;
   disponible: boolean; // false = "Próximamente" (gancho comercial visible)
   pitch: string;
 };
 
+// Precios = los del brochure y los folletos que ya tiene el prospecto en la
+// mano (public/folletos/). Si cambian allá, cambian aquí.
 export const CATALOGO_ZAKUMI: readonly Servicio[] = [
   {
     slug: "bot-whatsapp",
     nombre: "Bot de WhatsApp",
     tipo: "bot",
     canal: "whatsapp",
-    tarifaSugerida: 150_000,
+    tarifaSugerida: 129_900,
     cicloSugerido: "mensual",
+    montaje: 300_000,
     disponible: true,
     pitch:
       "Un agente que atiende, vende y captura leads por WhatsApp 24/7, con escalado a humano.",
@@ -37,7 +42,7 @@ export const CATALOGO_ZAKUMI: readonly Servicio[] = [
     nombre: "Página web",
     tipo: "web",
     canal: null,
-    tarifaSugerida: 900_000,
+    tarifaSugerida: 1_200_000,
     cicloSugerido: "unico",
     disponible: true,
     pitch: "Presencia propia con dominio, SEO local es-CO y botón directo a WhatsApp.",

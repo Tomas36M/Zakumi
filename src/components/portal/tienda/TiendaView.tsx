@@ -64,6 +64,12 @@ function TarjetaServicio({
       <p className="app-servicio-pitch">{servicio.pitch}</p>
       <p className="app-servicio-precio">
         Desde <strong>{formatearCOP(servicio.tarifaSugerida)}</strong> {ciclo}
+        {servicio.montaje ? (
+          <>
+            {" "}
+            + <strong>{formatearCOP(servicio.montaje)}</strong> de montaje
+          </>
+        ) : null}
       </p>
 
       {!servicio.disponible ? (
