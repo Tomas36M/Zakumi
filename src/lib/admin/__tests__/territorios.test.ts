@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
+  cuentasDesdeFilas,
   cuentasPorTerritorio,
   filasDeTerritorio,
   poligonoValido,
   resumenDeTerritorio,
   LADO_MAX_GRADOS,
   VERTICES_MAX,
+  type FilaCuentaTerritorio,
 } from "../territorios";
 import { PRECIO_POR_LLAMADA_USD, type Punto } from "../barrido";
 import { esSinWeb, type Negocio } from "../negocios";
@@ -179,5 +181,31 @@ describe("resumenDeTerritorio", () => {
     // Y el resumen es un objeto nuevo: mutarlo no toca el mapa de cuentas.
     a.leads = 9;
     expect(cuentas.get("t1")).toEqual({ leads: 3, sinWeb: 2 });
+  });
+});
+
+function fila(extra: Partial<FilaCuentaTerritorio>): FilaCuentaTerritorio {
+  return { territorio_id: "a", leads: 0, sin_web: 0, ...extra };
+}
+
+describe("cuentasDesdeFilas", () => {
+  it("un territorio con fila toma leads y sinWeb de la RPC", () => {
+    const r = cuentasDesdeFilas(["a"], [fila({ leads: 5, sin_web: 2 })]);
+    expect(r).toEqual({ a: { leads: 5, sinWeb: 2 } });
+  });
+
+  it("un territorio SIN fila (sin negocios) sale como 0/0, no ausente", () => {
+    // El GROUP BY no devuelve nada para él; el grid pinta la tarjeta por id.
+    const r = cuentasDesdeFilas(["a", "b"], [fila({ territorio_id: "a", leads: 3, sin_web: 1 })]);
+    expect(r).toEqual({ a: { leads: 3, sinWeb: 1 }, b: { leads: 0, sinWeb: 0 } });
+  });
+
+  it("una fila de un id que no se pidió se ignora", () => {
+    const r = cuentasDesdeFilas(["a"], [fila({ territorio_id: "z", leads: 9, sin_web: 9 })]);
+    expect(r).toEqual({ a: { leads: 0, sinWeb: 0 } });
+  });
+
+  it("sin ids devuelve un objeto vacío", () => {
+    expect(cuentasDesdeFilas([], [fila({ leads: 1 })])).toEqual({});
   });
 });
