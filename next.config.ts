@@ -16,10 +16,15 @@ const securityHeaders = [
   // desde el navegador — no "por si acaso":
   // - maps.googleapis.com (script + connect): loader de Google Maps y el
   //   XHR de tiles vectoriales (MapCanvas.tsx).
-  // - cdn.jsdelivr.net (script): el widget de voz de ElevenLabs carga su
-  //   audio worklet de ahí como fallback en Firefox/Safari.
-  // - fonts.googleapis.com / fonts.gstatic.com: el chrome de Google Maps
-  //   puede traer Roboto; improbable con disableDefaultUI, barato de cubrir.
+  // - cdn.jsdelivr.net/npm/@alexanderolsen/libsamplerate-js@2.1.2/ (script):
+  //   el widget de voz carga su audio worklet de ahí como fallback en
+  //   Firefox/Safari. Acotado a esa ruta exacta a propósito; si se sube la
+  //   versión vendorizada del widget (public/voz/convai-widget-embed-*.js),
+  //   revisar que la ruta siga siendo esa.
+  // - fonts.googleapis.com / fonts.gstatic.com: el CSS embebido del widget
+  //   de voz hace @import de Inter desde ahí en CADA montaje del lab — no
+  //   es opcional. (El chrome de Google Maps no las necesita con
+  //   disableDefaultUI.)
   // - media-src https:: las previsualizaciones de voz de ElevenLabs
   //   (VozView, BibliotecaVoces) son <audio> de un CDN de terceros.
   // - *.elevenlabs.io https + wss (connect): el widget está vendorizado en
@@ -28,15 +33,18 @@ const securityHeaders = [
   //   WebSocket. Sin esto el lab de /admin/voz carga y no funciona.
   // - *.supabase.co (connect): el cliente del navegador le habla directo.
   //   Sin wss:// a propósito: ninguna pantalla usa Realtime desde el cliente.
+  // - NO está openfpcdn.io a propósito: el widget vendorizado trae
+  //   FingerprintJS y manda un ping de telemetría ahí en ~0.1% de las
+  //   cargas; el CSP lo bloquea en silencio y así debe quedar.
   // 'unsafe-inline' en script-src: Next inyecta un bootstrap inline; sin
   // nonces no se evita sin un cambio mucho mayor.
   {
     key: "Content-Security-Policy",
     value: [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' https://maps.googleapis.com https://cdn.jsdelivr.net",
+      "script-src 'self' 'unsafe-inline' https://maps.googleapis.com https://cdn.jsdelivr.net/npm/@alexanderolsen/libsamplerate-js@2.1.2/",
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-      "img-src 'self' data: https:",
+      "img-src 'self' data: https: blob:",
       "font-src 'self' data: https://fonts.gstatic.com",
       "media-src 'self' https:",
       "connect-src 'self' https://maps.googleapis.com https://*.supabase.co https://*.elevenlabs.io wss://*.elevenlabs.io",
