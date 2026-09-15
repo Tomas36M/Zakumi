@@ -422,12 +422,12 @@ describe("resumenTanda", () => {
     );
   });
 
-  it("si un tipo de negocio no cupo en su tanda, dice cuántos quedaron para el siguiente envío", () => {
+  it("si no cupieron en su tanda, dice cuántos quedaron para el siguiente envío", () => {
     expect(resumenTanda({ contactados: 50, duplicados: 0, omitidos: 0, porTope: 0, sobrantes: 12 })).toBe(
-      "Zak va a contactar a 50 negocios. 12 quedaron para el siguiente envío: cada tipo de negocio sale en una tanda de máximo 50.",
+      "Zak va a contactar a 50 negocios. 12 quedaron para el siguiente envío: cada tanda lleva máximo 50.",
     );
     expect(resumenTanda({ contactados: 50, duplicados: 0, omitidos: 0, porTope: 0, sobrantes: 1 })).toBe(
-      "Zak va a contactar a 50 negocios. 1 quedó para el siguiente envío: cada tipo de negocio sale en una tanda de máximo 50.",
+      "Zak va a contactar a 50 negocios. 1 quedó para el siguiente envío: cada tanda lleva máximo 50.",
     );
   });
 });

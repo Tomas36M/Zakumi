@@ -9,7 +9,6 @@ import { revalidatePath } from "next/cache";
 import { verifySession } from "./dal";
 import { admiteWhatsApp, normalizarTelefonoCO, sinMas } from "./telefono";
 import {
-  agruparPorVertical,
   avancesDeEstado,
   componentesSaludo,
   contactables,
@@ -18,6 +17,7 @@ import {
   verticalPorSlug,
   type AvanceEstado,
 } from "./zak";
+import { gruposParaEnvio, modoDesdeCliente, prospectoParaTanda } from "./envio";
 import { avanzarEstadoNegocio, avanzarEstadosNegocio } from "./estado-negocio";
 import {
   avancesDesdeChats,
@@ -39,14 +39,15 @@ import { ID_ZAK, type Conversacion } from "@/lib/bots/tipos";
 const ENVIO_MAX = 250; // cupo diario del número en Meta (TIER_250): más que esto no sale hoy
 
 /**
- * «Que Zak los contacte»: crea en el bot UNA tanda por vertical (plantilla +
- * contexto por negocio), de máximo TANDA_MAX_BOT, y marca 'contactado' en el
- * CRM a todo lo que entró, duplicados incluidos. Lo que no cupo en la tanda de
- * su vertical vuelve en `sobrantes`; si el bot avisa tope diario, lo que falta
- * vuelve en `porTope`. El trigger de la base deja la nota automática del
- * cambio de estado.
+ * «Que Zak los contacte»: crea en el bot las tandas del envío —una sola
+ * plantilla para todos o la de cada tipo de negocio, según `modoCrudo`— de
+ * máximo TANDA_MAX_BOT cada una, y marca 'contactado' en el CRM a todo lo que
+ * entró, duplicados incluidos. Lo que no cupo en su tanda vuelve en
+ * `sobrantes`; si el bot avisa tope diario, lo que falta vuelve en `porTope`.
+ * Sin modo, según el tipo de negocio (lo de antes). El trigger de la base deja
+ * la nota automática del cambio de estado.
  */
-export async function enviarTandaZak(negocioIds: string[]): Promise<
+export async function enviarTandaZak(negocioIds: string[], modoCrudo?: unknown): Promise<
   | { contactados: number; omitidos: number; duplicados: number; porTope: number; sobrantes: number }
   | { error: string }
 > {
@@ -61,6 +62,8 @@ export async function enviarTandaZak(negocioIds: string[]): Promise<
   if (negocioIds.some((id) => typeof id !== "string" || !id)) {
     return { error: "Selección no válida." };
   }
+  const modo = modoDesdeCliente(modoCrudo);
+  if (!modo) return { error: "La plantilla elegida no es válida." };
 
   // Releer de la base: jamás confiar en los datos que manda el cliente.
   const { data, error } = await supabase.from("negocios").select("*").in("id", negocioIds);
@@ -73,11 +76,20 @@ export async function enviarTandaZak(negocioIds: string[]): Promise<
     return { error: "Ninguno de los seleccionados tiene celular contactable." };
   }
 
-  // Una tanda POR VERTICAL: cada tipo de negocio recibe SU plantilla y su
-  // ángulo de conversación viaja en el contexto del prospecto. El catálogo se
-  // relee de la DB en cada envío: lo que sale es SIEMPRE lo vigente/aprobado.
+  // El catálogo se relee de la DB en cada envío: lo que sale es SIEMPRE lo
+  // vigente/aprobado. Con una sola plantilla, se revisa antes de mandar nada:
+  // en revisión, el envío entero se quedaría por fuera sin decirlo.
   const catalogo = await catalogoVerticales(supabase);
-  const grupos = agruparPorVertical(elegibles, catalogo.verticales, catalogo.generico);
+  if (modo.tipo === "una") {
+    const elegida = catalogo.todos.find((v) => v.slug === modo.slug);
+    if (!elegida) return { error: "Esa plantilla ya no está en el catálogo. Recarga la página." };
+    if (elegida.enRevision) {
+      return {
+        error: `La plantilla «${elegida.label}» está en revisión. En Zak → Plantillas dale «Refrescar estados»: si Meta ya la aprobó, queda lista para enviar.`,
+      };
+    }
+  }
+  const grupos = gruposParaEnvio(elegibles, modo, catalogo);
   for (const { vertical } of grupos) {
     // Meta puede rechazar envíos de una plantilla mientras la revisa: ese
     // grupo se queda por fuera (cuenta como 'omitidos') hasta la aprobación.
@@ -86,33 +98,19 @@ export async function enviarTandaZak(negocioIds: string[]): Promise<
     }
   }
 
-  // Una tanda por vertical, de máximo TANDA_MAX_BOT: lo que sobra vuelve en
+  // Una tanda por plantilla, de máximo TANDA_MAX_BOT: lo que sobra vuelve en
   // `sobrantes`. Al primer «tope diario» se para (el cupo es del número
   // entero) y lo que falta vuelve en `porTope`.
   const despacho = await despacharTandas(
     grupos,
     async (vertical, lote) => {
-      // El folleto del nicho: mismo header de imagen para toda la tanda.
-      const componentes = componentesSaludo(vertical);
       const r = await crearTanda(ID_ZAK, {
         plantilla: vertical.plantilla,
         lang: "es",
         notas: `tanda ${vertical.label} desde el CRM (${lote.length} negocios)`,
-        prospectos: lote.map((n) => ({
-          telefono: sinMas(n.telefono as string),
-          negocio_id: n.id,
-          contexto: {
-            nombre: n.nombre,
-            categoria: n.categoria ?? undefined,
-            ciudad: n.ciudad ?? undefined,
-            angulo: vertical.angulo,
-            // La burbuja inicial del chat: el bot la guarda al enviar la
-            // plantilla (y con el texto EXACTO del catálogo, el folleto se
-            // pinta en la bandeja).
-            saludo: vertical.texto,
-          },
-          componentes,
-        })),
+        // Saludo y folleto de la plantilla que sale; ángulo del tipo de cada
+        // negocio (ver prospectoParaTanda).
+        prospectos: lote.map((n) => prospectoParaTanda(n, vertical, catalogo)),
       });
       if (r.ok) return { ok: true as const, duplicados: r.data.duplicados };
       if (r.error !== "conflicto") {
