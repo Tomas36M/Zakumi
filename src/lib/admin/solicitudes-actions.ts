@@ -270,36 +270,49 @@ export async function activarSolicitud(
     if (!producto) return { error: "No se encontró el producto ya creado." };
     clienteId = producto.cliente_id as string;
   } else {
-    // Sin cuenta de portal, primera vez: si la solicitud ya tiene negocio
-    // vinculado, se reusa el cliente si ya existe uno para ese negocio
-    // (clientes.negocio_id es UNIQUE) — evita duplicar si un intento
-    // anterior creó el cliente pero falló antes de referenciar el producto.
-    // Sin negocio_id no hay con qué cruzar de forma confiable (el teléfono
-    // de la solicitud no viene normalizado igual que clientes.telefono, y
-    // cruzar por teléfono ya se descartó como poco confiable en el diseño
-    // original de este vínculo, Decisión 5 del spec) — ese caso puede
-    // duplicar en el mismo fallo-parcial raro, igual que antes de este cambio.
-    let clienteExistente: { id: string } | null = null;
-    if (sol.negocio_id) {
-      const { data } = await supabase
-        .from("clientes")
-        .select("id")
-        .eq("negocio_id", sol.negocio_id)
-        .maybeSingle();
-      clienteExistente = data as { id: string } | null;
-    }
+    // Sin cuenta de portal, primera vez: mismo patrón que
+    // convertirNegocioEnCliente (cartera-actions.ts) — un upsert sobre el
+    // UNIQUE de clientes.negocio_id es atómico de verdad (a diferencia de
+    // un select-then-insert, no tiene ventana de carrera entre dos intentos
+    // simultáneos). Sin negocio_id no hay con qué cruzar de forma confiable
+    // (el teléfono de la solicitud no viene normalizado igual que
+    // clientes.telefono, y cruzar por teléfono ya se descartó como poco
+    // confiable en el diseño original de este vínculo, Decisión 5 del spec)
+    // — ese caso puede duplicar en un fallo-parcial raro, igual que antes de
+    // este cambio.
+    const datosCliente = {
+      nombre:
+        sol.contacto_nombre?.trim() || sol.contacto_telefono || "Cliente sin cuenta de portal",
+      telefono: sol.contacto_telefono,
+      email: sol.contacto_email,
+      negocio_id: sol.negocio_id,
+    };
 
-    if (clienteExistente) {
-      clienteId = clienteExistente.id;
+    if (sol.negocio_id) {
+      const { data: insertado, error: errorCliente } = await supabase
+        .from("clientes")
+        .upsert(datosCliente, { onConflict: "negocio_id", ignoreDuplicates: true })
+        .select("id");
+      if (errorCliente) {
+        console.error("[activarSolicitud] cliente", errorCliente.message);
+        return { error: "No se pudo crear el cliente." };
+      }
+      let cid = insertado?.[0]?.id as string | undefined;
+      if (!cid) {
+        // Ya existía (conflicto ignorado): recuperarlo.
+        const { data: existente } = await supabase
+          .from("clientes")
+          .select("id")
+          .eq("negocio_id", sol.negocio_id)
+          .maybeSingle();
+        cid = existente?.id as string | undefined;
+      }
+      if (!cid) return { error: "No se pudo crear el cliente." };
+      clienteId = cid;
     } else {
       const { data: cliente, error: errorCliente } = await supabase
         .from("clientes")
-        .insert({
-          nombre: sol.contacto_nombre?.trim() || sol.contacto_telefono || "Cliente sin cuenta de portal",
-          telefono: sol.contacto_telefono,
-          email: sol.contacto_email,
-          negocio_id: sol.negocio_id,
-        })
+        .insert(datosCliente)
         .select("id")
         .single();
       if (errorCliente || !cliente) {

@@ -8,6 +8,7 @@ const {
   verifySessionMock,
   filaMock,
   insertClienteMock,
+  upsertClienteMock,
   updatePerfilMock,
   crearProductoMock,
   registrarPagoMock,
@@ -17,6 +18,7 @@ const {
   verifySessionMock: vi.fn(),
   filaMock: vi.fn(),
   insertClienteMock: vi.fn(),
+  upsertClienteMock: vi.fn(),
   updatePerfilMock: vi.fn(),
   crearProductoMock: vi.fn(),
   registrarPagoMock: vi.fn(),
@@ -151,6 +153,23 @@ function supabaseActivar(cfg: {
               }),
             };
           },
+          // Camino con negocio_id: upsert sobre el UNIQUE de negocio_id.
+          // `clienteExistentePorNegocio` hace doble uso como señal: si está
+          // seteado, simula que ignoreDuplicates saltó el insert (fila []),
+          // y el fallback select().eq().maybeSingle() de arriba entrega ese
+          // cliente. Si no, simula una inserción nueva de verdad.
+          upsert: (fila: unknown, opciones: unknown) => {
+            upsertClienteMock(fila, opciones);
+            return {
+              select: () =>
+                Promise.resolve({
+                  data: cfg.clienteExistentePorNegocio
+                    ? []
+                    : [{ id: cfg.clienteCreadoId ?? "cli-nuevo" }],
+                  error: null,
+                }),
+            };
+          },
         };
       }
       if (tabla === "negocios") {
@@ -179,6 +198,7 @@ describe("activarSolicitud — resolución del cliente", () => {
   beforeEach(() => {
     updateMock.mockClear();
     insertClienteMock.mockClear();
+    upsertClienteMock.mockClear();
     updatePerfilMock.mockClear();
     crearProductoMock.mockReset();
     registrarPagoMock.mockReset();
@@ -231,9 +251,52 @@ describe("activarSolicitud — resolución del cliente", () => {
     const r = await activarSolicitud("sol-2");
 
     expect(r).toEqual({ error: null });
+    expect(upsertClienteMock).toHaveBeenCalledWith(
+      {
+        nombre: "Panadería Doña Rosa",
+        telefono: "+573001112233",
+        email: null,
+        negocio_id: "neg-1",
+      },
+      { onConflict: "negocio_id", ignoreDuplicates: true },
+    );
     expect(insertClienteMock).not.toHaveBeenCalled();
     expect(crearProductoMock).toHaveBeenCalledWith(
       expect.objectContaining({ cliente_id: "cli-existente-negocio" }),
+    );
+  });
+
+  it("sin cuenta de portal, con negocio vinculado, primera vez de verdad: crea el cliente vía upsert", async () => {
+    const solicitud = {
+      ...BASE_ACTIVABLE,
+      user_id: null,
+      producto_id: null,
+      negocio_id: "neg-2",
+      contacto_nombre: "Ferretería El Tornillo",
+      contacto_telefono: "+573009998877",
+      contacto_email: null,
+    };
+    crearProductoMock.mockResolvedValue({ id: "prod-4" });
+    verifySessionMock.mockResolvedValue({
+      supabase: supabaseActivar({ solicitud, clienteCreadoId: "cli-neg-2" }),
+    });
+
+    const { activarSolicitud } = await import("../solicitudes-actions");
+    const r = await activarSolicitud("sol-2");
+
+    expect(r).toEqual({ error: null });
+    expect(upsertClienteMock).toHaveBeenCalledWith(
+      {
+        nombre: "Ferretería El Tornillo",
+        telefono: "+573009998877",
+        email: null,
+        negocio_id: "neg-2",
+      },
+      { onConflict: "negocio_id", ignoreDuplicates: true },
+    );
+    expect(insertClienteMock).not.toHaveBeenCalled();
+    expect(crearProductoMock).toHaveBeenCalledWith(
+      expect.objectContaining({ cliente_id: "cli-neg-2" }),
     );
   });
 
