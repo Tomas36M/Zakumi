@@ -7,10 +7,33 @@ import {
   resumenDeTerritorio,
   LADO_MAX_GRADOS,
   VERTICES_MAX,
+  territorioSinLocales,
   type FilaCuentaTerritorio,
 } from "../territorios";
 import { PRECIO_POR_LLAMADA_USD, type Punto } from "../barrido";
 import { esSinWeb, type Negocio } from "../negocios";
+
+describe("territorioSinLocales", () => {
+  it("con la cuenta exacta en cero, el territorio está vacío", () => {
+    expect(
+      territorioSinLocales({ cuenta: { leads: 0, sinWeb: 0 }, cargados: 0, fallaCargados: false }),
+    ).toBe(true);
+  });
+
+  it("la cuenta exacta manda aunque la lista cargada haya fallado", () => {
+    expect(
+      territorioSinLocales({ cuenta: { leads: 1200, sinWeb: 300 }, cargados: 0, fallaCargados: true }),
+    ).toBe(false);
+  });
+
+  it("sin cuenta y con la consulta caída no se afirma que esté vacío: barrer otra vez se paga", () => {
+    expect(territorioSinLocales({ cuenta: null, cargados: 0, fallaCargados: true })).toBe(false);
+  });
+
+  it("sin cuenta, una lista cargada vacía y sin error sí es un territorio vacío", () => {
+    expect(territorioSinLocales({ cuenta: null, cargados: 0, fallaCargados: false })).toBe(true);
+  });
+});
 
 const CUADRADO: Punto[] = [
   { lat: 4.72, lng: -74.28 },

@@ -7,7 +7,12 @@ import { Bot, PencilLine, Trash2 } from "lucide-react";
 import { poligonoSeCruza } from "@/lib/admin/barrido";
 import { fechaCorta, formatoUsd } from "@/lib/admin/formato";
 import { estadoCenso, type Negocio } from "@/lib/admin/negocios";
-import { resumenDeTerritorio, type CuentaTerritorio, type Territorio } from "@/lib/admin/territorios";
+import {
+  resumenDeTerritorio,
+  territorioSinLocales,
+  type CuentaTerritorio,
+  type Territorio,
+} from "@/lib/admin/territorios";
 import { eliminarTerritorio } from "@/lib/admin/territorios-actions";
 import type { EstadoVozZak } from "@/lib/admin/voz-estado";
 import { nuevosContactables, TANDA_SUGERIDA_DIA } from "@/lib/admin/zak";
@@ -39,13 +44,22 @@ type Props = {
   negocios: Negocio[];
   /** Cuenta exacta del servidor (null si falló). */
   negociosTotal: number | null;
+  /** La consulta de `negocios` falló: la lista vacía NO es un territorio vacío. */
+  fallaNegocios: boolean;
   cuenta: CuentaTerritorio | null;
   vozZak: EstadoVozZak;
 };
 
 /** La página de un territorio: sus números, sus acciones y sus locales, con
  * los estados, los filtros y las acciones en lote de la lista de Leads. */
-export function TerritorioDetalleView({ territorio: t, negocios, negociosTotal, cuenta, vozZak }: Props) {
+export function TerritorioDetalleView({
+  territorio: t,
+  negocios,
+  negociosTotal,
+  fallaNegocios,
+  cuenta,
+  vozZak,
+}: Props) {
   const router = useRouter();
   const { confirmar, dialogo } = useConfirmar();
   const [leadId, abrirLead] = useFichaLead();
@@ -70,9 +84,13 @@ export function TerritorioDetalleView({ territorio: t, negocios, negociosTotal, 
   const paraHoy = useMemo(() => nuevosContactables(negocios, TANDA_SUGERIDA_DIA), [negocios]);
   const resumen = resumenDeTerritorio(t, cuentas);
   const censo = estadoCenso(negocios.length, negociosTotal);
+  // Solo se ofrece barrer cuando se SABE que no hay locales: una consulta caída
+  // no es un territorio vacío, y barrer otra vez le paga a Google lo mismo.
+  const vacio = territorioSinLocales({ cuenta, cargados: negocios.length, fallaCargados: fallaNegocios });
+  const recortado = !fallaNegocios && censo.tipo !== "completo";
   const cruzado = useMemo(() => poligonoSeCruza(t.poligono), [t.poligono]);
   const enMapa = `/admin/prospeccion?tab=territorio&territorio=${t.id}`;
-  const hayAvisos = Boolean(error) || Boolean(tanda.aviso) || cruzado || censo.tipo !== "completo";
+  const hayAvisos = Boolean(error) || Boolean(tanda.aviso) || cruzado || fallaNegocios || recortado;
 
   async function borrar() {
     const ok = await confirmar({
@@ -140,7 +158,13 @@ export function TerritorioDetalleView({ territorio: t, negocios, negociosTotal, 
             <Button
               variante="primaria"
               disabled={tanda.enviando || paraHoy.length === 0}
-              title={paraHoy.length === 0 ? "No quedan locales nuevos con celular en este territorio" : undefined}
+              title={
+                fallaNegocios
+                  ? "No se pudieron cargar los locales: recarga la página"
+                  : paraHoy.length === 0
+                    ? "No quedan locales nuevos con celular en este territorio"
+                    : undefined
+              }
               onClick={contactarNuevos}
             >
               <Bot className="h-4 w-4" />
@@ -168,7 +192,13 @@ export function TerritorioDetalleView({ territorio: t, negocios, negociosTotal, 
               censo aunque el barrido termine en 100 %.
             </Banner>
           )}
-          {censo.tipo !== "completo" && (
+          {fallaNegocios && (
+            <Banner variante="error">
+              No se pudieron cargar los locales de este territorio: «Contactar a los nuevos» no tiene
+              a quién escribir. La lista de abajo carga aparte. Recarga la página para reintentar.
+            </Banner>
+          )}
+          {recortado && (
             <Banner variante="error">
               «Contactar a los nuevos» cuenta solo los <strong>{negocios.length}</strong> locales más
               recientes{censo.tipo === "recortado" && <> de {censo.total}</>}. Los más antiguos que
@@ -178,7 +208,7 @@ export function TerritorioDetalleView({ territorio: t, negocios, negociosTotal, 
         </div>
       )}
 
-      {negocios.length === 0 ? (
+      {vacio ? (
         <CockpitBody>
           <EmptyState
             titulo="Este territorio todavía no tiene locales."
