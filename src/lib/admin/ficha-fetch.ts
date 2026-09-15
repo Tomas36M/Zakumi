@@ -31,3 +31,20 @@ export function estadoFicha(leadId: string | null, ultimo: FichaFetch | null): E
     noExiste: vigente !== null && !vigente.fallo && vigente.negocio === null,
   };
 }
+
+/**
+ * La ficha cuando el dueño ya tiene una lista cargada (los negocios del mapa o
+ * los de un territorio): si el lead está ahí, esa fila manda —viva tras cada
+ * `router.refresh()`—; si no (un lead más antiguo que el tope de esa lista),
+ * lo que diga el fetch por id.
+ */
+export function fichaConLista(
+  leadId: string | null,
+  enLista: Negocio | null,
+  ultimo: FichaFetch | null,
+): EstadoFicha {
+  if (leadId !== null && enLista?.id === leadId) {
+    return { negocio: enLista, cargando: false, fallo: false, noExiste: false };
+  }
+  return estadoFicha(leadId, ultimo);
+}
