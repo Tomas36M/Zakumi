@@ -11,6 +11,7 @@ import {
 } from "@/lib/admin/bots-actions";
 import { fechaCorta, horaDeIso } from "@/lib/admin/formato";
 import { labelEstado, type Negocio } from "@/lib/admin/negocios";
+import { estadoFicha, type FichaFetch } from "@/lib/admin/ficha-fetch";
 import {
   fueraDeVentana,
   srcFolleto,
@@ -73,9 +74,6 @@ function guardarVistos(iid: number, vistos: Record<string, Visto>): void {
     // sin storage no hay persistencia de vistos: aceptable
   }
 }
-
-/** Resultado del último fetch de la ficha de un negocio para el modal del chat. */
-type FichaFetch = { leadId: string; negocio: Negocio | null; fallo: boolean };
 
 /**
  * Conversaciones reales del bot: lista paginada, historial del chat elegido,
@@ -448,14 +446,10 @@ export function Conversaciones({
     };
   }, [leadId, negocioVersion]);
 
-  // El fetch "vigente" es el que coincide con el id abierto ahora mismo.
-  // Sin id abierto no hay ficha; con id abierto y sin fetch que coincida,
-  // se está cargando. Al reabrir el MISMO negocio se muestra al instante lo
-  // último cargado mientras el efecto refresca por debajo (antes: esqueleto).
-  const fetchVigente = leadId !== null && fichaFetch?.leadId === leadId ? fichaFetch : null;
-  const negocioFicha = fetchVigente?.negocio ?? null;
-  const negocioCargando = leadId !== null && fetchVigente === null;
-  const negocioFallo = fetchVigente?.fallo ?? false;
+  // Cargando / fallo / ya no existe se derivan del id abierto y del último
+  // fetch que terminó (estadoFicha, con tests). Al reabrir el MISMO negocio
+  // se muestra al instante lo último cargado mientras el efecto refresca.
+  const ficha = estadoFicha(leadId, fichaFetch);
 
   return (
     // En desktop la bandeja llena el alto que le da el <CockpitBody> del padre
@@ -467,9 +461,10 @@ export function Conversaciones({
       {esZak && vozZak && (
         <FichaLeadModal
           leadId={leadId}
-          negocio={negocioFicha}
-          cargando={negocioCargando}
-          fallo={negocioFallo}
+          negocio={ficha.negocio}
+          cargando={ficha.cargando}
+          fallo={ficha.fallo}
+          noExiste={ficha.noExiste}
           vozZak={vozZak}
           onCerrar={() => abrirLead(null)}
           onCambio={() => {

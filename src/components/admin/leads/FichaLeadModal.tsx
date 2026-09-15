@@ -22,6 +22,10 @@ type Props = {
    *  5xx). Distinto de "no está en la lista cargada": ese banner es para
    *  los dueños que resuelven por lista. */
   fallo?: boolean;
+  /** true si el dueño resolvió `negocio` por fetch y la respuesta llegó bien
+   *  pero sin fila: el negocio se eliminó o el enlace es viejo. Distinto de
+   *  `fallo` (no se pudo consultar) y del banner de "no está en la lista". */
+  noExiste?: boolean;
   vozZak: EstadoVozZak;
   onCerrar: () => void;
   /** router.refresh() del dueño: los datos frescos llegan por props. */
@@ -43,6 +47,7 @@ export function FichaLeadModal({
   negocio,
   cargando = false,
   fallo = false,
+  noExiste = false,
   vozZak,
   onCerrar,
   onCambio,
@@ -105,11 +110,13 @@ export function FichaLeadModal({
           No se pudo cargar la ficha de este negocio. Intenta de nuevo en un
           momento.
         </Banner>
+      ) : noExiste ? (
+        // El dueño resuelve por fetch y la ruta respondió bien, sin fila.
+        <Banner>Este negocio ya no existe: se eliminó o el enlace es viejo.</Banner>
       ) : (
         // La lista de esta pantalla viene topada (TOPE_LEADS): un enlace a un
-        // negocio antiguo puede caer fuera de lo cargado. (El dueño que
-        // resuelve por fetch solo cae acá si el negocio ya no existe: la ruta
-        // responde 200 con `negocio: null`, no un fallo.)
+        // negocio antiguo puede caer fuera de lo cargado. El dueño que resuelve
+        // por fetch no llega acá: pasa `cargando` / `fallo` / `noExiste`.
         <Banner variante="error">
           Este negocio no está en la lista cargada en pantalla. Búscalo en su
           territorio o ajusta los filtros.
