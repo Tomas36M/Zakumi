@@ -71,6 +71,19 @@ export async function despacharLlamadaZak(
   const telefono = normalizarTelefono(typeof datos.telefono === "string" ? datos.telefono : "");
   if (!telefono) return { error: "Teléfono no válido (formato +57…)." };
 
+  // Sin esto, el endpoint marcaba a cualquier +<código de país> del
+  // mundo con solo el token compartido — un token filtrado podía usarse
+  // para marcar a números internacionales de tarifa premium a costa de
+  // Zakumi. ZAK_VOZ_PAISES_PERMITIDOS es la salida de emergencia si algún
+  // día el negocio sí necesita llamar fuera de Colombia.
+  const paisesPermitidos = (process.env.ZAK_VOZ_PAISES_PERMITIDOS ?? "+57")
+    .split(",")
+    .map((p) => p.trim())
+    .filter(Boolean);
+  if (!paisesPermitidos.some((prefijo) => telefono.startsWith(prefijo))) {
+    return { error: "Ese número no está en un país permitido para llamar." };
+  }
+
   const negocioId =
     typeof datos.negocioId === "string" && UUID.test(datos.negocioId)
       ? datos.negocioId
