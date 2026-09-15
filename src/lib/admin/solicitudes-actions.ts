@@ -215,24 +215,68 @@ export async function activarSolicitud(
     return { error: "La solicitud no tiene cotización completa." };
   }
 
-  // 1. Cliente de la cartera (desde el perfil del usuario del portal).
-  const { data: perfil } = await supabase
-    .from("perfiles")
-    .select("user_id, cliente_id, email, nombre")
-    .eq("user_id", sol.user_id)
-    .maybeSingle();
-  if (!perfil) return { error: "El usuario de la solicitud no tiene perfil." };
+  // 1. Cliente de la cartera — tres caminos:
+  //    (a) con cuenta de portal: desde el perfil, como siempre;
+  //    (b) sin cuenta, reintento: el cliente ya existe, se recupera del
+  //        producto ya referenciado (misma idempotencia que protege el
+  //        paso 2 más abajo);
+  //    (c) sin cuenta, primera vez: se crea directo desde el contacto de
+  //        la solicitud. Darle acceso al portal después sigue siendo un
+  //        paso aparte que esta función no hace.
+  let clienteId: string;
+  if (sol.user_id) {
+    const { data: perfil } = await supabase
+      .from("perfiles")
+      .select("user_id, cliente_id, email, nombre")
+      .eq("user_id", sol.user_id)
+      .maybeSingle();
+    if (!perfil) return { error: "El usuario de la solicitud no tiene perfil." };
 
-  let clienteId = perfil.cliente_id as string | null;
-  if (!clienteId) {
+    let cid = perfil.cliente_id as string | null;
+    if (!cid) {
+      const { data: cliente, error: errorCliente } = await supabase
+        .from("clientes")
+        .insert({
+          nombre:
+            (perfil.nombre as string | null)?.trim() ||
+            (perfil.email as string | null) ||
+            "Cliente del portal",
+          email: (perfil.email as string | null) ?? null,
+        })
+        .select("id")
+        .single();
+      if (errorCliente || !cliente) {
+        console.error("[activarSolicitud] cliente", errorCliente?.message);
+        return { error: "No se pudo crear el cliente." };
+      }
+      cid = cliente.id as string;
+
+      const { error: errorVinculo } = await supabase
+        .from("perfiles")
+        .update({ cliente_id: cid })
+        .eq("user_id", sol.user_id);
+      if (errorVinculo) {
+        console.error("[activarSolicitud] vínculo", errorVinculo.message);
+        return { error: "Se creó el cliente pero no se pudo vincular el perfil." };
+      }
+    }
+    clienteId = cid;
+  } else if (sol.producto_id) {
+    const { data: producto } = await supabase
+      .from("productos")
+      .select("cliente_id")
+      .eq("id", sol.producto_id)
+      .maybeSingle();
+    if (!producto) return { error: "No se encontró el producto ya creado." };
+    clienteId = producto.cliente_id as string;
+  } else {
     const { data: cliente, error: errorCliente } = await supabase
       .from("clientes")
       .insert({
-        nombre:
-          (perfil.nombre as string | null)?.trim() ||
-          (perfil.email as string | null) ||
-          "Cliente del portal",
-        email: (perfil.email as string | null) ?? null,
+        nombre: sol.contacto_nombre?.trim() || sol.contacto_telefono || "Cliente sin cuenta de portal",
+        telefono: sol.contacto_telefono,
+        email: sol.contacto_email,
+        negocio_id: sol.negocio_id,
       })
       .select("id")
       .single();
@@ -241,15 +285,6 @@ export async function activarSolicitud(
       return { error: "No se pudo crear el cliente." };
     }
     clienteId = cliente.id as string;
-
-    const { error: errorVinculo } = await supabase
-      .from("perfiles")
-      .update({ cliente_id: clienteId })
-      .eq("user_id", sol.user_id);
-    if (errorVinculo) {
-      console.error("[activarSolicitud] vínculo", errorVinculo.message);
-      return { error: "Se creó el cliente pero no se pudo vincular el perfil." };
-    }
   }
 
   // 2. Producto contratado (idempotente vía solicitudes.producto_id).
