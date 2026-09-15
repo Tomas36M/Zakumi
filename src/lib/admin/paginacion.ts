@@ -6,6 +6,10 @@
 
 export const TERRITORIOS_POR_PAGINA = 25;
 
+/** La lista de Leads pagina de a 50: una página es exactamente una tanda de Zak
+ * (`TANDA_MAX_BOT`), así «seleccionar la página» cabe en un envío. */
+export const LEADS_POR_PAGINA = 50;
+
 /**
  * Sanea el ?pagina= de la URL: cualquier cosa que no sea un entero ≥ 1 cae
  * a la página 1 — un link viejo o un valor escrito a mano nunca revienta la
