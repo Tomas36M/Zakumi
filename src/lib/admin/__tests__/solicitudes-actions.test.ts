@@ -101,6 +101,7 @@ function supabaseActivar(cfg: {
   perfil?: { cliente_id: string | null; email: string | null; nombre: string | null } | null;
   productoExistente?: { cliente_id: string } | null;
   clienteCreadoId?: string;
+  clienteExistentePorNegocio?: { id: string } | null;
 }) {
   return {
     from: (tabla: string) => {
@@ -126,7 +127,7 @@ function supabaseActivar(cfg: {
           },
         };
       }
-      if (tabla === "productos") {
+      if (tabla === "productos_contratados") {
         return {
           select: () => ({
             eq: () => ({
@@ -137,6 +138,11 @@ function supabaseActivar(cfg: {
       }
       if (tabla === "clientes") {
         return {
+          select: () => ({
+            eq: () => ({
+              maybeSingle: async () => ({ data: cfg.clienteExistentePorNegocio ?? null, error: null }),
+            }),
+          }),
           insert: (fila: unknown) => {
             insertClienteMock(fila);
             return {
@@ -145,6 +151,15 @@ function supabaseActivar(cfg: {
               }),
             };
           },
+        };
+      }
+      if (tabla === "negocios") {
+        // avanzarEstadoNegocio: solo importa que no lance (la lógica del
+        // candado/forward-only ya se cubre en estado-negocio.test.ts).
+        return {
+          update: () => ({
+            in: () => ({ eq: () => ({ lt: async () => ({ error: null }) }) }),
+          }),
         };
       }
       throw new Error(`tabla no mockeada en este test: ${tabla}`);
@@ -192,6 +207,34 @@ describe("activarSolicitud — resolución del cliente", () => {
       email: null,
       negocio_id: null,
     });
+  });
+
+  it("sin cuenta de portal, con negocio vinculado: un reintento antes de guardar producto_id reusa el cliente por negocio_id, no duplica", async () => {
+    const solicitud = {
+      ...BASE_ACTIVABLE,
+      user_id: null,
+      producto_id: null,
+      negocio_id: "neg-1",
+      contacto_nombre: "Panadería Doña Rosa",
+      contacto_telefono: "+573001112233",
+      contacto_email: null,
+    };
+    crearProductoMock.mockResolvedValue({ id: "prod-3" });
+    verifySessionMock.mockResolvedValue({
+      supabase: supabaseActivar({
+        solicitud,
+        clienteExistentePorNegocio: { id: "cli-existente-negocio" },
+      }),
+    });
+
+    const { activarSolicitud } = await import("../solicitudes-actions");
+    const r = await activarSolicitud("sol-2");
+
+    expect(r).toEqual({ error: null });
+    expect(insertClienteMock).not.toHaveBeenCalled();
+    expect(crearProductoMock).toHaveBeenCalledWith(
+      expect.objectContaining({ cliente_id: "cli-existente-negocio" }),
+    );
   });
 
   it("sin cuenta de portal: un reintento no duplica el cliente", async () => {

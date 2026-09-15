@@ -263,28 +263,51 @@ export async function activarSolicitud(
     clienteId = cid;
   } else if (sol.producto_id) {
     const { data: producto } = await supabase
-      .from("productos")
+      .from("productos_contratados")
       .select("cliente_id")
       .eq("id", sol.producto_id)
       .maybeSingle();
     if (!producto) return { error: "No se encontró el producto ya creado." };
     clienteId = producto.cliente_id as string;
   } else {
-    const { data: cliente, error: errorCliente } = await supabase
-      .from("clientes")
-      .insert({
-        nombre: sol.contacto_nombre?.trim() || sol.contacto_telefono || "Cliente sin cuenta de portal",
-        telefono: sol.contacto_telefono,
-        email: sol.contacto_email,
-        negocio_id: sol.negocio_id,
-      })
-      .select("id")
-      .single();
-    if (errorCliente || !cliente) {
-      console.error("[activarSolicitud] cliente", errorCliente?.message);
-      return { error: "No se pudo crear el cliente." };
+    // Sin cuenta de portal, primera vez: si la solicitud ya tiene negocio
+    // vinculado, se reusa el cliente si ya existe uno para ese negocio
+    // (clientes.negocio_id es UNIQUE) — evita duplicar si un intento
+    // anterior creó el cliente pero falló antes de referenciar el producto.
+    // Sin negocio_id no hay con qué cruzar de forma confiable (el teléfono
+    // de la solicitud no viene normalizado igual que clientes.telefono, y
+    // cruzar por teléfono ya se descartó como poco confiable en el diseño
+    // original de este vínculo, Decisión 5 del spec) — ese caso puede
+    // duplicar en el mismo fallo-parcial raro, igual que antes de este cambio.
+    let clienteExistente: { id: string } | null = null;
+    if (sol.negocio_id) {
+      const { data } = await supabase
+        .from("clientes")
+        .select("id")
+        .eq("negocio_id", sol.negocio_id)
+        .maybeSingle();
+      clienteExistente = data as { id: string } | null;
     }
-    clienteId = cliente.id as string;
+
+    if (clienteExistente) {
+      clienteId = clienteExistente.id;
+    } else {
+      const { data: cliente, error: errorCliente } = await supabase
+        .from("clientes")
+        .insert({
+          nombre: sol.contacto_nombre?.trim() || sol.contacto_telefono || "Cliente sin cuenta de portal",
+          telefono: sol.contacto_telefono,
+          email: sol.contacto_email,
+          negocio_id: sol.negocio_id,
+        })
+        .select("id")
+        .single();
+      if (errorCliente || !cliente) {
+        console.error("[activarSolicitud] cliente", errorCliente?.message);
+        return { error: "No se pudo crear el cliente." };
+      }
+      clienteId = cliente.id as string;
+    }
   }
 
   // 2. Producto contratado (idempotente vía solicitudes.producto_id).
