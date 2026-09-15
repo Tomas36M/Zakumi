@@ -167,14 +167,18 @@ create policy perfiles_lee_propio on public.perfiles
   for select to authenticated
   using (user_id = (select auth.uid()));
 
--- Editar el propio perfil: RLS por sí sola no puede acotar a una columna,
--- así que la política sigue permitiendo el UPDATE de la fila propia, pero
--- el GRANT de abajo solo entrega el permiso de columna sobre `nombre` —
--- Postgres exige AMBOS (policy + grant de columna) para que un UPDATE
--- pase. Antes de esto, cualquier usuario podía reescribir su propio
--- `email` (nada en la policy ni en el trigger lo impedía), lo que permitía
--- "ocupar" el correo de un cliente real y que un admin lo vinculara a la
--- ficha equivocada — ver Radiografía Zakumi, hallazgo Alto #2.
+-- Editar el propio perfil. La política deja pasar el UPDATE de la fila
+-- propia; el GRANT de columnas de abajo acota QUÉ columnas puede tocar el
+-- rol `authenticated` — Postgres exige ambos (policy + privilegio de
+-- columna). Ojo: el grant es por ROL de Postgres, y admin y cliente son el
+-- MISMO rol (`authenticated`; "admin" es solo un valor de perfiles.rol que
+-- RLS lee vía es_admin()). Por eso no se puede acotar a `(nombre)` sin
+-- romper cambiarRolPerfil y vincularPerfilACliente para los admins reales:
+-- la lista incluye rol/cliente_id/email, y quien decide si un NO-admin
+-- puede tocarlas es el trigger perfiles_proteger (que ahora cubre email).
+-- Antes de esto, cualquier usuario podía reescribir su propio `email`, lo
+-- que permitía "ocupar" el correo de un cliente real y que un admin lo
+-- vinculara a la ficha equivocada — ver Radiografía Zakumi, hallazgo Alto #2.
 drop policy if exists perfiles_edita_propio on public.perfiles;
 create policy perfiles_edita_propio on public.perfiles
   for update to authenticated
@@ -182,6 +186,6 @@ create policy perfiles_edita_propio on public.perfiles
   with check (user_id = (select auth.uid()));
 
 revoke update on public.perfiles from authenticated;
-grant update (nombre) on public.perfiles to authenticated;
+grant update (nombre, rol, cliente_id, email) on public.perfiles to authenticated;
 
 revoke all on public.perfiles from anon;
