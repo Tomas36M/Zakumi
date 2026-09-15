@@ -12,15 +12,34 @@ const securityHeaders = [
     key: "Strict-Transport-Security",
     value: "max-age=63072000; includeSubDomains; preload",
   },
+  // Cada host tiene una razón verificada leyendo qué carga cada superficie
+  // desde el navegador — no "por si acaso":
+  // - maps.googleapis.com (script + connect): loader de Google Maps y el
+  //   XHR de tiles vectoriales (MapCanvas.tsx).
+  // - cdn.jsdelivr.net (script): el widget de voz de ElevenLabs carga su
+  //   audio worklet de ahí como fallback en Firefox/Safari.
+  // - fonts.googleapis.com / fonts.gstatic.com: el chrome de Google Maps
+  //   puede traer Roboto; improbable con disableDefaultUI, barato de cubrir.
+  // - media-src https:: las previsualizaciones de voz de ElevenLabs
+  //   (VozView, BibliotecaVoces) son <audio> de un CDN de terceros.
+  // - *.elevenlabs.io https + wss (connect): el widget está vendorizado en
+  //   public/voz/ (lo cubre 'self'), pero habla con api*.elevenlabs.io por
+  //   REST y con api*.elevenlabs.io / livekit.rtc.elevenlabs.io por
+  //   WebSocket. Sin esto el lab de /admin/voz carga y no funciona.
+  // - *.supabase.co (connect): el cliente del navegador le habla directo.
+  //   Sin wss:// a propósito: ninguna pantalla usa Realtime desde el cliente.
+  // 'unsafe-inline' en script-src: Next inyecta un bootstrap inline; sin
+  // nonces no se evita sin un cambio mucho mayor.
   {
     key: "Content-Security-Policy",
     value: [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' https://maps.googleapis.com",
-      "style-src 'self' 'unsafe-inline'",
+      "script-src 'self' 'unsafe-inline' https://maps.googleapis.com https://cdn.jsdelivr.net",
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "img-src 'self' data: https:",
-      "font-src 'self' data:",
-      "connect-src 'self' https://maps.googleapis.com https://*.supabase.co",
+      "font-src 'self' data: https://fonts.gstatic.com",
+      "media-src 'self' https:",
+      "connect-src 'self' https://maps.googleapis.com https://*.supabase.co https://*.elevenlabs.io wss://*.elevenlabs.io",
       "frame-ancestors 'none'",
       "object-src 'none'",
       "base-uri 'self'",
