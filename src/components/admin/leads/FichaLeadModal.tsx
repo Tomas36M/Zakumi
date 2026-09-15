@@ -18,6 +18,10 @@ type Props = {
    *  fetch por id, en vez de buscarlo en una lista ya cargada). Pinta un
    *  esqueleto en vez del banner de "no encontrado". */
   cargando?: boolean;
+  /** true si el dueño INTENTÓ resolver `negocio` por fetch y falló (red,
+   *  5xx). Distinto de "no está en la lista cargada": ese banner es para
+   *  los dueños que resuelven por lista. */
+  fallo?: boolean;
   vozZak: EstadoVozZak;
   onCerrar: () => void;
   /** router.refresh() del dueño: los datos frescos llegan por props. */
@@ -38,6 +42,7 @@ export function FichaLeadModal({
   leadId,
   negocio,
   cargando = false,
+  fallo = false,
   vozZak,
   onCerrar,
   onCambio,
@@ -93,10 +98,17 @@ export function FichaLeadModal({
             <FichaLeadNotas negocioId={negocio.id} version={negocio.updated_at} />
           </div>
         </div>
+      ) : fallo ? (
+        // El dueño resuelve por fetch (el chat de Zak) y el fetch falló de
+        // verdad: no es "no está en la lista", es "no se pudo consultar".
+        <Banner variante="error">
+          No se pudo cargar la ficha de este negocio. Intenta de nuevo en un
+          momento.
+        </Banner>
       ) : (
         // La lista de esta pantalla viene topada (TOPE_LEADS): un enlace a un
-        // negocio antiguo puede caer fuera de lo cargado. (Zak no cae acá:
-        // resuelve por fetch, no por lista — ver `cargando` arriba.)
+        // negocio antiguo puede caer fuera de lo cargado. (Los dueños que
+        // resuelven por fetch no caen acá: pasan `cargando`/`fallo`.)
         <Banner variante="error">
           Este negocio no está en la lista cargada en pantalla. Búscalo en su
           territorio o ajusta los filtros.

@@ -412,37 +412,48 @@ export function Conversaciones({
 
   const [leadId, abrirLead] = useFichaLead();
   const negocioIdActual = fichaActual?.negocioId ?? null;
-  const [negocioFicha, setNegocioFicha] = useState<Negocio | null>(null);
-  const [negocioCargando, setNegocioCargando] = useState(false);
-  const [negocioVersion, setNegocioVersion] = useState(0);
-
   // La ficha completa del negocio abierto en el modal: a diferencia de
   // Territorio/Prospección (que la sacan de una lista ya cargada), acá se
   // trae por fetch — el chat no tiene esa lista. `negocioVersion` fuerza un
   // refetch después de editar (ver onCambio más abajo).
+  //
+  // UN solo estado, escrito SOLO desde la continuación async: un setState
+  // síncrono en el cuerpo del efecto (resetear al cerrar, marcar
+  // "cargando" al abrir) dispara react-hooks/set-state-in-effect. Lo que
+  // antes era estado — cargando, fallo — ahora se deriva comparando el id
+  // abierto con el id del último fetch que terminó.
+  type FichaFetch = { leadId: string; negocio: Negocio | null; fallo: boolean };
+  const [fichaFetch, setFichaFetch] = useState<FichaFetch | null>(null);
+  const [negocioVersion, setNegocioVersion] = useState(0);
+
   useEffect(() => {
-    if (!leadId) {
-      setNegocioFicha(null);
-      return;
-    }
+    if (!leadId) return;
     let cancelado = false;
-    setNegocioCargando(true);
     void (async () => {
+      let negocio: Negocio | null = null;
+      let fallo = false;
       try {
         const res = await fetch(`/admin/api/negocios/${leadId}`);
         if (!res.ok) throw new Error(String(res.status));
-        const data = (await res.json()) as { negocio: Negocio | null };
-        if (!cancelado) setNegocioFicha(data.negocio);
+        negocio = ((await res.json()) as { negocio: Negocio | null }).negocio;
       } catch {
-        if (!cancelado) setNegocioFicha(null);
-      } finally {
-        if (!cancelado) setNegocioCargando(false);
+        fallo = true;
       }
+      if (!cancelado) setFichaFetch({ leadId, negocio, fallo });
     })();
     return () => {
       cancelado = true;
     };
   }, [leadId, negocioVersion]);
+
+  // El fetch "vigente" es el que coincide con el id abierto ahora mismo.
+  // Sin id abierto no hay ficha; con id abierto y sin fetch que coincida,
+  // se está cargando. Al reabrir el MISMO negocio se muestra al instante lo
+  // último cargado mientras el efecto refresca por debajo (antes: esqueleto).
+  const fetchVigente = leadId !== null && fichaFetch?.leadId === leadId ? fichaFetch : null;
+  const negocioFicha = fetchVigente?.negocio ?? null;
+  const negocioCargando = leadId !== null && fetchVigente === null;
+  const negocioFallo = fetchVigente?.fallo ?? false;
 
   return (
     // En desktop la bandeja llena el alto que le da el <CockpitBody> del padre
@@ -456,6 +467,7 @@ export function Conversaciones({
           leadId={leadId}
           negocio={negocioFicha}
           cargando={negocioCargando}
+          fallo={negocioFallo}
           vozZak={vozZak}
           onCerrar={() => abrirLead(null)}
           onCambio={() => {
@@ -469,7 +481,8 @@ export function Conversaciones({
             abrirLead(null);
             if (telefono) {
               setFichas((prev) => {
-                const { [telefono]: _quitada, ...resto } = prev;
+                const resto = { ...prev };
+                delete resto[telefono];
                 return resto;
               });
             }
