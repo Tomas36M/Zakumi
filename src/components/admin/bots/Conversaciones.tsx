@@ -74,6 +74,9 @@ function guardarVistos(iid: number, vistos: Record<string, Visto>): void {
   }
 }
 
+/** Resultado del último fetch de la ficha de un negocio para el modal del chat. */
+type FichaFetch = { leadId: string; negocio: Negocio | null; fallo: boolean };
+
 /**
  * Conversaciones reales del bot: lista paginada, historial del chat elegido,
  * pausar/reanudar (tomar el chat un humano) y envío manual por el proveedor.
@@ -422,7 +425,6 @@ export function Conversaciones({
   // "cargando" al abrir) dispara react-hooks/set-state-in-effect. Lo que
   // antes era estado — cargando, fallo — ahora se deriva comparando el id
   // abierto con el id del último fetch que terminó.
-  type FichaFetch = { leadId: string; negocio: Negocio | null; fallo: boolean };
   const [fichaFetch, setFichaFetch] = useState<FichaFetch | null>(null);
   const [negocioVersion, setNegocioVersion] = useState(0);
 

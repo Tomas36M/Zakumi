@@ -107,8 +107,9 @@ export function FichaLeadModal({
         </Banner>
       ) : (
         // La lista de esta pantalla viene topada (TOPE_LEADS): un enlace a un
-        // negocio antiguo puede caer fuera de lo cargado. (Los dueños que
-        // resuelven por fetch no caen acá: pasan `cargando`/`fallo`.)
+        // negocio antiguo puede caer fuera de lo cargado. (El dueño que
+        // resuelve por fetch solo cae acá si el negocio ya no existe: la ruta
+        // responde 200 con `negocio: null`, no un fallo.)
         <Banner variante="error">
           Este negocio no está en la lista cargada en pantalla. Búscalo en su
           territorio o ajusta los filtros.
