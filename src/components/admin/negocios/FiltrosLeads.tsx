@@ -1,8 +1,9 @@
 "use client";
 
 import { useMemo } from "react";
-import { categoriasDe, type FiltroLeads, type FiltroTelefono, type FiltroWeb } from "@/lib/admin/filtros-leads";
-import { ciudadesDe, type EstadoNegocio, type Negocio } from "@/lib/admin/negocios";
+import type { FiltroLeads, FiltroTelefono, FiltroWeb } from "@/lib/admin/filtros-leads";
+import type { OpcionesLeads } from "@/lib/admin/leads-consulta";
+import type { EstadoNegocio } from "@/lib/admin/negocios";
 import type { Territorio } from "@/lib/admin/territorios";
 import { cn } from "@/lib/cn";
 import { Field, Input, Select } from "@/components/admin/ui/Field";
@@ -12,29 +13,38 @@ import { FranjaEstados } from "./FranjaEstados";
 type Props = {
   filtro: FiltroLeads;
   onCambiar: (filtro: FiltroLeads) => void;
-  /** La lista completa: de aquí salen las ciudades y categorías del select. */
-  negocios: readonly Negocio[];
+  /** Las ciudades y categorías que existen en la base (las trae la ruta de la lista). */
+  opciones: OpcionesLeads;
   territorios: readonly Territorio[];
-  /** Cuántos quedan tras filtrar. */
-  visibles: number;
+  /** Cuántos negocios de la base cumplen los filtros; null hasta la primera respuesta. */
+  total: number | null;
+  /** El tramo de ese total que está en pantalla; null sin filas. */
+  enPantalla: { desde: number; hasta: number } | null;
   /** Cuántos hay en cada estado con los demás filtros aplicados. */
   conteos: Record<EstadoNegocio, number>;
   /** En la página de un territorio el territorio ya está elegido: sin select. */
   ocultarTerritorio?: boolean;
 };
 
+/** Si el valor elegido ya no está entre las opciones (cambió el territorio), el
+ * select lo sigue mostrando: un filtro activo nunca queda invisible. */
+function conElegido(opciones: readonly string[], elegido: string, vacio: string): readonly string[] {
+  return elegido === vacio || opciones.includes(elegido) ? opciones : [elegido, ...opciones];
+}
+
 /** La isla de búsqueda de la lista de leads: texto, estados y selects. */
 export function FiltrosLeads({
   filtro,
   onCambiar,
-  negocios,
+  opciones,
   territorios,
-  visibles,
+  total,
+  enPantalla,
   conteos,
   ocultarTerritorio = false,
 }: Props) {
-  const categorias = useMemo(() => categoriasDe(negocios), [negocios]);
-  const ciudades = useMemo(() => ciudadesDe(negocios), [negocios]);
+  const ciudades = conElegido(opciones.ciudades, filtro.ciudad, "todas");
+  const categorias = conElegido(opciones.categorias, filtro.categoria, "todas");
   const territoriosOrdenados = useMemo(
     () => [...territorios].sort((a, b) => a.nombre.localeCompare(b.nombre, "es")),
     [territorios],
@@ -57,8 +67,17 @@ export function FiltrosLeads({
             aria-label="Buscar por nombre"
           />
           <p className="whitespace-nowrap">
-            <span className="font-editorial text-3xl italic text-tinta">{visibles}</span>
-            <span className="text-sm text-tinta-40"> de {negocios.length} negocios</span>
+            <span className="font-editorial text-3xl italic text-tinta">{total ?? "—"}</span>
+            <span className="text-sm text-tinta-40">
+              {" "}
+              {total === 1 ? "negocio" : "negocios"}
+              {total !== null && enPantalla && enPantalla.hasta - enPantalla.desde + 1 < total && (
+                <>
+                  {" "}
+                  · del {enPantalla.desde} al {enPantalla.hasta}
+                </>
+              )}
+            </span>
           </p>
         </div>
         <FranjaEstados

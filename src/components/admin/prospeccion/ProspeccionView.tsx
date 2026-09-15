@@ -15,6 +15,7 @@ import type { Territorio } from "@/lib/admin/territorios";
 import type { EstadoVozZak } from "@/lib/admin/voz-estado";
 import { FichaLeadModal } from "@/components/admin/leads/FichaLeadModal";
 import { useFichaLead } from "@/components/admin/leads/useFichaLead";
+import { useFichaNegocio } from "@/components/admin/leads/useFichaNegocio";
 import { NegociosView } from "@/components/admin/negocios/NegociosView";
 import { Banner } from "@/components/admin/ui/Banner";
 import { Button } from "@/components/admin/ui/Button";
@@ -76,10 +77,13 @@ export function ProspeccionView({
 
   // La ficha del lead (modal) es del shell, no de las caras: Territorio está
   // siempre montada y Leads solo a veces — dos modales leyendo `?lead=` se
-  // abrirían a la vez. Se guarda el id; el negocio se resuelve en cada render
-  // para que tras `router.refresh()` el modal vea la fila nueva.
+  // abrirían a la vez. Se guarda el id; el negocio sale de los negocios del
+  // mapa (vivos tras `router.refresh()`) o, si es más antiguo que ese tope —la
+  // lista de Leads pagina la base entera—, se trae por id.
   const [leadId, abrirLead] = useFichaLead();
-  const leadAbierto = leadId ? (negocios.find((n) => n.id === leadId) ?? null) : null;
+  const ficha = useFichaNegocio(leadId, negocios);
+  // Sube cuando la ficha cambia algo: la lista de Leads vuelve a pedir su página.
+  const [versionLista, setVersionLista] = useState(0);
 
   // La URL manda (es compartible y sobrevive al atrás del navegador), pero la
   // cara se pinta YA: `router.push` vuelve al servidor a releer negocios y
@@ -252,21 +256,31 @@ export function ProspeccionView({
 
       {cara === "leads" && (
         <NegociosView
-          negocios={negocios}
           territorios={territorios}
           className={COCKPIT_ANIDADO}
           onAbrirLead={abrirLead}
+          // También cuando cambia la cuenta de la base: un barrido que sigue
+          // corriendo con la cara Leads a la vista.
+          recarga={`${versionLista}:${negociosTotal ?? ""}`}
         />
       )}
 
       <FichaLeadModal
         leadId={leadId}
-        negocio={leadAbierto}
+        negocio={ficha.negocio}
+        cargando={ficha.cargando}
+        fallo={ficha.fallo}
+        noExiste={ficha.noExiste}
         vozZak={vozZak}
         onCerrar={() => abrirLead(null)}
-        onCambio={() => router.refresh()}
+        onCambio={() => {
+          ficha.recargar();
+          setVersionLista((v) => v + 1);
+          router.refresh();
+        }}
         onEliminado={() => {
           abrirLead(null);
+          setVersionLista((v) => v + 1);
           router.refresh();
         }}
       />

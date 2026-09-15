@@ -20,6 +20,7 @@ import { IconButton } from "@/components/admin/ui/IconButton";
 import { PageHeader } from "@/components/admin/ui/PageHeader";
 import { FichaLeadModal } from "@/components/admin/leads/FichaLeadModal";
 import { useFichaLead } from "@/components/admin/leads/useFichaLead";
+import { useFichaNegocio } from "@/components/admin/leads/useFichaNegocio";
 import { NegociosView } from "@/components/admin/negocios/NegociosView";
 import { useTandaZak } from "@/components/admin/negocios/useTandaZak";
 import { RenombrarTerritorio } from "@/components/admin/prospeccion/RenombrarTerritorio";
@@ -33,7 +34,8 @@ const COCKPIT_ANIDADO = "min-[900px]:h-auto min-[900px]:min-h-0 min-[900px]:flex
 
 type Props = {
   territorio: Territorio;
-  /** Los negocios de este territorio, topados a TOPE_LEADS. */
+  /** Los negocios de este territorio, topados a TOPE_LEADS: alimentan
+   * «Contactar a los nuevos» y la ficha. La lista pagina aparte, por la ruta. */
   negocios: Negocio[];
   /** Cuenta exacta del servidor (null si falló). */
   negociosTotal: number | null;
@@ -50,12 +52,14 @@ export function TerritorioDetalleView({ territorio: t, negocios, negociosTotal, 
   const [renombrando, setRenombrando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [ocupado, startAccion] = useTransition();
-  const tanda = useTandaZak();
+  // Sube cuando algo cambia por fuera de la lista (la ficha, «Contactar a los
+  // nuevos»): la lista vuelve a pedir su página.
+  const [versionLista, setVersionLista] = useState(0);
+  const tanda = useTandaZak(() => setVersionLista((v) => v + 1));
 
-  const negocio = useMemo(
-    () => (leadId ? (negocios.find((n) => n.id === leadId) ?? null) : null),
-    [negocios, leadId],
-  );
+  // La ficha abierta: de los locales que cargó la página o, si el lead es más
+  // antiguo que ese tope, traída por id.
+  const ficha = useFichaNegocio(leadId, negocios);
   const cuentas = useMemo(
     () => new Map(cuenta ? [[t.id, cuenta]] : []),
     [t.id, cuenta],
@@ -188,8 +192,8 @@ export function TerritorioDetalleView({ territorio: t, negocios, negociosTotal, 
         </CockpitBody>
       ) : (
         <NegociosView
-          negocios={negocios}
-          territorioFijo
+          territorioFijo={t.id}
+          recarga={`${versionLista}:${cuenta?.leads ?? ""}`}
           className={COCKPIT_ANIDADO}
           onAbrirLead={abrirLead}
         />
@@ -197,12 +201,20 @@ export function TerritorioDetalleView({ territorio: t, negocios, negociosTotal, 
 
       <FichaLeadModal
         leadId={leadId}
-        negocio={negocio}
+        negocio={ficha.negocio}
+        cargando={ficha.cargando}
+        fallo={ficha.fallo}
+        noExiste={ficha.noExiste}
         vozZak={vozZak}
         onCerrar={() => abrirLead(null)}
-        onCambio={() => router.refresh()}
+        onCambio={() => {
+          ficha.recargar();
+          setVersionLista((v) => v + 1);
+          router.refresh();
+        }}
         onEliminado={() => {
           abrirLead(null);
+          setVersionLista((v) => v + 1);
           router.refresh();
         }}
       />

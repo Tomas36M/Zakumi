@@ -13,7 +13,7 @@ const GRID_FILA =
   "grid grid-cols-[auto_minmax(0,3fr)_minmax(0,1fr)_minmax(0,1.4fr)_minmax(0,1.2fr)_auto_2.5rem] items-center gap-3";
 
 type Props = {
-  /** Ya filtrados. */
+  /** La página visible de la lista (hasta 50, ya filtrados por la base). */
   negocios: Negocio[];
   seleccionados: ReadonlySet<string>;
   guardando: boolean;
@@ -46,7 +46,7 @@ export function TablaLeads({
           <input
             type="checkbox"
             className="accent-acento"
-            aria-label="Seleccionar todos los filtrados"
+            aria-label="Seleccionar esta página"
             checked={todos}
             onChange={onAlternarTodos}
           />
