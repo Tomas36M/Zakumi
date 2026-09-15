@@ -2,10 +2,12 @@
 
 import { useMemo } from "react";
 import { categoriasDe, type FiltroLeads, type FiltroTelefono, type FiltroWeb } from "@/lib/admin/filtros-leads";
-import { ciudadesDe, ESTADOS, type EstadoNegocio, type Negocio } from "@/lib/admin/negocios";
+import { ciudadesDe, type EstadoNegocio, type Negocio } from "@/lib/admin/negocios";
 import type { Territorio } from "@/lib/admin/territorios";
+import { cn } from "@/lib/cn";
 import { Field, Input, Select } from "@/components/admin/ui/Field";
 import { Island } from "@/components/admin/ui/Island";
+import { FranjaEstados } from "./FranjaEstados";
 
 type Props = {
   filtro: FiltroLeads;
@@ -15,10 +17,22 @@ type Props = {
   territorios: readonly Territorio[];
   /** Cuántos quedan tras filtrar. */
   visibles: number;
+  /** Cuántos hay en cada estado con los demás filtros aplicados. */
+  conteos: Record<EstadoNegocio, number>;
+  /** En la página de un territorio el territorio ya está elegido: sin select. */
+  ocultarTerritorio?: boolean;
 };
 
-/** La isla de búsqueda de la lista de leads: texto + seis selects. */
-export function FiltrosLeads({ filtro, onCambiar, negocios, territorios, visibles }: Props) {
+/** La isla de búsqueda de la lista de leads: texto, estados y selects. */
+export function FiltrosLeads({
+  filtro,
+  onCambiar,
+  negocios,
+  territorios,
+  visibles,
+  conteos,
+  ocultarTerritorio = false,
+}: Props) {
   const categorias = useMemo(() => categoriasDe(negocios), [negocios]);
   const ciudades = useMemo(() => ciudadesDe(negocios), [negocios]);
   const territoriosOrdenados = useMemo(
@@ -47,31 +61,23 @@ export function FiltrosLeads({ filtro, onCambiar, negocios, territorios, visible
             <span className="text-sm text-tinta-40"> de {negocios.length} negocios</span>
           </p>
         </div>
-        <div className="grid grid-cols-2 gap-3 min-[900px]:grid-cols-3">
+        <FranjaEstados
+          conteos={conteos}
+          activo={filtro.estados[0] ?? null}
+          onElegir={(estado) => poner("estados", estado ? [estado] : [])}
+        />
+        <div
+          className={cn(
+            "grid grid-cols-2 gap-3",
+            ocultarTerritorio ? "min-[900px]:grid-cols-4" : "min-[900px]:grid-cols-5",
+          )}
+        >
           <Field label="Ciudad">
             <Select value={filtro.ciudad} onChange={(e) => poner("ciudad", e.target.value)}>
               <option value="todas">Todas</option>
               {ciudades.map((c) => (
                 <option key={c} value={c}>
                   {c}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field label="Estado">
-            <Select
-              value={filtro.estados[0] ?? "todos"}
-              onChange={(e) =>
-                poner(
-                  "estados",
-                  e.target.value === "todos" ? [] : [e.target.value as EstadoNegocio],
-                )
-              }
-            >
-              <option value="todos">Todos</option>
-              {ESTADOS.map((e) => (
-                <option key={e.valor} value={e.valor}>
-                  {e.label}
                 </option>
               ))}
             </Select>
@@ -103,16 +109,22 @@ export function FiltrosLeads({ filtro, onCambiar, negocios, territorios, visible
               <option value="con">Con web</option>
             </Select>
           </Field>
-          <Field label="Territorio">
-            <Select value={filtro.territorio} onChange={(e) => poner("territorio", e.target.value)}>
-              <option value="todos">Todos</option>
-              {territoriosOrdenados.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.nombre}
-                </option>
-              ))}
-            </Select>
-          </Field>
+          {!ocultarTerritorio && (
+            // En celular son cinco campos en dos columnas: el último ocupa la
+            // fila entera en vez de quedar solo a medias.
+            <div className="col-span-2 min-[900px]:col-span-1">
+              <Field label="Territorio">
+                <Select value={filtro.territorio} onChange={(e) => poner("territorio", e.target.value)}>
+                  <option value="todos">Todos</option>
+                  {territoriosOrdenados.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.nombre}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            </div>
+          )}
         </div>
       </div>
     </Island>

@@ -394,6 +394,115 @@ export function agruparPorVertical(
   return [...grupos.values()];
 }
 
+/** Máximo de mensajes en frío al día según la estrategia «Catorce días»:
+ * más que eso arriesga la calidad del número en Meta. El botón «contactar a
+ * los nuevos» no pasa de aquí; una selección a mano sí puede (su techo es el
+ * cupo diario del número). */
+export const TANDA_SUGERIDA_DIA = 80;
+
+/** Máximo de prospectos por tanda: espejo de `TANDA_MAX` del bot
+ * (whatsapp-bot/admin_api.py), que rechaza una tanda más grande. */
+export const TANDA_MAX_BOT = 50;
+
+/** Los que siguen en «Nuevo», tienen celular y nadie fijó a mano, en el orden
+ * de la lista; con `limite`, solo los primeros. Los fijados a mano quedan
+ * fuera: la automatización no les mueve el estado, así que volverían a salir
+ * primeros en cada envío. */
+export function nuevosContactables(negocios: Negocio[], limite?: number): Negocio[] {
+  const nuevos = contactables(negocios).filter(
+    (n) => n.estado === "nuevo" && !n.estado_fijado_manual,
+  );
+  return limite === undefined ? nuevos : nuevos.slice(0, limite);
+}
+
+/** Lo que responde el bot a UNA tanda: entró (con los teléfonos que ya eran
+ * prospectos) o no entró (y si fue por el tope diario del número). */
+export type ResultadoLote = { ok: true; duplicados: string[] } | { ok: false; tope: boolean };
+
+export type Despacho = {
+  /** Negocios cuya tanda SÍ entró al bot (duplicados incluidos). */
+  enviados: Negocio[];
+  duplicados: Set<string>;
+  /** Negocios que no salieron porque se llegó al tope diario. */
+  porTope: number;
+  /** Negocios que no cupieron en la tanda de su vertical (pasaban de `tamano`). */
+  sobrantes: number;
+  algunaOk: boolean;
+};
+
+/**
+ * Manda UNA tanda por vertical, con su plantilla y de máximo `tamano`; lo que
+ * sobra de un vertical queda para el siguiente envío. Un vertical no se parte
+ * en varias tandas a propósito: el bot espacia los envíos dentro de cada tanda
+ * desde cero, y dos tandas del mismo envío saldrían en paralelo, al doble del
+ * ritmo que cuida el número. Se salta los verticales con la plantilla en
+ * revisión y las tandas que fallan por otra causa; al primer «tope diario»
+ * para, porque el cupo es del número entero y nada de lo que sigue cabe hoy.
+ */
+export async function despacharTandas(
+  grupos: readonly { vertical: VerticalProspeccion; negocios: Negocio[] }[],
+  enviar: (vertical: VerticalProspeccion, lote: Negocio[]) => Promise<ResultadoLote>,
+  tamano: number,
+): Promise<Despacho> {
+  const maximo = Math.max(1, Math.floor(tamano));
+  const tandas = grupos
+    .filter((g) => !g.vertical.enRevision)
+    .map((g) => ({
+      vertical: g.vertical,
+      lote: g.negocios.slice(0, maximo),
+      sobran: Math.max(0, g.negocios.length - maximo),
+    }));
+  const despacho: Despacho = {
+    enviados: [],
+    duplicados: new Set(),
+    porTope: 0,
+    sobrantes: tandas.reduce((s, t) => s + t.sobran, 0),
+    algunaOk: false,
+  };
+
+  for (let i = 0; i < tandas.length; i++) {
+    const { vertical, lote } = tandas[i];
+    const r = await enviar(vertical, lote);
+    if (r.ok) {
+      despacho.algunaOk = true;
+      despacho.enviados.push(...lote);
+      for (const t of r.duplicados) despacho.duplicados.add(t);
+    } else if (r.tope) {
+      despacho.porTope = tandas.slice(i).reduce((s, t) => s + t.lote.length, 0);
+      break;
+    }
+  }
+  return despacho;
+}
+
+/** El aviso que queda en pantalla después de mandar una tanda. */
+export function resumenTanda(r: {
+  contactados: number;
+  duplicados: number;
+  omitidos: number;
+  porTope: number;
+  sobrantes: number;
+}): string {
+  const partes = [`Zak va a contactar a ${r.contactados} ${r.contactados === 1 ? "negocio" : "negocios"}`];
+  if (r.duplicados > 0) {
+    partes.push(`${r.duplicados} ${r.duplicados === 1 ? "ya era prospecto" : "ya eran prospectos"}`);
+  }
+  if (r.omitidos > 0) {
+    partes.push(`${r.omitidos} ${r.omitidos === 1 ? "quedó fuera" : "quedaron fuera"}`);
+  }
+  const frase =
+    partes.length === 1 ? partes[0] : `${partes.slice(0, -1).join(", ")} y ${partes[partes.length - 1]}`;
+  const tope =
+    r.porTope > 0
+      ? ` Se llegó al tope diario: ${r.porTope} ${r.porTope === 1 ? "quedó" : "quedaron"} para mañana.`
+      : "";
+  const sobran =
+    r.sobrantes > 0
+      ? ` ${r.sobrantes} ${r.sobrantes === 1 ? "quedó" : "quedaron"} para el siguiente envío: cada tipo de negocio sale en una tanda de máximo ${TANDA_MAX_BOT}.`
+      : "";
+  return `${frase}.${tope}${sobran}`;
+}
+
 /** Ventana de 24h de Meta: fuera de ella el texto libre se descarta en
  * silencio y solo valen plantillas. Sin mensaje del cliente = sin ventana. */
 export function fueraDeVentana(ultimoDelCliente: string | null, ahoraMs: number): boolean {

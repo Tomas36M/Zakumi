@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 import type { Negocio } from "../negocios";
 import {
   PLANTILLA_SALUDO_TEXTO,
+  TANDA_SUGERIDA_DIA,
   TODOS_LOS_VERTICALES,
   VERTICAL_GENERICO,
   VERTICALES_PROSPECCION,
@@ -13,7 +14,10 @@ import {
   avancesDeEstado,
   componentesSaludo,
   contactables,
+  despacharTandas,
   fichaDeNegocio,
+  nuevosContactables,
+  resumenTanda,
   fueraDeVentana,
   linkChatZak,
   mapaFichas,
@@ -270,6 +274,161 @@ describe("agruparPorVertical", () => {
     expect(porSlug.get("restaurante")).toEqual(["r1", "r2"]);
     expect(porSlug.get("ferreteria")).toEqual(["f1"]);
     expect(porSlug.get("generico")).toEqual(["x1"]);
+  });
+});
+
+describe("nuevosContactables", () => {
+  it("solo los que siguen en Nuevo y tienen celular", () => {
+    const lista = [
+      negocio({ id: "nuevo" }),
+      negocio({ id: "contactado", estado: "contactado" }),
+      negocio({ id: "fijo", tipo_telefono: "fijo" }),
+      negocio({ id: "otro-nuevo" }),
+    ];
+    expect(nuevosContactables(lista).map((n) => n.id)).toEqual(["nuevo", "otro-nuevo"]);
+  });
+
+  it("con límite, toma los primeros hasta ese número", () => {
+    const lista = Array.from({ length: 5 }, (_, i) => negocio({ id: `n${i}` }));
+    expect(nuevosContactables(lista, 3).map((n) => n.id)).toEqual(["n0", "n1", "n2"]);
+  });
+
+  it("deja fuera los fijados a mano: su estado no lo mueve la automatización", () => {
+    const lista = [negocio({ id: "libre" }), negocio({ id: "fijado", estado_fijado_manual: true })];
+    expect(nuevosContactables(lista).map((n) => n.id)).toEqual(["libre"]);
+  });
+
+  it("el tope sugerido por día es el de la estrategia: 80, para cuidar el número", () => {
+    expect(TANDA_SUGERIDA_DIA).toBe(80);
+  });
+});
+
+describe("despacharTandas", () => {
+  const restaurante = verticalPorSlug("restaurante");
+  const ferreteria = verticalPorSlug("ferreteria");
+  const varios = (prefijo: string, n: number) =>
+    Array.from({ length: n }, (_, i) => negocio({ id: `${prefijo}${i}`, telefono: `+57310000000${i}` }));
+
+  // El bot espacia los envíos DENTRO de cada tanda desde cero: dos tandas del
+  // mismo vertical en el mismo envío saldrían en paralelo, al doble de ritmo.
+  it("una sola tanda por vertical, de máximo `tamano`: lo que sobra queda para el siguiente envío", async () => {
+    const tamanos: number[] = [];
+    const r = await despacharTandas(
+      [{ vertical: restaurante, negocios: varios("r", 5) }],
+      async (_v, lote) => {
+        tamanos.push(lote.length);
+        return { ok: true as const, duplicados: [] };
+      },
+      2,
+    );
+    expect(tamanos).toEqual([2]);
+    expect(r.enviados.map((n) => n.id)).toEqual(["r0", "r1"]);
+    expect(r.sobrantes).toBe(3);
+    expect(r.porTope).toBe(0);
+    expect(r.algunaOk).toBe(true);
+  });
+
+  it("si el bot dice tope diario, para ahí y cuenta lo que quedó sin enviar", async () => {
+    let llamadas = 0;
+    const r = await despacharTandas(
+      [
+        { vertical: restaurante, negocios: varios("r", 2) },
+        { vertical: ferreteria, negocios: varios("f", 2) },
+        { vertical: VERTICAL_GENERICO, negocios: varios("g", 1) },
+      ],
+      async () => (++llamadas === 1 ? { ok: true as const, duplicados: [] } : { ok: false as const, tope: true }),
+      50,
+    );
+    expect(llamadas).toBe(2);
+    expect(r.enviados.map((n) => n.id)).toEqual(["r0", "r1"]);
+    expect(r.porTope).toBe(3);
+    expect(r.sobrantes).toBe(0);
+  });
+
+  it("si la primera tanda ya choca con el tope, no salió nada", async () => {
+    const r = await despacharTandas(
+      [{ vertical: restaurante, negocios: varios("r", 3) }],
+      async () => ({ ok: false as const, tope: true }),
+      50,
+    );
+    expect(r.algunaOk).toBe(false);
+    expect(r.enviados).toEqual([]);
+    expect(r.porTope).toBe(3);
+  });
+
+  it("una tanda que falla por otra causa se salta y las demás siguen", async () => {
+    let llamadas = 0;
+    const r = await despacharTandas(
+      [
+        { vertical: restaurante, negocios: varios("r", 2) },
+        { vertical: ferreteria, negocios: varios("f", 2) },
+      ],
+      async () => (++llamadas === 1 ? { ok: false as const, tope: false } : { ok: true as const, duplicados: [] }),
+      50,
+    );
+    expect(r.enviados.map((n) => n.id)).toEqual(["f0", "f1"]);
+    expect(r.porTope).toBe(0);
+  });
+
+  it("no manda los verticales con la plantilla en revisión", async () => {
+    const slugs: string[] = [];
+    const r = await despacharTandas(
+      [
+        { vertical: { ...restaurante, enRevision: true }, negocios: varios("r", 2) },
+        { vertical: ferreteria, negocios: varios("f", 1) },
+      ],
+      async (v) => {
+        slugs.push(v.slug);
+        return { ok: true as const, duplicados: [] };
+      },
+      50,
+    );
+    expect(slugs).toEqual(["ferreteria"]);
+    expect(r.enviados.map((n) => n.id)).toEqual(["f0"]);
+  });
+
+  it("junta los duplicados que reporta el bot en todas las tandas", async () => {
+    const r = await despacharTandas(
+      [
+        { vertical: restaurante, negocios: varios("r", 2) },
+        { vertical: ferreteria, negocios: varios("f", 2) },
+      ],
+      async (_v, lote) => ({ ok: true as const, duplicados: [lote[0].id] }),
+      50,
+    );
+    expect([...r.duplicados]).toEqual(["r0", "f0"]);
+  });
+});
+
+describe("resumenTanda", () => {
+  it("dice a cuántos contacta Zak y qué quedó fuera", () => {
+    expect(resumenTanda({ contactados: 12, duplicados: 2, omitidos: 1, porTope: 0, sobrantes: 0 })).toBe(
+      "Zak va a contactar a 12 negocios, 2 ya eran prospectos y 1 quedó fuera.",
+    );
+  });
+
+  it("sin duplicados ni omitidos, una frase corta", () => {
+    expect(resumenTanda({ contactados: 1, duplicados: 0, omitidos: 0, porTope: 0, sobrantes: 0 })).toBe(
+      "Zak va a contactar a 1 negocio.",
+    );
+  });
+
+  it("si se llegó al tope diario, dice cuántos quedaron para mañana", () => {
+    expect(resumenTanda({ contactados: 50, duplicados: 0, omitidos: 0, porTope: 30, sobrantes: 0 })).toBe(
+      "Zak va a contactar a 50 negocios. Se llegó al tope diario: 30 quedaron para mañana.",
+    );
+    expect(resumenTanda({ contactados: 2, duplicados: 0, omitidos: 0, porTope: 1, sobrantes: 0 })).toBe(
+      "Zak va a contactar a 2 negocios. Se llegó al tope diario: 1 quedó para mañana.",
+    );
+  });
+
+  it("si un tipo de negocio no cupo en su tanda, dice cuántos quedaron para el siguiente envío", () => {
+    expect(resumenTanda({ contactados: 50, duplicados: 0, omitidos: 0, porTope: 0, sobrantes: 12 })).toBe(
+      "Zak va a contactar a 50 negocios. 12 quedaron para el siguiente envío: cada tipo de negocio sale en una tanda de máximo 50.",
+    );
+    expect(resumenTanda({ contactados: 50, duplicados: 0, omitidos: 0, porTope: 0, sobrantes: 1 })).toBe(
+      "Zak va a contactar a 50 negocios. 1 quedó para el siguiente envío: cada tipo de negocio sale en una tanda de máximo 50.",
+    );
   });
 });
 

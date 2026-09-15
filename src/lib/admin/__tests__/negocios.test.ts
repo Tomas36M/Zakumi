@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ciudadesDe, estadoCenso, ESTADOS, labelEstado, TOPE_LEADS } from "../negocios";
+import { ciudadesDe, conteoPorEstado, estadoCenso, ESTADOS, labelEstado, TOPE_LEADS } from "../negocios";
 import type { EstadoNegocio, Negocio } from "../negocios";
 
 function negocioCon(ciudad: string | null): Negocio {
@@ -92,6 +92,36 @@ describe("estadoCenso", () => {
     // señal de recorte.
     const resultado = estadoCenso(TOPE_LEADS, null);
     expect(resultado.tipo).not.toBe("completo");
+  });
+});
+
+describe("conteoPorEstado", () => {
+  it("cuenta cuántos negocios hay en cada paso del pipeline", () => {
+    const lista: Negocio[] = [
+      negocioCon(null),
+      negocioCon(null),
+      { ...negocioCon(null), estado: "contactado" },
+      { ...negocioCon(null), estado: "interesado" },
+    ];
+    expect(conteoPorEstado(lista)).toEqual({
+      nuevo: 2,
+      contactado: 1,
+      respondido: 0,
+      interesado: 1,
+      cliente: 0,
+      descartado: 0,
+    });
+  });
+
+  it("sin negocios, los seis estados en cero: la franja nunca pinta un hueco", () => {
+    expect(conteoPorEstado([])).toEqual({
+      nuevo: 0,
+      contactado: 0,
+      respondido: 0,
+      interesado: 0,
+      cliente: 0,
+      descartado: 0,
+    });
   });
 });
 
