@@ -81,11 +81,17 @@ on conflict (user_id) do nothing;
 
 -- ---- Seed de admins — ⚠️ EDITAR AQUÍ antes de correr --------------------------
 
-update public.perfiles set rol = 'admin'
-where email in (
-  'tomasmunevar36@gmail.com',  -- Tomás
-  'catalinamcpg@outlook.com'   -- Catalina
-);
+-- Se lee de auth.users.email (la fuente real de identidad), no de
+-- perfiles.email (una copia editable hasta el Step 1 de arriba — un
+-- correo "ocupado" ahí antes de este fix habría vuelto admin a cualquiera
+-- en una re-corrida de este seed).
+update public.perfiles p set rol = 'admin'
+from auth.users u
+where u.id = p.user_id
+  and u.email in (
+    'tomasmunevar36@gmail.com',  -- Tomás
+    'catalinamcpg@outlook.com'   -- Catalina
+  );
 -- Nota: zakumiestudio@gmail.com NO existe como cuenta en Supabase Auth
 -- (verificado 2026-08-22) — es el correo de Railway, no del panel. Los
 -- admins nuevos se promueven desde /admin/equipo, sin tocar este seed.
@@ -131,10 +137,11 @@ as $$
 begin
   if (new.rol is distinct from old.rol
       or new.cliente_id is distinct from old.cliente_id
-      or new.user_id is distinct from old.user_id)
+      or new.user_id is distinct from old.user_id
+      or new.email is distinct from old.email)
      and (select auth.uid()) is not null
      and not public.es_admin() then
-    raise exception 'solo un admin puede cambiar rol o cliente vinculado';
+    raise exception 'solo un admin puede cambiar rol, cliente vinculado o email';
   end if;
   return new;
 end;
@@ -160,12 +167,21 @@ create policy perfiles_lee_propio on public.perfiles
   for select to authenticated
   using (user_id = (select auth.uid()));
 
--- Editar el propio perfil (solo nombre en la práctica: el trigger
--- perfiles_proteger bloquea rol/cliente_id para no-admins).
+-- Editar el propio perfil: RLS por sí sola no puede acotar a una columna,
+-- así que la política sigue permitiendo el UPDATE de la fila propia, pero
+-- el GRANT de abajo solo entrega el permiso de columna sobre `nombre` —
+-- Postgres exige AMBOS (policy + grant de columna) para que un UPDATE
+-- pase. Antes de esto, cualquier usuario podía reescribir su propio
+-- `email` (nada en la policy ni en el trigger lo impedía), lo que permitía
+-- "ocupar" el correo de un cliente real y que un admin lo vinculara a la
+-- ficha equivocada — ver Radiografía Zakumi, hallazgo Alto #2.
 drop policy if exists perfiles_edita_propio on public.perfiles;
 create policy perfiles_edita_propio on public.perfiles
   for update to authenticated
   using (user_id = (select auth.uid()))
   with check (user_id = (select auth.uid()));
+
+revoke update on public.perfiles from authenticated;
+grant update (nombre) on public.perfiles to authenticated;
 
 revoke all on public.perfiles from anon;
