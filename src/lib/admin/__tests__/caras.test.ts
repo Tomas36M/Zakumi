@@ -11,17 +11,25 @@ describe("plural", () => {
   });
 });
 
+/** Una cifra exacta de la base (no un piso). */
+const exacta = (n: number) => ({ n, mas: false });
+
 describe("carasProspeccion", () => {
   it("siempre son las dos caras, en ese orden", () => {
-    const caras = carasProspeccion({ territorios: 2, leads: 75, sinWeb: 40, barriendo: false });
+    const caras = carasProspeccion({
+      territorios: 2,
+      leads: exacta(75),
+      sinWeb: exacta(40),
+      barriendo: false,
+    });
     expect(caras.map((c) => c.id)).toEqual(["territorio", "leads"]);
   });
 
   it("los contadores respetan el singular", () => {
     const [territorio, leads] = carasProspeccion({
       territorios: 1,
-      leads: 1,
-      sinWeb: 0,
+      leads: exacta(1),
+      sinWeb: exacta(0),
       barriendo: false,
     });
     expect(territorio.detalle).toBe("1 territorio · 1 lead");
@@ -29,11 +37,21 @@ describe("carasProspeccion", () => {
   });
 
   it("solo con barrido abierto la cara de Territorio lleva punto, y late", () => {
-    const sin = carasProspeccion({ territorios: 2, leads: 5, sinWeb: 1, barriendo: false });
+    const sin = carasProspeccion({
+      territorios: 2,
+      leads: exacta(5),
+      sinWeb: exacta(1),
+      barriendo: false,
+    });
     expect(sin[0].punto).toBeNull();
     expect(sin[1].punto).toBeNull();
 
-    const con = carasProspeccion({ territorios: 2, leads: 5, sinWeb: 1, barriendo: true });
+    const con = carasProspeccion({
+      territorios: 2,
+      leads: exacta(5),
+      sinWeb: exacta(1),
+      barriendo: true,
+    });
     expect(con[0].punto?.pulsa).toBe(true);
     expect(con[1].punto).toBeNull();
   });

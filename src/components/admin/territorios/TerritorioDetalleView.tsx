@@ -170,9 +170,9 @@ export function TerritorioDetalleView({ territorio: t, negocios, negociosTotal, 
           )}
           {censo.tipo !== "completo" && (
             <Banner variante="error">
-              Este territorio tiene más locales de los que caben en pantalla: se muestran los{" "}
-              <strong>{negocios.length}</strong> más recientes
-              {censo.tipo === "recortado" && <> de {censo.total}</>}.
+              «Contactar a los nuevos» cuenta solo los <strong>{negocios.length}</strong> locales más
+              recientes{censo.tipo === "recortado" && <> de {censo.total}</>}. Los más antiguos que
+              sigan en Nuevo se contactan desde la lista: filtra por «Nuevo» y selecciona la página.
             </Banner>
           )}
         </div>

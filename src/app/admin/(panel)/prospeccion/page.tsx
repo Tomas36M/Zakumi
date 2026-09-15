@@ -16,13 +16,16 @@ export default async function ProspeccionPage({
   const { supabase } = await verifySession();
   const { tab, territorio } = await searchParams;
 
-  const [negocios, cuenta, territorios, consultasMes, zakVoz] = await Promise.all([
+  const [negocios, cuenta, cuentaSinWeb, territorios, consultasMes, zakVoz] = await Promise.all([
     supabase
       .from("negocios")
       .select("*")
       .order("created_at", { ascending: false })
       .limit(TOPE_LEADS),
     supabase.from("negocios").select("*", { count: "exact", head: true }),
+    // «Sin web» de la base entera para la cabecera: la misma definición que la
+    // RPC cuentas_por_territorio (sitio_web is null).
+    supabase.from("negocios").select("*", { count: "exact", head: true }).is("sitio_web", null),
     supabase.from("territorios").select("*").order("created_at", { ascending: false }),
     // null = no se pudo leer el consumo del mes: llega tal cual hasta el
     // diálogo de barrer, que no puede afirmar cuota gratis sobre un dato que
@@ -39,6 +42,9 @@ export default async function ProspeccionPage({
   // pagados, y quien los redibuje le paga a Google otra vez lo mismo.
   if (negocios.error) console.error("[prospección] negocios:", negocios.error.message);
   if (cuenta.error) console.error("[prospección] cuenta de negocios:", cuenta.error.message);
+  if (cuentaSinWeb.error) {
+    console.error("[prospección] cuenta de sin web:", cuentaSinWeb.error.message);
+  }
   if (territorios.error) console.error("[prospección] territorios:", territorios.error.message);
 
   const filas = (negocios.data as Negocio[]) ?? [];
@@ -51,6 +57,7 @@ export default async function ProspeccionPage({
       // null cuando la cuenta falló: la vista no puede afirmar un total que no
       // sabe, y tampoco puede inventar `filas.length` como si fuera el total.
       negociosTotal={cuenta.error ? null : (cuenta.count ?? null)}
+      sinWebTotal={cuentaSinWeb.error ? null : (cuentaSinWeb.count ?? null)}
       fallaNegocios={negocios.error !== null}
       fallaTerritorios={territorios.error !== null}
       consultasMes={consultasMes}

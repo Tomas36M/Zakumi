@@ -7,7 +7,9 @@ import { Contact, Map as IconoMapa } from "lucide-react";
 import {
   caraDe,
   carasProspeccion,
+  cifrasCabecera,
   pestanaInicial,
+  textoCifra,
   type CaraProspeccion,
 } from "@/lib/admin/prospeccion-caras";
 import { esSinWeb, estadoCenso, type Negocio } from "@/lib/admin/negocios";
@@ -35,6 +37,9 @@ type Props = {
    * null si esa cuenta también falló. `negocios` viene topado: este número es
    * lo único que sabe si la lista está completa. */
   negociosTotal: number | null;
+  /** Cuántos negocios SIN WEB hay en la base (count exacto), o null si esa
+   * cuenta falló. */
+  sinWebTotal: number | null;
   /** La consulta falló: la lista vacía NO significa que no haya nada. */
   fallaNegocios: boolean;
   fallaTerritorios: boolean;
@@ -67,6 +72,7 @@ export function ProspeccionView({
   negocios,
   territorios,
   negociosTotal,
+  sinWebTotal,
   fallaNegocios,
   fallaTerritorios,
   consultasMes,
@@ -107,19 +113,24 @@ export function ProspeccionView({
   // consentimiento quedaba invisible justo cuando salta.
   const [aviso, setAviso] = useState<AvisoBarrido | null>(null);
 
-  const sinWeb = negocios.filter(esSinWeb).length;
-
-  // La lista de negocios viene topada por `page.tsx`. La comparación es contra
-  // las filas que DE VERDAD llegaron, no contra el tope: si quien recortó fue
-  // el ajuste "Max rows" de Supabase, la consulta vuelve capada y sin error, y
-  // esta es la única señal de que la cabecera está contando un tope y no un
-  // censo.
-  //
-  // Y si la cuenta exacta FALLÓ (negociosTotal === null), eso no es garantía
-  // de que no falte nada: `estadoCenso` trata "la lista llegó justo al tope"
-  // como su propia señal de recorte, para no volver a caer en el hueco que
-  // dejaba pasar un `null > n` silencioso.
+  // El censo del MAPA: la lista de negocios viene topada por `page.tsx`. La
+  // comparación es contra las filas que DE VERDAD llegaron, no contra el tope:
+  // si quien recortó fue el ajuste "Max rows" de Supabase, la consulta vuelve
+  // capada y sin error, y esta es la única señal de que el mapa pinta un tope y
+  // no un censo. Si la cuenta exacta FALLÓ, `estadoCenso` trata "la lista llegó
+  // justo al tope" como su propia señal de recorte.
   const censo = estadoCenso(negocios.length, negociosTotal);
+
+  // Las cifras de la cabecera y de las caras son las de la base (conteos
+  // exactos del servidor). Si una cuenta falló, se dicen como piso («900+») o
+  // «—»: nunca la cifra de lo cargado presentada como la de la base.
+  const cifras = cifrasCabecera({
+    cargados: negocios.length,
+    sinWebCargados: negocios.filter(esSinWeb).length,
+    total: negociosTotal,
+    sinWebTotal,
+    fallaCargados: fallaNegocios,
+  });
 
   function cambiarCara(nueva: CaraProspeccion) {
     if (nueva === cara) return;
@@ -128,9 +139,12 @@ export function ProspeccionView({
   }
 
   // Los avisos ocupan una banda propia solo cuando hay alguno: una banda
-  // vacía le roba 16px al mapa por nada.
+  // vacía le roba 16px al mapa por nada. El recorte de 900 es del mapa: la
+  // lista de Leads pagina la base entera y no lo tiene.
   const hayAvisos =
-    fallaNegocios || (cara === "leads" && aviso !== null) || censo.tipo !== "completo";
+    fallaNegocios ||
+    (cara === "leads" && aviso !== null) ||
+    (cara === "territorio" && censo.tipo !== "completo");
 
   return (
     <Cockpit>
@@ -142,8 +156,8 @@ export function ProspeccionView({
           <Caras
             caras={carasProspeccion({
               territorios: territorios.length,
-              leads: negocios.length,
-              sinWeb,
+              leads: cifras.leads,
+              sinWeb: cifras.sinWeb,
               barriendo: barrido !== null,
             })}
             iconos={ICONOS_CARAS}
@@ -154,14 +168,8 @@ export function ProspeccionView({
         }
         contador={
           <>
-            <strong className="text-tinta-85">{negocios.length}</strong>
-            {/* Con la lista topada, "N negocios" a secas sería la cifra de la
-                pantalla presentada como la cifra de la base. Sin cuenta exacta
-                no hay un total que nombrar, así que el "+" es lo único honesto:
-                dice "al menos esto" sin inventar un número. */}
-            {censo.tipo === "recortado" && <> de {censo.total}</>}
-            {censo.tipo === "recortado_sin_conteo" && <>+</>} negocios ·{" "}
-            <strong className="text-tinta-85">{sinWeb}</strong> sin web ·{" "}
+            <strong className="text-tinta-85">{textoCifra(cifras.leads)}</strong> negocios ·{" "}
+            <strong className="text-tinta-85">{textoCifra(cifras.sinWeb)}</strong> sin web ·{" "}
             <strong className="text-tinta-85">{territorios.length}</strong> territorios
           </>
         }
@@ -171,9 +179,8 @@ export function ProspeccionView({
         <div className="flex shrink-0 flex-col gap-3 px-5 pt-4">
           {fallaNegocios && (
             <Banner variante="error">
-              No se pudieron cargar los negocios. Los contadores de leads y de «sin
-              web» están incompletos: no tomes decisiones con estos números hasta
-              recargar.
+              No se pudieron cargar los negocios del mapa: faltan pines y las cifras por
+              territorio están incompletas. Recarga la página para reintentar.
             </Banner>
           )}
 
@@ -213,25 +220,20 @@ export function ProspeccionView({
             </Banner>
           )}
 
-          {/* Un censo que no dice que está recortado no es un censo. */}
-          {censo.tipo === "recortado" && (
+          {/* Un censo que no dice que está recortado no es un censo. El tope es
+              del mapa: la lista de Leads pagina la base entera. */}
+          {cara === "territorio" && censo.tipo === "recortado" && (
             <Banner variante="error">
-              La base tiene <strong>{censo.total}</strong> negocios y esta
-              pantalla cargó los <strong>{negocios.length}</strong> más recientes.
-              Todo lo de aquí cuenta SOLO esos {negocios.length}: los contadores de
-              arriba, los filtros de la lista, los pines del mapa y los negocios
-              por territorio. Los más antiguos existen y no están en pantalla.
+              El mapa cargó los <strong>{negocios.length}</strong> negocios más recientes de{" "}
+              <strong>{censo.total}</strong>: los pines y las cifras por territorio del mapa
+              cuentan solo esos. La lista de Leads y las cifras de arriba cuentan la base entera.
             </Banner>
           )}
-          {censo.tipo === "recortado_sin_conteo" && (
+          {cara === "territorio" && censo.tipo === "recortado_sin_conteo" && (
             <Banner variante="error">
-              Esta pantalla cargó <strong>{negocios.length}</strong> negocios, su
-              tope máximo — y la cuenta real de cuántos hay en la base falló, así
-              que no hay forma de decir cuántos faltan (aunque es casi seguro que
-              faltan). Todo lo de aquí cuenta SOLO esos {negocios.length}: los
-              contadores de arriba, los filtros de la lista, los pines del mapa y
-              los negocios por territorio. Recarga la página para reintentar la
-              cuenta.
+              El mapa cargó <strong>{negocios.length}</strong> negocios, su tope, y la cuenta de
+              cuántos hay en la base falló: es casi seguro que faltan pines. La lista de Leads
+              pagina la base entera y sí los tiene. Recarga la página para reintentar la cuenta.
             </Banner>
           )}
         </div>
