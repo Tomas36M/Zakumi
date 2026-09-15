@@ -498,7 +498,7 @@ export function resumenTanda(r: {
       : "";
   const sobran =
     r.sobrantes > 0
-      ? ` ${r.sobrantes} ${r.sobrantes === 1 ? "quedó" : "quedaron"} para el siguiente envío: cada tipo de negocio sale en una tanda de máximo ${TANDA_MAX_BOT}.`
+      ? ` ${r.sobrantes} ${r.sobrantes === 1 ? "quedó" : "quedaron"} para el siguiente envío: cada tanda lleva máximo ${TANDA_MAX_BOT}.`
       : "";
   return `${frase}.${tope}${sobran}`;
 }
