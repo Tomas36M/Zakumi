@@ -134,6 +134,7 @@ function SeccionCuenta({ nombre, email }: { nombre: string | null; email: string
 }
 
 function SeccionSeguridad() {
+  const [passwordActual, setPasswordActual] = useState("");
   const [password, setPassword] = useState("");
   const [confirmacion, setConfirmacion] = useState("");
   const [mensaje, setMensaje] = useState<{ ok: boolean; texto: string } | null>(null);
@@ -142,11 +143,12 @@ function SeccionSeguridad() {
   function guardar() {
     setMensaje(null);
     startTransition(async () => {
-      const r = await cambiarPassword({ password, confirmacion });
+      const r = await cambiarPassword({ passwordActual, password, confirmacion });
       if (r.error) {
         setMensaje({ ok: false, texto: r.error });
         return;
       }
+      setPasswordActual("");
       setPassword("");
       setConfirmacion("");
       setMensaje({ ok: true, texto: "Contraseña cambiada." });
@@ -156,6 +158,19 @@ function SeccionSeguridad() {
   return (
     <div>
       <h2 className="app-modal-titulo">Seguridad</h2>
+      <div className="app-field">
+        <label className="app-field-label" htmlFor="ajustes-pass-actual">
+          Contraseña actual
+        </label>
+        <input
+          id="ajustes-pass-actual"
+          type="password"
+          className="app-input"
+          value={passwordActual}
+          onChange={(e) => setPasswordActual(e.target.value)}
+          autoComplete="current-password"
+        />
+      </div>
       <div className="app-field">
         <label className="app-field-label" htmlFor="ajustes-pass">
           Contraseña nueva
@@ -192,7 +207,7 @@ function SeccionSeguridad() {
         type="button"
         className="app-btn"
         onClick={guardar}
-        disabled={guardando || password.length === 0}
+        disabled={guardando || !passwordActual || password.length === 0}
       >
         {guardando ? "Cambiando…" : "Cambiar contraseña"}
       </button>
