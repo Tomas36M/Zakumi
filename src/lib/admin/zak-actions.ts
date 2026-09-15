@@ -12,6 +12,8 @@ import {
   avancesDeEstado,
   componentesSaludo,
   contactables,
+  despacharTandas,
+  TANDA_MAX_BOT,
   verticalPorSlug,
 } from "./zak";
 import { avanzarEstadoNegocio, avanzarEstadosNegocio } from "./estado-negocio";
@@ -20,24 +22,27 @@ import type { EstadoNegocio, Negocio } from "./negocios";
 import { crearTanda, enviarPlantillaDirecta, listarProspectos } from "@/lib/bots/api";
 import { ID_ZAK } from "@/lib/bots/tipos";
 
-const TANDA_MAX = 50; // espejo del tope por tanda del bot
+const ENVIO_MAX = 250; // cupo diario del número en Meta (TIER_250): más que esto no sale hoy
 
 /**
- * «Que Zak los contacte»: crea la tanda en el bot (plantilla + contexto por
- * negocio) y marca 'contactado' en el CRM SOLO a los que realmente entraron
- * (los duplicados ya eran prospectos de antes). El trigger de la base deja la
- * nota automática del cambio de estado.
+ * «Que Zak los contacte»: crea en el bot UNA tanda por vertical (plantilla +
+ * contexto por negocio), de máximo TANDA_MAX_BOT, y marca 'contactado' en el
+ * CRM a todo lo que entró, duplicados incluidos. Lo que no cupo en la tanda de
+ * su vertical vuelve en `sobrantes`; si el bot avisa tope diario, lo que falta
+ * vuelve en `porTope`. El trigger de la base deja la nota automática del
+ * cambio de estado.
  */
 export async function enviarTandaZak(negocioIds: string[]): Promise<
-  { contactados: number; omitidos: number; duplicados: number } | { error: string }
+  | { contactados: number; omitidos: number; duplicados: number; porTope: number; sobrantes: number }
+  | { error: string }
 > {
   const { supabase } = await verifySession();
 
   if (!Array.isArray(negocioIds) || negocioIds.length === 0) {
     return { error: "No hay negocios seleccionados." };
   }
-  if (negocioIds.length > TANDA_MAX) {
-    return { error: `Máximo ${TANDA_MAX} negocios por tanda.` };
+  if (negocioIds.length > ENVIO_MAX) {
+    return { error: `Máximo ${ENVIO_MAX} negocios por envío: es el cupo diario del número.` };
   }
   if (negocioIds.some((id) => typeof id !== "string" || !id)) {
     return { error: "Selección no válida." };
@@ -59,76 +64,81 @@ export async function enviarTandaZak(negocioIds: string[]): Promise<
   // relee de la DB en cada envío: lo que sale es SIEMPRE lo vigente/aprobado.
   const catalogo = await catalogoVerticales(supabase);
   const grupos = agruparPorVertical(elegibles, catalogo.verticales, catalogo.generico);
-  const duplicadosTels = new Set<string>();
-  const procesados: Negocio[] = []; // negocios de grupos cuya tanda SÍ se creó
-  let topeAlcanzado = false;
-  let algunaOk = false;
-
-  for (const { vertical, negocios } of grupos) {
+  for (const { vertical } of grupos) {
+    // Meta puede rechazar envíos de una plantilla mientras la revisa: ese
+    // grupo se queda por fuera (cuenta como 'omitidos') hasta la aprobación.
     if (vertical.enRevision) {
-      // Meta puede rechazar envíos de una plantilla mientras la revisa: ese
-      // grupo se queda por fuera (cuenta como 'omitidos') hasta la aprobación.
       console.error("[enviarTandaZak] vertical en revisión, omitido:", vertical.slug);
-      continue;
     }
-    // El folleto del nicho: mismo header de imagen para toda la tanda.
-    const componentes = componentesSaludo(vertical);
-    const r = await crearTanda(ID_ZAK, {
-      plantilla: vertical.plantilla,
-      lang: "es",
-      notas: `tanda ${vertical.label} desde el CRM (${negocios.length} negocios)`,
-      prospectos: negocios.map((n) => ({
-        telefono: sinMas(n.telefono as string),
-        negocio_id: n.id,
-        contexto: {
-          nombre: n.nombre,
-          categoria: n.categoria ?? undefined,
-          ciudad: n.ciudad ?? undefined,
-          angulo: vertical.angulo,
-          // La burbuja inicial del chat: el bot la guarda al enviar la
-          // plantilla (y con el texto EXACTO del catálogo, el folleto se
-          // pinta en la bandeja).
-          saludo: vertical.texto,
-        },
-        componentes,
-      })),
-    });
-    if (!r.ok) {
-      if (r.error === "conflicto") {
-        topeAlcanzado = true;
-        break; // el tope diario es global: los grupos restantes tampoco caben
-      }
-      console.error("[enviarTandaZak] bot:", r.error, "vertical:", vertical.slug);
-      continue;
-    }
-    algunaOk = true;
-    procesados.push(...negocios);
-    for (const t of r.data.duplicados) duplicadosTels.add(t);
   }
 
-  if (!algunaOk) {
+  // Una tanda por vertical, de máximo TANDA_MAX_BOT: lo que sobra vuelve en
+  // `sobrantes`. Al primer «tope diario» se para (el cupo es del número
+  // entero) y lo que falta vuelve en `porTope`.
+  const despacho = await despacharTandas(
+    grupos,
+    async (vertical, lote) => {
+      // El folleto del nicho: mismo header de imagen para toda la tanda.
+      const componentes = componentesSaludo(vertical);
+      const r = await crearTanda(ID_ZAK, {
+        plantilla: vertical.plantilla,
+        lang: "es",
+        notas: `tanda ${vertical.label} desde el CRM (${lote.length} negocios)`,
+        prospectos: lote.map((n) => ({
+          telefono: sinMas(n.telefono as string),
+          negocio_id: n.id,
+          contexto: {
+            nombre: n.nombre,
+            categoria: n.categoria ?? undefined,
+            ciudad: n.ciudad ?? undefined,
+            angulo: vertical.angulo,
+            // La burbuja inicial del chat: el bot la guarda al enviar la
+            // plantilla (y con el texto EXACTO del catálogo, el folleto se
+            // pinta en la bandeja).
+            saludo: vertical.texto,
+          },
+          componentes,
+        })),
+      });
+      if (r.ok) return { ok: true as const, duplicados: r.data.duplicados };
+      if (r.error !== "conflicto") {
+        console.error("[enviarTandaZak] bot:", r.error, "vertical:", vertical.slug);
+      }
+      return { ok: false as const, tope: r.error === "conflicto" };
+    },
+    TANDA_MAX_BOT,
+  );
+
+  if (!despacho.algunaOk) {
     return {
-      error: topeAlcanzado
-        ? "Tope diario de prospección alcanzado. Inténtalo mañana."
-        : "No hay conexión con el bot para crear la tanda.",
+      error:
+        despacho.porTope > 0
+          ? "Tope diario de prospección alcanzado. Inténtalo mañana."
+          : "No hay conexión con el bot para crear la tanda.",
     };
   }
 
-  // 'contactado' solo para los creados: avanzarEstadosNegocio ya es
+  // 'contactado' para todo lo que entró al bot, duplicados incluidos: un
+  // duplicado ya es prospecto de Zak (lo contactó otra tanda) y el bot no lo
+  // vuelve a aceptar; dejarlo en 'nuevo' lo pondría primero en cada
+  // «Contactar a los nuevos» sin poder salir nunca. avanzarEstadosNegocio es
   // forward-only y respeta el candado manual.
-  const idsCreados = procesados
-    .filter((n) => !duplicadosTels.has(sinMas(n.telefono as string)))
-    .map((n) => n.id);
-  if (idsCreados.length > 0) {
-    await avanzarEstadosNegocio(supabase, idsCreados, "contactado");
+  const idsEnviados = despacho.enviados.map((n) => n.id);
+  if (idsEnviados.length > 0) {
+    await avanzarEstadosNegocio(supabase, idsEnviados, "contactado");
   }
+  const contactados = despacho.enviados.filter(
+    (n) => !despacho.duplicados.has(sinMas(n.telefono as string)),
+  ).length;
 
   revalidatePath("/admin/prospeccion");
   revalidatePath("/admin/zak");
   return {
-    contactados: idsCreados.length,
-    omitidos: negocioIds.length - procesados.length,
-    duplicados: duplicadosTels.size,
+    contactados,
+    omitidos: negocioIds.length - despacho.enviados.length - despacho.porTope - despacho.sobrantes,
+    duplicados: despacho.duplicados.size,
+    porTope: despacho.porTope,
+    sobrantes: despacho.sobrantes,
   };
 }
 

@@ -4,10 +4,9 @@ import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { actualizarNegocio, cambiarEstadoLote, eliminarNegocios } from "@/lib/admin/actions";
 import { FILTRO_VACIO, filtrarLeads, type FiltroLeads } from "@/lib/admin/filtros-leads";
-import { labelEstado, type EstadoNegocio, type Negocio } from "@/lib/admin/negocios";
+import { conteoPorEstado, labelEstado, type EstadoNegocio, type Negocio } from "@/lib/admin/negocios";
 import type { Territorio } from "@/lib/admin/territorios";
-import { agruparPorVertical, contactables } from "@/lib/admin/zak";
-import { enviarTandaZak } from "@/lib/admin/zak-actions";
+import { contactables } from "@/lib/admin/zak";
 import { Banner } from "@/components/admin/ui/Banner";
 import { Cockpit, CockpitBody } from "@/components/admin/ui/Cockpit";
 import { useConfirmar } from "@/components/admin/ui/Confirmar";
@@ -15,22 +14,32 @@ import { EmptyState } from "@/components/admin/ui/EmptyState";
 import { AccionesLote } from "./AccionesLote";
 import { FiltrosLeads } from "./FiltrosLeads";
 import { TablaLeads } from "./TablaLeads";
+import { useTandaZak } from "./useTandaZak";
 
 type Props = {
   negocios: Negocio[];
   territorios?: Territorio[];
-  /** Viaja al <Cockpit>: la cara Leads de /admin/prospeccion monta esta vista
-   * DENTRO de otro cockpit, y dos cockpits anidados con la altura fija de
-   * viewport se desbordan (vuelve el scroll de página). Ahí se le pasa
+  /** Viaja al <Cockpit>: la cara Leads de /admin/prospeccion y la página de un
+   * territorio montan esta vista DENTRO de otro cockpit, y dos cockpits
+   * anidados con la altura fija de viewport se desbordan (vuelve el scroll de
+   * página). Ahí se le pasa
    * `min-[900px]:h-auto min-[900px]:min-h-0 min-[900px]:flex-1`. */
   className?: string;
   /** Abrir la ficha de un lead (el modal lo monta el dueño de la página). */
   onAbrirLead: (id: string) => void;
+  /** La lista vive en la página de UN territorio: sin select de territorio. */
+  territorioFijo?: boolean;
 };
 
 /** La lista de leads: filtros arriba fijos, resultados scrolleando debajo,
  * acciones en lote sobre lo seleccionado. */
-export function NegociosView({ negocios, territorios = [], className, onAbrirLead }: Props) {
+export function NegociosView({
+  negocios,
+  territorios = [],
+  className,
+  onAbrirLead,
+  territorioFijo = false,
+}: Props) {
   const router = useRouter();
   const [guardando, startGuardar] = useTransition();
   const [filtro, setFiltro] = useState<FiltroLeads>(FILTRO_VACIO);
@@ -38,8 +47,16 @@ export function NegociosView({ negocios, territorios = [], className, onAbrirLea
   const [estadoLote, setEstadoLote] = useState<EstadoNegocio>("contactado");
   const [aviso, setAviso] = useState<string | null>(null);
   const { confirmar, dialogo } = useConfirmar();
+  const tanda = useTandaZak(() => setSeleccionados(new Set()));
+  const ocupado = guardando || tanda.enviando;
 
   const filtrados = useMemo(() => filtrarLeads(negocios, filtro), [negocios, filtro]);
+  // La franja cuenta con todos los filtros menos el de estado: dice cuántos
+  // hay en cada estado dentro de lo que se está mirando.
+  const conteos = useMemo(
+    () => conteoPorEstado(filtrarLeads(negocios, { ...filtro, estados: [] })),
+    [negocios, filtro],
+  );
   const idsFiltrados = useMemo(() => new Set(filtrados.map((n) => n.id)), [filtrados]);
   const seleccionActiva = [...seleccionados].filter((id) => idsFiltrados.has(id));
   const seleccionSet = new Set(seleccionActiva);
@@ -99,39 +116,12 @@ export function NegociosView({ negocios, territorios = [], className, onAbrirLea
     });
   }
 
-  async function contactarConZak() {
-    const n = contactablesZak.length;
-    const fuera = seleccionActiva.length - n;
-    const desglose = agruparPorVertical(contactablesZak)
-      .map((g) => `${g.negocios.length} ${g.vertical.label}`)
-      .join(" · ");
-    const ok = await confirmar({
-      titulo: `Zak abrirá conversación con ${n} negocio(s)`,
-      mensaje:
-        `Cada tipo con SU plantilla: ${desglose}.` +
-        (fuera > 0 ? `\n(${fuera} quedan fuera: sin celular, cliente o descartado.)` : "") +
-        "\n\nCada envío inicia una conversación de marketing con costo de Meta, y el " +
-        "número sin verificar admite máx. 250 iniciadas/día. Cuando respondan, Zak " +
-        "conversa con el ángulo de cada vertical y marca a los interesados.",
-      accion: "Que Zak los contacte",
-    });
-    if (!ok) return;
-    setAviso(null);
-    startGuardar(async () => {
-      const res = await enviarTandaZak(contactablesZak.map((x) => x.id));
-      if ("error" in res) {
-        setAviso(res.error);
-        return;
-      }
-      setAviso(
-        `Zak va a contactar a ${res.contactados} negocio(s)` +
-          (res.duplicados > 0 ? `, ${res.duplicados} ya eran prospectos` : "") +
-          (res.omitidos > 0 ? `, ${res.omitidos} quedaron fuera` : "") +
-          ".",
-      );
-      setSeleccionados(new Set());
-      router.refresh();
-    });
+  function contactarConZak() {
+    const fuera = seleccionActiva.length - contactablesZak.length;
+    void tanda.contactar(
+      contactablesZak,
+      fuera > 0 ? `${fuera} quedan fuera: sin celular, cliente o descartado.` : undefined,
+    );
   }
 
   function cambiarEstado(id: string, estado: EstadoNegocio) {
@@ -144,6 +134,7 @@ export function NegociosView({ negocios, territorios = [], className, onAbrirLea
   return (
     <Cockpit className={className}>
       {dialogo}
+      {tanda.dialogo}
       {/* El buscador se queda fijo arriba; los resultados scrollean debajo. */}
       <div className="shrink-0 px-5 pt-4">
         <FiltrosLeads
@@ -152,6 +143,8 @@ export function NegociosView({ negocios, territorios = [], className, onAbrirLea
           negocios={negocios}
           territorios={territorios}
           visibles={filtrados.length}
+          conteos={conteos}
+          ocultarTerritorio={territorioFijo}
         />
       </div>
 
@@ -160,16 +153,17 @@ export function NegociosView({ negocios, territorios = [], className, onAbrirLea
           <AccionesLote
             cantidad={seleccionActiva.length}
             contactables={contactablesZak.length}
-            guardando={guardando}
+            guardando={ocupado}
             estadoLote={estadoLote}
             onEstadoLote={setEstadoLote}
             onAplicar={aplicarLote}
-            onContactar={() => void contactarConZak()}
+            onContactar={contactarConZak}
             onEliminar={() => void eliminarLote()}
           />
         )}
 
         {aviso && <Banner>{aviso}</Banner>}
+        {tanda.aviso && <Banner>{tanda.aviso}</Banner>}
 
         {negocios.length === 0 ? (
           <EmptyState
@@ -182,7 +176,7 @@ export function NegociosView({ negocios, territorios = [], className, onAbrirLea
           <TablaLeads
             negocios={filtrados}
             seleccionados={seleccionados}
-            guardando={guardando}
+            guardando={ocupado}
             onAlternar={alternar}
             onAlternarTodos={alternarTodos}
             onEstado={cambiarEstado}

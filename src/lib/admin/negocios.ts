@@ -29,6 +29,8 @@ export type Negocio = {
   territorio_id: string | null;
   fuente: FuenteNegocio;
   estado: EstadoNegocio;
+  /** true = el estado lo fijó Tomás a mano: la automatización no lo mueve. */
+  estado_fijado_manual?: boolean;
   creado_por: string | null;
   created_at: string;
   updated_at: string;
@@ -66,6 +68,18 @@ export function esSinWeb(negocio: Pick<Negocio, "sitio_web">): boolean {
 /** El label humano de un estado del pipeline (única fuente: ESTADOS). */
 export function labelEstado(estado: EstadoNegocio): string {
   return ESTADOS.find((e) => e.valor === estado)?.label ?? estado;
+}
+
+/** Cuántos negocios hay en cada paso del pipeline. Los seis estados vienen
+ * siempre, en cero si no hay ninguno: la franja de estados no pinta huecos. */
+export function conteoPorEstado(
+  negocios: readonly Pick<Negocio, "estado">[],
+): Record<EstadoNegocio, number> {
+  const conteo = Object.fromEntries(ESTADOS.map((e) => [e.valor, 0])) as Record<EstadoNegocio, number>;
+  for (const n of negocios) {
+    if (n.estado in conteo) conteo[n.estado] += 1;
+  }
+  return conteo;
 }
 
 /** Las ciudades que existen en la base, para armar el filtro de la lista de
