@@ -210,7 +210,10 @@ export function PlantillasZak({ filas: filasIniciales }: Props) {
       {aviso && <Banner>{aviso}</Banner>}
       {errorAviso && <Banner variante="error">{errorAviso}</Banner>}
 
-      <div className="barra-fina grid grid-cols-1 gap-4 min-[700px]:grid-cols-2 min-[1200px]:grid-cols-3 min-[900px]:min-h-0 min-[900px]:overflow-y-auto min-[900px]:pr-1">
+      {/* Este div es hijo directo del flex-col de arriba: el flex-1 es lo que lo
+          estira hasta el fondo y le da alto acotado para scrollear por dentro.
+          Que él mismo sea grid no cambia su papel de flex item del padre. */}
+      <div className="barra-fina grid grid-cols-1 gap-4 min-[700px]:grid-cols-2 min-[1200px]:grid-cols-3 min-[900px]:min-h-0 min-[900px]:flex-1 min-[900px]:overflow-y-auto min-[900px]:pr-1">
       {filas.map((f) => {
         const vertical = verticalDeFila(f);
         const local = estadoLocal(f);

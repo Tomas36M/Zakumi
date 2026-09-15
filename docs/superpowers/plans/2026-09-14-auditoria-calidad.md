@@ -472,14 +472,19 @@ por:
   // único dueño de la fórmula desde que Métricas salió de las pestañas de Zak.
 ```
 
-- [ ] **Step 2: La clase muerta**
+- [ ] **Step 2: La clase que parecía muerta — ANULADO (ruling de ejecución)**
 
-En `src/components/admin/bots/PlantillasZak.tsx`, en la línea del contenedor
-del grid (busca `barra-fina grid grid-cols-1`), quitar el token
-`min-[900px]:flex-1` de la lista de clases — `flex: 1 1 0%` no hace nada en
-un contenedor que dejó de ser flex item cuando el layout pasó a grid. Los
-demás tokens (`min-[900px]:min-h-0`, `min-[900px]:overflow-y-auto`,
-`min-[900px]:pr-1`) se quedan.
+La auditoría decía que `min-[900px]:flex-1` en el contenedor del grid de
+`src/components/admin/bots/PlantillasZak.tsx` era inerte "porque el layout
+pasó a grid". Era un error de categoría: que el div sea `display: grid` habla
+de cómo acomoda a SUS hijos; su papel de flex item lo decide SU PADRE, y el
+padre (`<div className="flex flex-col gap-4 min-[900px]:h-full">`) sigue
+siendo flex-col. Sin `flex-1` el grid deja de estirarse hasta el fondo, pierde
+el alto acotado, y el intro + botón + banners scrollean junto con las tarjetas
+dentro del `CockpitBody` — exactamente lo que el comentario de arriba dice que
+no debe pasar. La ejecución lo quitó (0fc3698), el reviewer de la task lo
+detectó y se restauró en el commit siguiente, con un comentario en el código
+para que nadie lo vuelva a "limpiar". **No tocar ese token.**
 
 - [ ] **Step 3: Verificar**
 
