@@ -66,4 +66,22 @@ describe("fichaConLista", () => {
   it("modal cerrado: reposo", () => {
     expect(fichaConLista(null, negocio, null)).toEqual(REPOSO);
   });
+
+  it("el lead salió de la lista con la ficha abierta: sigue la última fila vista mientras llega el fetch", () => {
+    // Un refresh empuja el lead más allá del tope: sin esto, la ficha volvía al
+    // esqueleto y desmontaba el formulario con lo que se estaba escribiendo.
+    expect(fichaConLista("n1", null, null, negocio)).toEqual({ ...REPOSO, negocio });
+  });
+
+  it("cuando llega el fetch por id, manda el fetch sobre la última fila vista", () => {
+    const fresco = { ...negocio, nombre: "Panadería La Espiga 2" };
+    expect(fichaConLista("n1", null, { leadId: "n1", negocio: fresco, fallo: false }, negocio)).toEqual({
+      ...REPOSO,
+      negocio: fresco,
+    });
+  });
+
+  it("la última fila vista de OTRO lead no se muestra", () => {
+    expect(fichaConLista("n1", null, null, { ...negocio, id: "n2" })).toEqual({ ...REPOSO, cargando: true });
+  });
 });

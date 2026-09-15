@@ -37,14 +37,23 @@ export function estadoFicha(leadId: string | null, ultimo: FichaFetch | null): E
  * los de un territorio): si el lead está ahí, esa fila manda —viva tras cada
  * `router.refresh()`—; si no (un lead más antiguo que el tope de esa lista),
  * lo que diga el fetch por id.
+ *
+ * `visto` es la última fila de la lista que se vio para ese lead: si un refresh
+ * lo sacó de la lista con la ficha abierta, se sigue mostrando mientras llega
+ * el fetch, en vez de volver al esqueleto.
  */
 export function fichaConLista(
   leadId: string | null,
   enLista: Negocio | null,
   ultimo: FichaFetch | null,
+  visto: Negocio | null = null,
 ): EstadoFicha {
   if (leadId !== null && enLista?.id === leadId) {
     return { negocio: enLista, cargando: false, fallo: false, noExiste: false };
   }
-  return estadoFicha(leadId, ultimo);
+  const porFetch = estadoFicha(leadId, ultimo);
+  if (porFetch.cargando && visto?.id === leadId) {
+    return { negocio: visto, cargando: false, fallo: false, noExiste: false };
+  }
+  return porFetch;
 }
