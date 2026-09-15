@@ -82,9 +82,10 @@ on conflict (user_id) do nothing;
 -- ---- Seed de admins — ⚠️ EDITAR AQUÍ antes de correr --------------------------
 
 -- Se lee de auth.users.email (la fuente real de identidad), no de
--- perfiles.email (una copia editable hasta el Step 1 de arriba — un
--- correo "ocupado" ahí antes de este fix habría vuelto admin a cualquiera
--- en una re-corrida de este seed).
+-- perfiles.email: hasta este fix perfiles.email era editable por el propio
+-- usuario (hoy lo bloquean el grant de columnas y el trigger
+-- perfiles_proteger, más abajo), y un correo "ocupado" ahí habría vuelto
+-- admin a cualquiera en una re-corrida de este seed.
 update public.perfiles p set rol = 'admin'
 from auth.users u
 where u.id = p.user_id
@@ -125,7 +126,7 @@ grant execute on function public.es_admin()      to authenticated;
 grant execute on function public.mi_cliente_id() to authenticated;
 
 -- ---- Anti auto-escalada --------------------------------------------------------
--- Un cliente puede editar su nombre, pero rol/cliente_id/user_id solo los
+-- Un cliente puede editar su nombre, pero rol/cliente_id/user_id/email solo los
 -- cambia un admin. auth.uid() IS NULL = SQL directo del dashboard o service
 -- role: pasa (así funcionan el seed y las correcciones a mano).
 
@@ -173,12 +174,18 @@ create policy perfiles_lee_propio on public.perfiles
 -- columna). Ojo: el grant es por ROL de Postgres, y admin y cliente son el
 -- MISMO rol (`authenticated`; "admin" es solo un valor de perfiles.rol que
 -- RLS lee vía es_admin()). Por eso no se puede acotar a `(nombre)` sin
--- romper cambiarRolPerfil y vincularPerfilACliente para los admins reales:
--- la lista incluye rol/cliente_id/email, y quien decide si un NO-admin
--- puede tocarlas es el trigger perfiles_proteger (que ahora cubre email).
--- Antes de esto, cualquier usuario podía reescribir su propio `email`, lo
--- que permitía "ocupar" el correo de un cliente real y que un admin lo
--- vinculara a la ficha equivocada — ver Radiografía Zakumi, hallazgo Alto #2.
+-- romper los tres flujos de admin que escriben acá — cambiarRolPerfil
+-- (rol), vincularPerfilACliente y activarSolicitud (cliente_id). Quien
+-- decide si un NO-admin puede tocar rol/cliente_id es el trigger
+-- perfiles_proteger. `email` NO va en la lista: ningún flujo de la app lo
+-- escribe (solo crear_perfil() al signup, que es security definer, y el
+-- seed como postgres) — así el grant lo bloquea en la capa de ACL y el
+-- trigger es la segunda capa, no la única. Antes de esto, cualquier usuario
+-- podía reescribir su propio `email`, lo que permitía "ocupar" el correo de
+-- un cliente real y que un admin lo vinculara a la ficha equivocada — ver
+-- Radiografía Zakumi, hallazgo Alto #2. Al agregar una columna nueva que
+-- la app escriba, hay que sumarla a esta lista: los grants de columna no
+-- se extienden solos a columnas futuras.
 drop policy if exists perfiles_edita_propio on public.perfiles;
 create policy perfiles_edita_propio on public.perfiles
   for update to authenticated
@@ -186,6 +193,6 @@ create policy perfiles_edita_propio on public.perfiles
   with check (user_id = (select auth.uid()));
 
 revoke update on public.perfiles from authenticated;
-grant update (nombre, rol, cliente_id, email) on public.perfiles to authenticated;
+grant update (nombre, rol, cliente_id) on public.perfiles to authenticated;
 
 revoke all on public.perfiles from anon;
