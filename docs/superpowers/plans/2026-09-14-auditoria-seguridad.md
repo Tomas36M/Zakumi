@@ -605,11 +605,12 @@ En `next.config.ts`, agregar al array `securityHeaders` (después de
     key: "Content-Security-Policy",
     value: [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' https://maps.googleapis.com",
-      "style-src 'self' 'unsafe-inline'",
+      "script-src 'self' 'unsafe-inline' https://maps.googleapis.com https://cdn.jsdelivr.net",
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "img-src 'self' data: https:",
-      "font-src 'self' data:",
-      "connect-src 'self' https://maps.googleapis.com https://*.supabase.co",
+      "font-src 'self' data: https://fonts.gstatic.com",
+      "media-src 'self' https:",
+      "connect-src 'self' https://maps.googleapis.com https://*.supabase.co https://*.elevenlabs.io wss://*.elevenlabs.io",
       "frame-ancestors 'none'",
       "object-src 'none'",
       "base-uri 'self'",
@@ -617,12 +618,32 @@ En `next.config.ts`, agregar al array `securityHeaders` (después de
   },
 ```
 
-(`'unsafe-inline'` en `script-src` hace falta porque Next inyecta un
-bootstrap inline; sin nonces no hay forma de evitarlo sin un cambio mucho
-más grande. `connect-src` incluye Supabase porque el cliente del
-navegador le habla directo. Si algo del sitio deja de funcionar tras
-este cambio —un widget, una fuente, un mapa— es una señal de que falta
-un host en esta lista, no de que el CSP esté de más.)
+Cada host tiene una razón concreta, verificada leyendo qué carga cada
+superficie desde el navegador (no "por si acaso"):
+- `'unsafe-inline'` en `script-src`: Next inyecta un bootstrap inline;
+  sin nonces no se evita sin un cambio mucho mayor.
+- `https://maps.googleapis.com` en `script-src` y `connect-src`: el loader
+  de Google Maps (`MapCanvas.tsx`) y el XHR de los tiles vectoriales.
+- `https://cdn.jsdelivr.net` en `script-src`: el widget de voz de
+  ElevenLabs carga su audio worklet de ahí como fallback en
+  Firefox/Safari; los worklets se rigen por `script-src`.
+- `https://fonts.googleapis.com`/`https://fonts.gstatic.com`: el chrome
+  de Google Maps puede traer Roboto de ahí; `disableDefaultUI` lo hace
+  improbable, pero dos hosts son más baratos que un mapa roto.
+- `media-src 'self' https:`: sin la directiva, `<audio>` cae a
+  `default-src 'self'` y bloquea las previsualizaciones de voz de
+  ElevenLabs (`VozView.tsx`, `BibliotecaVoces.tsx`), que viven en un CDN
+  de terceros — misma postura que `img-src https:`.
+- `https://*.elevenlabs.io` + `wss://*.elevenlabs.io` en `connect-src`:
+  el widget de voz está vendorizado (`public/voz/…`, lo cubre `'self'`),
+  pero habla por REST con `api*.elevenlabs.io` y por WebSocket con
+  `api*.elevenlabs.io` y `livekit.rtc.elevenlabs.io`. Sin esto, el lab
+  de `/admin/voz` carga y no funciona — y ningún test lo detecta.
+- `https://*.supabase.co` en `connect-src`: el cliente del navegador le
+  habla directo. NO se agrega `wss://` porque ninguna pantalla usa
+  Realtime desde el cliente — no se permite lo que no está en uso.
+Si algo deja de funcionar tras este cambio, es que falta un host en esta
+lista, no que el CSP esté de más.
 
 - [ ] **Step 3: La sugerencia de vínculo en la ficha de cliente busca por email exacto, no por patrón**
 
