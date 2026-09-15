@@ -45,7 +45,7 @@ export type ResultadoDespacho =
 
 /**
  * Zak marca a un prospecto con su agente de voz (es_zak). Valida agente,
- * número, teléfono E.164 y cap diario; si viene negocioId, la llamada queda
+ * número, teléfono E.164, país permitido y cap diario; si viene negocioId, la llamada queda
  * correlacionada en dynamic_variables y el negocio pasa de 'nuevo' a
  * 'contactado' (forward-only). Nunca lanza.
  *
@@ -76,10 +76,17 @@ export async function despacharLlamadaZak(
   // para marcar a números internacionales de tarifa premium a costa de
   // Zakumi. ZAK_VOZ_PAISES_PERMITIDOS es la salida de emergencia si algún
   // día el negocio sí necesita llamar fuera de Colombia.
+  // Un prefijo válido es "+" y al menos un dígito: un "+" pelado haría que
+  // startsWith aceptara CUALQUIER E.164 y desactivaría la lista sin avisar.
   const paisesPermitidos = (process.env.ZAK_VOZ_PAISES_PERMITIDOS ?? "+57")
     .split(",")
     .map((p) => p.trim())
-    .filter(Boolean);
+    .filter((p) => /^\+[1-9]\d*$/.test(p));
+  if (paisesPermitidos.length === 0) {
+    // Falla cerrado (correcto), pero que quede claro en el log que la causa
+    // es la configuración, no el número: el mensaje al usuario es el mismo.
+    console.error("[despacho] ZAK_VOZ_PAISES_PERMITIDOS no tiene ningún prefijo válido — no se llama a nadie.");
+  }
   if (!paisesPermitidos.some((prefijo) => telefono.startsWith(prefijo))) {
     return { error: "Ese número no está en un país permitido para llamar." };
   }

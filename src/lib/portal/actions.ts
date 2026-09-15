@@ -209,8 +209,10 @@ export async function eliminarVenta(id: string): Promise<{ error: string | null 
 }
 
 /* ————————————————————————————————————————————————————————————————————————
-   Ajustes de la cuenta. El trigger perfiles_proteger de la base garantiza
-   que por aquí no se pueda tocar rol ni cliente_id.
+   Ajustes de la cuenta.
+   Solo `nombre` es editable por el propio usuario: el grant de columnas de
+   perfiles.sql (la barrera principal) deja fuera rol, cliente_id y email,
+   y el trigger perfiles_proteger es la segunda capa para los admins.
    ———————————————————————————————————————————————————————————————————— */
 
 export async function actualizarNombre(

@@ -71,7 +71,13 @@ export default async function Cliente360Page({
 
   const cliente = clienteRes.data as Cliente;
 
-  // Acceso al portal: cuentas ya vinculadas + sugerencia por email igual.
+  // Sugerencia de vínculo por email EXACTO (eq, no ilike: un % en el email
+  // de cartera ampliaba la búsqueda). En minúsculas porque perfiles.email es
+  // copia de auth.users.email, que Supabase guarda en minúsculas, y
+  // clientes.email no se normaliza. Es una sugerencia confiable desde que
+  // perfiles.email dejó de ser editable por el propio usuario (perfiles.sql:
+  // grant de columnas + trigger) — antes, un correo "ocupado" la apuntaba a
+  // la ficha equivocada.
   const aPerfil = (p: Record<string, unknown>): PerfilBuscado => ({
     userId: p.user_id as string,
     email: (p.email as string | null) ?? null,
@@ -87,7 +93,7 @@ export default async function Cliente360Page({
       ? supabase
           .from("perfiles")
           .select("user_id, email, nombre, cliente_id")
-          .eq("email", cliente.email)
+          .eq("email", cliente.email.trim().toLowerCase())
           .is("cliente_id", null)
           .eq("rol", "cliente")
           .limit(1)
