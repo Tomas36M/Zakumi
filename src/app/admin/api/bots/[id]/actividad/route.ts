@@ -39,6 +39,6 @@ export async function GET(
   return NextResponse.json({
     status: status.data,
     jobs: jobs.ok ? jobs.data : [],
-    leads: mezclarLeads(leadsCrudos, overridesData),
+    leads: mezclarLeads(iid, leadsCrudos, overridesData),
   });
 }

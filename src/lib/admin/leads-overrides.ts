@@ -26,12 +26,24 @@ export type LeadConOverride = {
  * borrado, pisa los campos editados, resuelve el negocio vinculado. El
  * Flask nunca se toca — esta función solo lee.
  *
+ * `instanciaId` va en la firma a propósito: los overrides se indexan por
+ * teléfono, y dos bots pueden tener leads con el mismo número — un
+ * borrado de la instancia 2 no puede ocultar el lead de la instancia 1.
+ * Filtrar acá (y no confiar en que el llamador ya filtró) hace la
+ * precondición imposible de olvidar.
+ *
  * `datos_editados` reemplaza `datos` entero (no mergea campo a campo): una
  * vez editado, ese lead queda congelado y no muestra campos nuevos que el
  * bot capture después para el mismo teléfono.
  */
-export function mezclarLeads(leads: Lead[], overrides: LeadOverride[]): LeadConOverride[] {
-  const porTelefono = new Map(overrides.map((o) => [o.telefono, o]));
+export function mezclarLeads(
+  instanciaId: number,
+  leads: Lead[],
+  overrides: LeadOverride[],
+): LeadConOverride[] {
+  const porTelefono = new Map(
+    overrides.filter((o) => o.instancia_id === instanciaId).map((o) => [o.telefono, o]),
+  );
   const resultado: LeadConOverride[] = [];
   for (const l of leads) {
     const o = porTelefono.get(l.phone);

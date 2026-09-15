@@ -19,12 +19,13 @@ function override(extra: Partial<LeadOverride>): LeadOverride {
 
 describe("mezclarLeads", () => {
   it("un lead sin override pasa igual, con negocioId null", () => {
-    const r = mezclarLeads([lead({})], []);
+    const r = mezclarLeads(1, [lead({})], []);
     expect(r).toEqual([{ phone: "573001112233", datos: { nombre: "Ana" }, negocioId: null }]);
   });
 
   it("un lead con datos_editados usa los editados, no los originales", () => {
     const r = mezclarLeads(
+      1,
       [lead({ datos: { nombre: "Ana", necesidad: "web" } })],
       [override({ datos_editados: { nombre: "Ana María" } })],
     );
@@ -33,6 +34,7 @@ describe("mezclarLeads", () => {
 
   it("un lead con borrado:true se excluye del resultado", () => {
     const r = mezclarLeads(
+      1,
       [lead({ phone: "a" }), lead({ phone: "b" })],
       [override({ telefono: "a", borrado: true })],
     );
@@ -41,6 +43,7 @@ describe("mezclarLeads", () => {
 
   it("un lead con negocio_id trae negocioId en el resultado", () => {
     const r = mezclarLeads(
+      1,
       [lead({})],
       [override({ negocio_id: "11111111-1111-1111-1111-111111111111" })],
     );
@@ -48,8 +51,21 @@ describe("mezclarLeads", () => {
   });
 
   it("un override de un teléfono que no está en leads no genera nada", () => {
-    const r = mezclarLeads([lead({ phone: "a" })], [override({ telefono: "z" })]);
+    const r = mezclarLeads(1, [lead({ phone: "a" })], [override({ telefono: "z" })]);
     expect(r).toHaveLength(1);
     expect(r[0]!.phone).toBe("a");
+  });
+
+  it("un override de OTRA instancia con el mismo teléfono se ignora", () => {
+    // Dos bots pueden tener leads con el mismo número: el borrado en la
+    // instancia 2 no puede ocultar el lead de la instancia 1.
+    const r = mezclarLeads(
+      1,
+      [lead({})],
+      [override({ instancia_id: 2, borrado: true, datos_editados: { nombre: "Otro" } })],
+    );
+    expect(r).toHaveLength(1);
+    expect(r[0]!.datos).toEqual({ nombre: "Ana" });
+    expect(r[0]!.negocioId).toBeNull();
   });
 });
