@@ -57,7 +57,7 @@ export function PagosRecientes({ clienteId, productos, version }: Props) {
         </div>
       ) : pagos === "error" ? (
         <Banner variante="error">
-          No se pudieron cargar los pagos. Cierra la ficha y vuelve a abrirla en un momento.
+          No se pudieron cargar los pagos. Recarga la página en un momento.
         </Banner>
       ) : pagos.length === 0 ? (
         <p className="text-sm text-tinta-40">Sin pagos registrados todavía.</p>

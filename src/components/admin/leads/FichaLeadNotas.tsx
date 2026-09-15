@@ -93,7 +93,7 @@ export function FichaLeadNotas({ negocioId, version }: Props) {
         </div>
       ) : notas === "error" ? (
         <Banner variante="error">
-          No se pudieron cargar las notas. Cierra la ficha y vuelve a abrirla en un momento.
+          No se pudieron cargar las notas. Recarga la página en un momento.
         </Banner>
       ) : notas.length === 0 ? (
         <p className="text-sm text-tinta-40">

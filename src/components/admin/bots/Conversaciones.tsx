@@ -434,8 +434,14 @@ export function Conversaciones({
       let fallo = false;
       try {
         const res = await fetch(`/admin/api/negocios/${leadId}`);
-        if (!res.ok) throw new Error(String(res.status));
-        negocio = ((await res.json()) as { negocio: Negocio | null }).negocio;
+        // Un id malformado (400: un ?lead= cortado o editado a mano) no puede
+        // existir: es "ya no existe", no un fallo que se arregle reintentando.
+        if (res.status === 400) {
+          negocio = null;
+        } else {
+          if (!res.ok) throw new Error(String(res.status));
+          negocio = ((await res.json()) as { negocio: Negocio | null }).negocio;
+        }
       } catch {
         fallo = true;
       }

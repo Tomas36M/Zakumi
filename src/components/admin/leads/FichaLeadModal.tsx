@@ -107,7 +107,7 @@ export function FichaLeadModal({
         // El dueño resuelve por fetch (el chat de Zak) y el fetch falló de
         // verdad: no es "no está en la lista", es "no se pudo consultar".
         <Banner variante="error">
-          No se pudo cargar la ficha de este negocio. Intenta de nuevo en un
+          No se pudo cargar la ficha de este negocio. Recarga la página en un
           momento.
         </Banner>
       ) : noExiste ? (
