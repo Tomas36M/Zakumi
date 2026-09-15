@@ -25,7 +25,10 @@ function catalogoHablado(): string {
     const precio = `$${s.tarifaSugerida.toLocaleString("es-CO")} ${
       CICLO_HABLADO[s.cicloSugerido] ?? s.cicloSugerido
     }`;
-    return `- ${s.nombre}: ${precio}. ${s.pitch}`;
+    const montaje = s.montaje
+      ? `, más $${s.montaje.toLocaleString("es-CO")} de montaje (pago único)`
+      : "";
+    return `- ${s.nombre}: ${precio}${montaje}. ${s.pitch}`;
   }).join("\n");
 }
 

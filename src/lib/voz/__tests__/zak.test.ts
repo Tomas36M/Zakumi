@@ -34,7 +34,10 @@ describe("la semilla de la voz de Zak", () => {
 
   it("el prompt final lleva el catálogo real y la dynamic variable del contacto", () => {
     const prompt = construirPrompt(NOMBRE_AGENTE_ZAK, SECCIONES_ZAK);
-    expect(prompt).toContain("$150.000"); // bot de WhatsApp, precio de lista
+    // Bot de WhatsApp con los precios del brochure: mensualidad y montaje.
+    expect(prompt).toContain("$129.900 al mes");
+    expect(prompt).toContain("$300.000 de montaje");
+    expect(prompt).not.toContain("$150.000");
     expect(prompt).toContain("{{nombre_contacto}}");
     expect(prompt).toContain("WhatsApp");
   });
