@@ -6,6 +6,9 @@ type Props = {
   coletilla?: string;
   /** Línea pequeña bajo el título (la instancia de Zak, qué es esta pantalla). */
   subtitulo?: React.ReactNode;
+  /** Dónde está parado el usuario, ej. ["Zak", "Bandeja"]. Sin links: para
+   *  navegar ya está el Sidebar, esto solo dice dónde se está. */
+  migas?: string[];
   /** Cifras a la derecha («75 negocios · 40 sin web»). */
   contador?: React.ReactNode;
   /** El nivel de navegación de la pantalla: <Caras>, <Tabs> o la semana. */
@@ -19,10 +22,21 @@ type Props = {
  * la derecha. Antes cada pantalla copiaba este markup a mano y la navegación
  * ocupaba una fila entera debajo.
  */
-export function PageHeader({ titulo, coletilla, subtitulo, contador, navegacion, acciones }: Props) {
+export function PageHeader({
+  titulo,
+  coletilla,
+  subtitulo,
+  migas,
+  contador,
+  navegacion,
+  acciones,
+}: Props) {
   return (
     <header className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 border-b border-hairline px-5 py-3">
       <div className="min-w-0">
+        {migas && migas.length > 0 && (
+          <p className="truncate text-xs text-tinta-40">{migas.join(" / ")}</p>
+        )}
         <h1 className="text-lg font-semibold text-tinta">
           {titulo}
           {coletilla && (

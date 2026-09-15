@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
-import { Trash2 } from "lucide-react";
+import { IdCard, Pause, Play, Trash2 } from "lucide-react";
 import {
   borrarConversacion,
   enviarManual,
@@ -10,7 +10,8 @@ import {
   reanudarChat,
 } from "@/lib/admin/bots-actions";
 import { fechaCorta, horaDeIso } from "@/lib/admin/formato";
-import { labelEstado } from "@/lib/admin/negocios";
+import { labelEstado, type Negocio } from "@/lib/admin/negocios";
+import { estadoFicha, type FichaFetch } from "@/lib/admin/ficha-fetch";
 import {
   fueraDeVentana,
   srcFolleto,
@@ -28,8 +29,11 @@ import { Button } from "@/components/admin/ui/Button";
 import { ChatBubble } from "@/components/admin/ui/ChatBubble";
 import { EmptyState } from "@/components/admin/ui/EmptyState";
 import { Input } from "@/components/admin/ui/Field";
+import { IconButton } from "@/components/admin/ui/IconButton";
 import { ListRow } from "@/components/admin/ui/ListRow";
 import { Skeleton } from "@/components/admin/ui/Skeleton";
+import { FichaLeadModal } from "@/components/admin/leads/FichaLeadModal";
+import { useFichaLead } from "@/components/admin/leads/useFichaLead";
 import { NuevoChatZak } from "./NuevoChatZak";
 import { SelectorPlantilla } from "./SelectorPlantilla";
 import { useConfirmar } from "@/components/admin/ui/Confirmar";
@@ -45,6 +49,10 @@ type Props = {
   verticales?: readonly VerticalProspeccion[];
   /** Estado de la voz de Zak — presente solo en el cockpit de Zak. */
   vozZak?: EstadoVozZak;
+  /** Se llama al final de cada tick del polling de la lista (12s). Hoy lo
+   *  usa Zak para mantener el CRM al día (respondido/interesado) sin
+   *  depender de que alguien reabra la consola. */
+  onTickLista?: () => void;
 };
 
 // El "visto" de no-leídos vive en localStorage: por browser y por admin, a
@@ -77,6 +85,7 @@ export function Conversaciones({
   abrirInicial = null,
   verticales,
   vozZak,
+  onTickLista,
 }: Props) {
   const [conversaciones, setConversaciones] = useState<Conversacion[] | null>(null);
   const [offset, setOffset] = useState(0);
@@ -225,8 +234,10 @@ export function Conversaciones({
       void cruzarConCrm(data.conversaciones.map((c) => c.phone));
     } catch {
       // tick silencioso: se reintenta en el próximo
+    } finally {
+      onTickLista?.();
     }
-  }, [instanciaId, cruzarConCrm]);
+  }, [instanciaId, cruzarConCrm, onTickLista]);
 
   // Solo la parte asíncrona de abrir un chat: nada de estado hasta que llega
   // la respuesta, así el efecto del deep-link puede llamarla directamente.
@@ -330,7 +341,7 @@ export function Conversaciones({
     if (!telefono || !mensaje.trim()) return;
     setAvisoChat(null);
     startOperar(async () => {
-      const res = await enviarManual(instanciaId, telefono, mensaje);
+      const res = await enviarManual(instanciaId, telefono, mensaje, fichaActual?.negocioId);
       if (res.error) {
         setAvisoChat(res.error);
         return;
@@ -347,7 +358,7 @@ export function Conversaciones({
     if (!telefono) return;
     setAvisoChat(null);
     startOperar(async () => {
-      const res = await abrirChatZak(telefono, slug);
+      const res = await abrirChatZak(telefono, slug, fichaActual?.negocioId);
       if ("error" in res) {
         setAvisoChat(res.error);
         return;
@@ -400,6 +411,52 @@ export function Conversaciones({
   const fichaActual = telefono ? fichas[telefono] : undefined;
   const slugParaReabrir = slugReabrir ?? fichaActual?.verticalSlug ?? "generico";
 
+  const [leadId, abrirLead] = useFichaLead();
+  const negocioIdActual = fichaActual?.negocioId ?? null;
+  // La ficha completa del negocio abierto en el modal: a diferencia de
+  // Territorio/Prospección (que la sacan de una lista ya cargada), acá se
+  // trae por fetch — el chat no tiene esa lista. `negocioVersion` fuerza un
+  // refetch después de editar (ver onCambio más abajo).
+  //
+  // UN solo estado, escrito SOLO desde la continuación async: un setState
+  // síncrono en el cuerpo del efecto (resetear al cerrar, marcar
+  // "cargando" al abrir) dispara react-hooks/set-state-in-effect. Lo que
+  // antes era estado — cargando, fallo — ahora se deriva comparando el id
+  // abierto con el id del último fetch que terminó.
+  const [fichaFetch, setFichaFetch] = useState<FichaFetch | null>(null);
+  const [negocioVersion, setNegocioVersion] = useState(0);
+
+  useEffect(() => {
+    if (!leadId) return;
+    let cancelado = false;
+    void (async () => {
+      let negocio: Negocio | null = null;
+      let fallo = false;
+      try {
+        const res = await fetch(`/admin/api/negocios/${leadId}`);
+        // Un id malformado (400: un ?lead= cortado o editado a mano) no puede
+        // existir: es "ya no existe", no un fallo que se arregle reintentando.
+        if (res.status === 400) {
+          negocio = null;
+        } else {
+          if (!res.ok) throw new Error(String(res.status));
+          negocio = ((await res.json()) as { negocio: Negocio | null }).negocio;
+        }
+      } catch {
+        fallo = true;
+      }
+      if (!cancelado) setFichaFetch({ leadId, negocio, fallo });
+    })();
+    return () => {
+      cancelado = true;
+    };
+  }, [leadId, negocioVersion]);
+
+  // Cargando / fallo / ya no existe se derivan del id abierto y del último
+  // fetch que terminó (estadoFicha, con tests). Al reabrir el MISMO negocio
+  // se muestra al instante lo último cargado mientras el efecto refresca.
+  const ficha = estadoFicha(leadId, fichaFetch);
+
   return (
     // En desktop la bandeja llena el alto que le da el <CockpitBody> del padre
     // y CADA columna scrollea por dentro — el compositor y el «Reabrir» quedan
@@ -407,6 +464,34 @@ export function Conversaciones({
     // calc() propio se descuadraba en cuanto aparecía un banner encima.
     <div className="grid items-start gap-aire min-[900px]:h-full min-[900px]:grid-cols-[340px_minmax(0,1fr)] min-[900px]:items-stretch">
       {dialogo}
+      {esZak && vozZak && (
+        <FichaLeadModal
+          leadId={leadId}
+          negocio={ficha.negocio}
+          cargando={ficha.cargando}
+          fallo={ficha.fallo}
+          noExiste={ficha.noExiste}
+          vozZak={vozZak}
+          onCerrar={() => abrirLead(null)}
+          onCambio={() => {
+            setNegocioVersion((v) => v + 1);
+            if (telefono) {
+              pedidasRef.current.delete(telefono);
+              void cruzarConCrm([telefono]);
+            }
+          }}
+          onEliminado={() => {
+            abrirLead(null);
+            if (telefono) {
+              setFichas((prev) => {
+                const resto = { ...prev };
+                delete resto[telefono];
+                return resto;
+              });
+            }
+          }}
+        />
+      )}
       <div className="flex min-h-0 flex-col gap-3 rounded-isla border border-hairline bg-isla-alta/40 p-3">
         {esZak && (
           abriendoChat ? (
@@ -535,9 +620,18 @@ export function Conversaciones({
                 )}
               </span>
               {historial && (
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="flex flex-wrap items-center gap-1">
+                  {esZak && negocioIdActual && (
+                    <IconButton
+                      etiqueta="Ver ficha del negocio"
+                      onClick={() => abrirLead(negocioIdActual)}
+                    >
+                      <IdCard className="h-4 w-4" />
+                    </IconButton>
+                  )}
                   {esZak && vozZak && telefono && !esLabs(telefono) && (
                     <BotonLlamarZak
+                      compacto
                       vozZak={vozZak}
                       telefono={fichaActual?.telefono ?? `+${telefono}`}
                       nombre={fichaActual?.nombre ?? null}
@@ -545,12 +639,21 @@ export function Conversaciones({
                       cargando={!telsResueltos.has(telefono)}
                     />
                   )}
-                  <Button disabled={operando} onClick={alternarPausa}>
-                    {historial.paused ? "Reanudar bot" : "Pausar bot (lo tomo yo)"}
-                  </Button>
-                  <Button variante="peligro" disabled={operando} onClick={() => void borrar()}>
-                    <Trash2 className="h-4 w-4" /> Borrar
-                  </Button>
+                  <IconButton
+                    etiqueta={historial.paused ? "Reanudar bot" : "Pausar bot (lo tomo yo)"}
+                    disabled={operando}
+                    onClick={alternarPausa}
+                  >
+                    {historial.paused ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
+                  </IconButton>
+                  <IconButton
+                    etiqueta="Borrar conversación"
+                    disabled={operando}
+                    onClick={() => void borrar()}
+                    className="hover:bg-peligro/10 hover:text-peligro"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </IconButton>
                 </div>
               )}
             </div>

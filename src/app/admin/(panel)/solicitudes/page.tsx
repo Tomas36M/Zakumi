@@ -54,6 +54,7 @@ export default async function SolicitudesAdminPage() {
       <PageHeader
         titulo="Solicitudes"
         coletilla="lo que quieren contratar"
+        migas={["Solicitudes"]}
         subtitulo="Lo que piden en la tienda y lo que Zak consigue por llamada o por WhatsApp. Cotiza, manda el link de pago y activa."
         contador={
           <>

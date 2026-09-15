@@ -127,7 +127,7 @@ export function NegociosView({ negocios, territorios = [], className, onAbrirLea
         `Zak va a contactar a ${res.contactados} negocio(s)` +
           (res.duplicados > 0 ? `, ${res.duplicados} ya eran prospectos` : "") +
           (res.omitidos > 0 ? `, ${res.omitidos} quedaron fuera` : "") +
-          ". Sigue el funnel en la pestaña Zak → Tandas.",
+          ".",
       );
       setSeleccionados(new Set());
       router.refresh();

@@ -39,6 +39,7 @@ export function AgendaView({ citas, lunes, hoy, ahoraIso }: Props) {
       <PageHeader
         titulo="Agenda"
         coletilla="las reuniones de Zak"
+        migas={["Agenda"]}
         navegacion={<NavegacionSemana rango={rango} lunesDeHoy={lunesDe(hoy)} />}
         contador={
           citas.length === 0 ? (

@@ -116,6 +116,32 @@ describe("registrarSolicitudEntrante", () => {
     expect(avisar.mock.calls[0][0]).toContain("meet.google.com");
   });
 
+  it("guarda negocio_id cuando la entrada lo trae", async () => {
+    const { cliente, insertado } = supabaseFalso();
+
+    await registrarSolicitudEntrante(
+      cliente,
+      { ...BASE, negocioId: "11111111-1111-1111-1111-111111111111" },
+      { avisar: vi.fn(async () => {}), calendario: calendarioOk, ahora: AHORA },
+    );
+
+    expect(insertado[0]).toMatchObject({
+      negocio_id: "11111111-1111-1111-1111-111111111111",
+    });
+  });
+
+  it("negocio_id queda null cuando la entrada no lo trae", async () => {
+    const { cliente, insertado } = supabaseFalso();
+
+    await registrarSolicitudEntrante(cliente, BASE, {
+      avisar: vi.fn(async () => {}),
+      calendario: calendarioOk,
+      ahora: AHORA,
+    });
+
+    expect(insertado[0]).toMatchObject({ negocio_id: null });
+  });
+
   it("guarda el texto crudo cuando la fecha no se entiende", async () => {
     const { cliente, insertado } = supabaseFalso();
     const avisar = vi.fn<(texto: string) => Promise<void>>(async () => {});

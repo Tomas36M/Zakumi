@@ -98,3 +98,67 @@ describe("importarNegocios", () => {
     expect(filasEnviadas[0]!.sitio_web).toBeNull();
   });
 });
+
+/** Doble de Supabase para `.update(fila).eq("id", id)` /
+ * `.update(fila).in("id", ids).select("id")`: guarda cada update completo
+ * (los campos que mandó) para poder inspeccionarlo en el assert. */
+function supabaseFalsoUpdate() {
+  const actualizado: Record<string, unknown>[] = [];
+  const cliente = {
+    from: () => ({
+      update: (campos: Record<string, unknown>) => {
+        actualizado.push(campos);
+        return {
+          eq: async () => ({ error: null }),
+          in: () => ({
+            select: async () => ({ data: [], error: null }),
+          }),
+        };
+      },
+    }),
+  };
+  return { cliente: cliente as never, actualizado };
+}
+
+describe("actualizarNegocio — candado manual", () => {
+  beforeEach(() => {
+    verifySessionMock.mockClear();
+  });
+
+  it("fija estado_fijado_manual cuando el cambio incluye estado", async () => {
+    const { cliente, actualizado } = supabaseFalsoUpdate();
+    verifySessionMock.mockResolvedValue({ supabase: cliente });
+    const { actualizarNegocio } = await import("../actions");
+
+    const res = await actualizarNegocio("n-1", { estado: "contactado" });
+
+    expect(res).toEqual({ error: null });
+    expect(actualizado[0]).toEqual({ estado: "contactado", estado_fijado_manual: true });
+  });
+
+  it("un cambio que no toca estado no agrega estado_fijado_manual", async () => {
+    const { cliente, actualizado } = supabaseFalsoUpdate();
+    verifySessionMock.mockResolvedValue({ supabase: cliente });
+    const { actualizarNegocio } = await import("../actions");
+
+    await actualizarNegocio("n-1", { nombre: "Panadería Nueva" });
+
+    expect(actualizado[0]).not.toHaveProperty("estado_fijado_manual");
+  });
+});
+
+describe("cambiarEstadoLote — candado manual", () => {
+  beforeEach(() => {
+    verifySessionMock.mockClear();
+  });
+
+  it("fija estado_fijado_manual en el cambio en lote", async () => {
+    const { cliente, actualizado } = supabaseFalsoUpdate();
+    verifySessionMock.mockResolvedValue({ supabase: cliente });
+    const { cambiarEstadoLote } = await import("../actions");
+
+    await cambiarEstadoLote(["n-1", "n-2"], "descartado");
+
+    expect(actualizado[0]).toEqual({ estado: "descartado", estado_fijado_manual: true });
+  });
+});

@@ -4,6 +4,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { agenteZakVoz, contarLlamadasHoy, type AgenteVozFila } from "@/lib/admin/voz";
+import { avanzarEstadoNegocio } from "@/lib/admin/estado-negocio";
 import { llamadaSaliente, type ErrorVoz } from "./api";
 import { normalizarTelefono, payloadLlamadaUnica, type VariablesLlamada } from "./eleven";
 
@@ -44,7 +45,7 @@ export type ResultadoDespacho =
 
 /**
  * Zak marca a un prospecto con su agente de voz (es_zak). Valida agente,
- * número, teléfono E.164 y cap diario; si viene negocioId, la llamada queda
+ * número, teléfono E.164, país permitido y cap diario; si viene negocioId, la llamada queda
  * correlacionada en dynamic_variables y el negocio pasa de 'nuevo' a
  * 'contactado' (forward-only). Nunca lanza.
  *
@@ -69,6 +70,26 @@ export async function despacharLlamadaZak(
 
   const telefono = normalizarTelefono(typeof datos.telefono === "string" ? datos.telefono : "");
   if (!telefono) return { error: "Teléfono no válido (formato +57…)." };
+
+  // Sin esto, el endpoint marcaba a cualquier +<código de país> del
+  // mundo con solo el token compartido — un token filtrado podía usarse
+  // para marcar a números internacionales de tarifa premium a costa de
+  // Zakumi. ZAK_VOZ_PAISES_PERMITIDOS es la salida de emergencia si algún
+  // día el negocio sí necesita llamar fuera de Colombia.
+  // Un prefijo válido es "+" y al menos un dígito: un "+" pelado haría que
+  // startsWith aceptara CUALQUIER E.164 y desactivaría la lista sin avisar.
+  const paisesPermitidos = (process.env.ZAK_VOZ_PAISES_PERMITIDOS ?? "+57")
+    .split(",")
+    .map((p) => p.trim())
+    .filter((p) => /^\+[1-9]\d*$/.test(p));
+  if (paisesPermitidos.length === 0) {
+    // Falla cerrado (correcto), pero que quede claro en el log que la causa
+    // es la configuración, no el número: el mensaje al usuario es el mismo.
+    console.error("[despacho] ZAK_VOZ_PAISES_PERMITIDOS no tiene ningún prefijo válido — no se llama a nadie.");
+  }
+  if (!paisesPermitidos.some((prefijo) => telefono.startsWith(prefijo))) {
+    return { error: "Ese número no está en un país permitido para llamar." };
+  }
 
   const negocioId =
     typeof datos.negocioId === "string" && UUID.test(datos.negocioId)
@@ -105,12 +126,7 @@ export async function despacharLlamadaZak(
   }
 
   if (negocioId) {
-    const { error } = await supabase
-      .from("negocios")
-      .update({ estado: "contactado" })
-      .eq("id", negocioId)
-      .eq("estado", "nuevo");
-    if (error) console.error("[despacharLlamadaZak] estado del negocio:", error.message);
+    await avanzarEstadoNegocio(supabase, negocioId, "contactado");
   }
 
   return { conversationId: r.data.conversation_id };

@@ -209,8 +209,10 @@ export async function eliminarVenta(id: string): Promise<{ error: string | null 
 }
 
 /* ————————————————————————————————————————————————————————————————————————
-   Ajustes de la cuenta. El trigger perfiles_proteger de la base garantiza
-   que por aquí no se pueda tocar rol ni cliente_id.
+   Ajustes de la cuenta.
+   Solo `nombre` es editable por el propio usuario: el grant de columnas de
+   perfiles.sql (la barrera principal) deja fuera rol, cliente_id y email,
+   y el trigger perfiles_proteger es la segunda capa para los admins.
    ———————————————————————————————————————————————————————————————————— */
 
 export async function actualizarNombre(
@@ -233,17 +235,37 @@ export async function actualizarNombre(
 }
 
 export async function cambiarPassword(datos: {
+  passwordActual: string;
   password: string;
   confirmacion: string;
 }): Promise<{ error: string | null }> {
   const sesion = await verifySesionPortal();
 
+  const passwordActual = typeof datos?.passwordActual === "string" ? datos.passwordActual : "";
+  if (!passwordActual) {
+    return { error: "Escribe tu contraseña actual." };
+  }
   const password = typeof datos?.password === "string" ? datos.password : "";
   if (password.length < 8) {
     return { error: "La contraseña necesita al menos 8 caracteres." };
   }
   if (password !== datos.confirmacion) {
     return { error: "Las contraseñas no coinciden." };
+  }
+
+  // Re-autenticar con la contraseña actual antes de cambiarla: sin esto,
+  // cualquiera con acceso momentáneo a una sesión abierta (la cookie del
+  // portal no es httpOnly por cómo funciona @supabase/ssr) podía tomar la
+  // cuenta entera con un solo cambio de contraseña, sin saber la anterior.
+  if (!sesion.email) {
+    return { error: "No se pudo verificar tu contraseña actual." };
+  }
+  const { error: errorAuth } = await sesion.supabase.auth.signInWithPassword({
+    email: sesion.email,
+    password: passwordActual,
+  });
+  if (errorAuth) {
+    return { error: "La contraseña actual no es correcta." };
   }
 
   const { error } = await sesion.supabase.auth.updateUser({ password });

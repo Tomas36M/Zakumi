@@ -54,6 +54,8 @@ export type EntradaSolicitud = {
   citaCruda?: unknown;
   llamadaId?: string | null;
   conversacion?: string | null;
+  /** El negocio de prospección del que salió, si se conoce. */
+  negocioId?: string | null;
 };
 
 export type ResultadoEntrada =
@@ -146,6 +148,7 @@ export async function registrarSolicitudEntrante(
     // Solo se guarda el crudo cuando NO se pudo parsear: si hay cita, el crudo
     // sobra y ensucia la bandeja.
     cita_texto_crudo: cita ? null : citaCrudaTexto,
+    negocio_id: entrada.negocioId ?? null,
   };
 
   const { data, error } = await supabase

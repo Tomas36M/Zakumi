@@ -12,10 +12,7 @@ export type CaraZak = "chat" | "voz";
 
 export const PESTANAS_CHAT = [
   "bandeja",
-  "interesados",
-  "tandas",
   "plantillas",
-  "metricas",
   "prompt",
   "labs",
 ] as const;

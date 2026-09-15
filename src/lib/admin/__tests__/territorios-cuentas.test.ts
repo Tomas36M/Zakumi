@@ -2,47 +2,55 @@ import { describe, expect, it, vi } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { bboxDeTerritorio, cuentasTerritoriosServidor } from "../territorios";
 
-/** Supabase falso para conteos `head`: `eq()` responde el total y `.is()` el
- * de sin web. `falla` hace que todo responda con error. */
+/** Supabase falso para la RPC cuentas_por_territorio: devuelve una fila por
+ * cada id pedido que tenga cuentas — como el GROUP BY real, un territorio
+ * sin negocios NO aparece. `falla` hace que responda con error. */
 function supabaseFalso(
   cuentas: Record<string, { total: number; sinWeb: number }>,
   falla = false,
-): SupabaseClient {
-  const respuesta = (n: number) =>
-    falla ? { count: null, error: { message: "boom" } } : { count: n, error: null };
-  return {
-    from: () => ({
-      select: () => ({
-        eq: (_col: string, id: string) =>
-          Object.assign(Promise.resolve(respuesta(cuentas[id]?.total ?? 0)), {
-            is: () => Promise.resolve(respuesta(cuentas[id]?.sinWeb ?? 0)),
-          }),
-      }),
-    }),
-  } as unknown as SupabaseClient;
+) {
+  const rpc = vi.fn((_fn: string, args: { p_ids: string[] }) =>
+    Promise.resolve(
+      falla
+        ? { data: null, error: { message: "boom" } }
+        : {
+            data: args.p_ids
+              .filter((id) => id in cuentas)
+              .map((id) => ({ territorio_id: id, leads: cuentas[id].total, sin_web: cuentas[id].sinWeb })),
+            error: null,
+          },
+    ),
+  );
+  return { cliente: { rpc } as unknown as SupabaseClient, rpc };
 }
 
 describe("cuentasTerritoriosServidor", () => {
   it("devuelve leads y sin web exactos por territorio, como objeto serializable", async () => {
-    const cuentas = await cuentasTerritoriosServidor(
-      supabaseFalso({ t1: { total: 71, sinWeb: 37 }, t2: { total: 4, sinWeb: 3 } }),
-      [{ id: "t1" }, { id: "t2" }],
-    );
+    const { cliente, rpc } = supabaseFalso({ t1: { total: 71, sinWeb: 37 }, t2: { total: 4, sinWeb: 3 } });
+    const cuentas = await cuentasTerritoriosServidor(cliente, [{ id: "t1" }, { id: "t2" }]);
     expect(cuentas).toEqual({ t1: { leads: 71, sinWeb: 37 }, t2: { leads: 4, sinWeb: 3 } });
+    // UNA consulta agrupada para toda la página, no dos por territorio.
+    expect(rpc).toHaveBeenCalledTimes(1);
+    expect(rpc).toHaveBeenCalledWith("cuentas_por_territorio", { p_ids: ["t1", "t2"] });
   });
 
   it("un territorio sin negocios cuenta cero, no falta", async () => {
-    const cuentas = await cuentasTerritoriosServidor(supabaseFalso({}), [{ id: "t9" }]);
+    // El GROUP BY no devuelve fila para t9: la rellena cuentasDesdeFilas.
+    const { cliente } = supabaseFalso({});
+    const cuentas = await cuentasTerritoriosServidor(cliente, [{ id: "t9" }]);
     expect(cuentas).toEqual({ t9: { leads: 0, sinWeb: 0 } });
   });
 
   it("sin territorios no consulta nada", async () => {
-    expect(await cuentasTerritoriosServidor(supabaseFalso({}), [])).toEqual({});
+    const { cliente, rpc } = supabaseFalso({});
+    expect(await cuentasTerritoriosServidor(cliente, [])).toEqual({});
+    expect(rpc).not.toHaveBeenCalled();
   });
 
-  it("si una consulta falla devuelve null (la vista degrada con banner), no un cero que miente", async () => {
+  it("si la consulta falla devuelve null (la vista degrada con banner), no un cero que miente", async () => {
     const error = vi.spyOn(console, "error").mockImplementation(() => {});
-    const cuentas = await cuentasTerritoriosServidor(supabaseFalso({}, true), [{ id: "t1" }]);
+    const { cliente } = supabaseFalso({}, true);
+    const cuentas = await cuentasTerritoriosServidor(cliente, [{ id: "t1" }]);
     expect(cuentas).toBeNull();
     expect(error).toHaveBeenCalled();
     error.mockRestore();

@@ -81,11 +81,18 @@ on conflict (user_id) do nothing;
 
 -- ---- Seed de admins — ⚠️ EDITAR AQUÍ antes de correr --------------------------
 
-update public.perfiles set rol = 'admin'
-where email in (
-  'tomasmunevar36@gmail.com',  -- Tomás
-  'catalinamcpg@outlook.com'   -- Catalina
-);
+-- Se lee de auth.users.email (la fuente real de identidad), no de
+-- perfiles.email: hasta este fix perfiles.email era editable por el propio
+-- usuario (hoy lo bloquean el grant de columnas y el trigger
+-- perfiles_proteger, más abajo), y un correo "ocupado" ahí habría vuelto
+-- admin a cualquiera en una re-corrida de este seed.
+update public.perfiles p set rol = 'admin'
+from auth.users u
+where u.id = p.user_id
+  and u.email in (
+    'tomasmunevar36@gmail.com',  -- Tomás
+    'catalinamcpg@outlook.com'   -- Catalina
+  );
 -- Nota: zakumiestudio@gmail.com NO existe como cuenta en Supabase Auth
 -- (verificado 2026-08-22) — es el correo de Railway, no del panel. Los
 -- admins nuevos se promueven desde /admin/equipo, sin tocar este seed.
@@ -119,7 +126,7 @@ grant execute on function public.es_admin()      to authenticated;
 grant execute on function public.mi_cliente_id() to authenticated;
 
 -- ---- Anti auto-escalada --------------------------------------------------------
--- Un cliente puede editar su nombre, pero rol/cliente_id/user_id solo los
+-- Un cliente puede editar su nombre, pero rol/cliente_id/user_id/email solo los
 -- cambia un admin. auth.uid() IS NULL = SQL directo del dashboard o service
 -- role: pasa (así funcionan el seed y las correcciones a mano).
 
@@ -131,10 +138,11 @@ as $$
 begin
   if (new.rol is distinct from old.rol
       or new.cliente_id is distinct from old.cliente_id
-      or new.user_id is distinct from old.user_id)
+      or new.user_id is distinct from old.user_id
+      or new.email is distinct from old.email)
      and (select auth.uid()) is not null
      and not public.es_admin() then
-    raise exception 'solo un admin puede cambiar rol o cliente vinculado';
+    raise exception 'solo un admin puede cambiar rol, cliente vinculado o email';
   end if;
   return new;
 end;
@@ -160,12 +168,31 @@ create policy perfiles_lee_propio on public.perfiles
   for select to authenticated
   using (user_id = (select auth.uid()));
 
--- Editar el propio perfil (solo nombre en la práctica: el trigger
--- perfiles_proteger bloquea rol/cliente_id para no-admins).
+-- Editar el propio perfil. La política deja pasar el UPDATE de la fila
+-- propia; el GRANT de columnas de abajo acota QUÉ columnas puede tocar el
+-- rol `authenticated` — Postgres exige ambos (policy + privilegio de
+-- columna). Ojo: el grant es por ROL de Postgres, y admin y cliente son el
+-- MISMO rol (`authenticated`; "admin" es solo un valor de perfiles.rol que
+-- RLS lee vía es_admin()). Por eso no se puede acotar a `(nombre)` sin
+-- romper los tres flujos de admin que escriben acá — cambiarRolPerfil
+-- (rol), vincularPerfilACliente y activarSolicitud (cliente_id). Quien
+-- decide si un NO-admin puede tocar rol/cliente_id es el trigger
+-- perfiles_proteger. `email` NO va en la lista: ningún flujo de la app lo
+-- escribe (solo crear_perfil() al signup, que es security definer, y el
+-- seed como postgres) — así el grant lo bloquea en la capa de ACL y el
+-- trigger es la segunda capa, no la única. Antes de esto, cualquier usuario
+-- podía reescribir su propio `email`, lo que permitía "ocupar" el correo de
+-- un cliente real y que un admin lo vinculara a la ficha equivocada — ver
+-- Radiografía Zakumi, hallazgo Alto #2. Al agregar una columna nueva que
+-- la app escriba, hay que sumarla a esta lista: los grants de columna no
+-- se extienden solos a columnas futuras.
 drop policy if exists perfiles_edita_propio on public.perfiles;
 create policy perfiles_edita_propio on public.perfiles
   for update to authenticated
   using (user_id = (select auth.uid()))
   with check (user_id = (select auth.uid()));
+
+revoke update on public.perfiles from authenticated;
+grant update (nombre, rol, cliente_id) on public.perfiles to authenticated;
 
 revoke all on public.perfiles from anon;

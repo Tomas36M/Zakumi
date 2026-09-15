@@ -195,6 +195,7 @@ export async function actualizarNegocio(
   if ("estado" in cambios) {
     if (!esEstado(cambios.estado)) return { error: "Estado no válido." };
     fila.estado = cambios.estado;
+    fila.estado_fijado_manual = true;
   }
   if ("telefono" in cambios) {
     const bruto = cambios.telefono?.trim() ?? "";
@@ -247,7 +248,7 @@ export async function cambiarEstadoLote(
 
   const { data, error } = await supabase
     .from("negocios")
-    .update({ estado })
+    .update({ estado, estado_fijado_manual: true })
     .in("id", ids)
     .select("id");
 

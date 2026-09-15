@@ -25,6 +25,7 @@ import {
 } from "@/lib/bots/api";
 import { plantillaPorSlug } from "@/lib/bots/plantillas";
 import { ID_ZAK } from "@/lib/bots/tipos";
+import { avanzarEstadoNegocio } from "./estado-negocio";
 
 const SLUG = /^[a-z0-9-]{2,40}$/;
 const PROVEEDORES_VALIDOS = new Set(["green", "cloud"]);
@@ -354,8 +355,9 @@ export async function enviarManual(
   id: number,
   telefono: string,
   texto: string,
+  negocioId?: string,
 ): Promise<{ error: string | null }> {
-  await verifySession();
+  const { supabase } = await verifySession();
   const tel = typeof telefono === "string" ? telefono.trim() : "";
   const msj = typeof texto === "string" ? texto.trim() : "";
   if (!Number.isInteger(id) || id <= 0 || !tel || !msj) {
@@ -364,5 +366,9 @@ export async function enviarManual(
 
   const r = await enviarManualApi(id, tel, msj);
   if (!r.ok) return { error: mensajeDe(r.error) };
+
+  if (negocioId) {
+    await avanzarEstadoNegocio(supabase, negocioId, "contactado");
+  }
   return { error: null };
 }

@@ -4,7 +4,6 @@ import { useEffect, useState, useTransition } from "react";
 import { agregarNota } from "@/lib/admin/actions";
 import { fechaCorta } from "@/lib/admin/formato";
 import type { Nota } from "@/lib/admin/negocios";
-import { createSupabaseBrowser } from "@/lib/supabase/browser";
 import { Banner } from "@/components/admin/ui/Banner";
 import { Button } from "@/components/admin/ui/Button";
 import { TextArea } from "@/components/admin/ui/Field";
@@ -12,14 +11,20 @@ import { Island } from "@/components/admin/ui/Island";
 import { ListRow } from "@/components/admin/ui/ListRow";
 import { Skeleton } from "@/components/admin/ui/Skeleton";
 
-async function fetchNotas(negocioId: string): Promise<Nota[]> {
-  const supabase = createSupabaseBrowser();
-  const { data } = await supabase
-    .from("notas")
-    .select("*")
-    .eq("negocio_id", negocioId)
-    .order("created_at", { ascending: false });
-  return (data as Nota[]) ?? [];
+/**
+ * Lee por /admin/api (cliente de servidor), no con el SDK de Supabase en el
+ * navegador: ese SDK pesa ~250 KB y viajaba a cuatro rutas del panel solo por
+ * esta lectura. `null` = la lectura falló, que no es lo mismo que "no hay
+ * notas".
+ */
+async function leerNotas(negocioId: string): Promise<Nota[] | null> {
+  try {
+    const res = await fetch(`/admin/api/negocios/${negocioId}/notas`);
+    if (!res.ok) return null;
+    return ((await res.json()) as { notas: Nota[] }).notas;
+  } catch {
+    return null;
+  }
 }
 
 type Props = {
@@ -33,13 +38,14 @@ type Props = {
 export function FichaLeadNotas({ negocioId, version }: Props) {
   const [guardando, startGuardar] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const [notas, setNotas] = useState<Nota[] | null>(null);
+  // null = primera lectura en curso; "error" = la última lectura falló.
+  const [notas, setNotas] = useState<Nota[] | "error" | null>(null);
   const [notaNueva, setNotaNueva] = useState("");
 
   useEffect(() => {
     let activo = true;
-    fetchNotas(negocioId).then((ns) => {
-      if (activo) setNotas(ns);
+    leerNotas(negocioId).then((ns) => {
+      if (activo) setNotas(ns ?? "error");
     });
     return () => {
       activo = false;
@@ -62,7 +68,7 @@ export function FichaLeadNotas({ negocioId, version }: Props) {
               return;
             }
             setNotaNueva("");
-            setNotas(await fetchNotas(negocioId));
+            setNotas((await leerNotas(negocioId)) ?? "error");
           });
         }}
       >
@@ -85,6 +91,10 @@ export function FichaLeadNotas({ negocioId, version }: Props) {
           <Skeleton className="h-3 w-2/3" />
           <Skeleton className="h-3 w-1/2" />
         </div>
+      ) : notas === "error" ? (
+        <Banner variante="error">
+          No se pudieron cargar las notas. Recarga la página en un momento.
+        </Banner>
       ) : notas.length === 0 ? (
         <p className="text-sm text-tinta-40">
           Todavía no hay notas. La primera se escribe sola al cambiar el estado.

@@ -1,3 +1,4 @@
+import "server-only";
 // Cliente HTTP hacia ElevenLabs (api.elevenlabs.io).
 //
 // SOLO SERVIDOR: se importa desde server actions y route handlers — nunca
@@ -176,15 +177,11 @@ export function parseVocesCompartidas(json: unknown): VozCompartida[] {
     .filter((v) => v.voice_id !== "" && v.public_owner_id !== "");
 }
 
-/** Acentos que ofrece la biblioteca ("" = todo español). Única fuente:
- * los chips de la UI y la whitelist del server action salen de aquí. */
-export const LOCALES_BIBLIOTECA: readonly { valor: string; label: string }[] = [
-  { valor: "es-CO", label: "Colombia" },
-  { valor: "es-MX", label: "México" },
-  { valor: "es-AR", label: "Argentina" },
-  { valor: "es-ES", label: "España" },
-  { valor: "", label: "Todo español" },
-] as const;
+// LOCALES_BIBLIOTECA vive en ./locales-biblioteca (dato puro, sin secretos):
+// BibliotecaVoces.tsx la importa como valor desde un componente "use client"
+// y este módulo ahora es server-only. Se re-exporta aquí para no romper a
+// los consumidores de servidor (voz-actions.ts) que ya la importaban de acá.
+export { LOCALES_BIBLIOTECA } from "./locales-biblioteca";
 
 /**
  * Busca voces en la biblioteca pública de ElevenLabs. El workspace nace con

@@ -90,6 +90,7 @@ create policy solicitudes_crea_propia on public.solicitudes
     and llamada_id is null
     and conversacion is null
     and clave_origen is null
+    and negocio_id is null
     and cita_inicio is null
     and cita_fin is null
     and cita_meet_url is null

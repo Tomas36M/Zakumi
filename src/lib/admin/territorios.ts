@@ -140,40 +140,49 @@ export function resumenDeTerritorio(
  * (un Map no sobrevive la frontera de props). */
 export type CuentasPorTerritorio = Record<string, CuentaTerritorio>;
 
+/** Filas crudas de la RPC cuentas_por_territorio (supabase/rendimiento.sql). */
+export type FilaCuentaTerritorio = { territorio_id: string; leads: number; sin_web: number };
+
 /**
- * Cuentas EXACTAS por territorio, contadas en el servidor con `count: exact`
- * + `head: true` (dos consultas chicas por territorio, en paralelo). Existe
- * porque `cuentasPorTerritorio` recorre la lista topada a 900 y con más
- * negocios que eso mentiría — y la página Territorios es una lista de
- * cifras. `null` = alguna consulta falló: la vista cae a la cuenta sobre lo
- * cargado y lo dice con un banner, en vez de pintar ceros que no son.
+ * Arma el objeto de cuentas a partir de las filas de la RPC. Puro para
+ * probarlo: un territorio sin negocios no aparece en el GROUP BY y tiene
+ * que salir como 0/0, no ausente — el grid pinta cada tarjeta por su id.
+ */
+export function cuentasDesdeFilas(
+  ids: readonly string[],
+  filas: readonly FilaCuentaTerritorio[],
+): CuentasPorTerritorio {
+  const porId = new Map(filas.map((f) => [f.territorio_id, f]));
+  return Object.fromEntries(
+    ids.map((id) => {
+      const f = porId.get(id);
+      return [id, { leads: f?.leads ?? 0, sinWeb: f?.sin_web ?? 0 }];
+    }),
+  );
+}
+
+/**
+ * Cuentas EXACTAS por territorio, contadas en el servidor en UNA consulta
+ * agrupada (RPC cuentas_por_territorio, security invoker: RLS sigue
+ * mandando). Existe porque `cuentasPorTerritorio` recorre la lista topada
+ * a 900 y con más negocios que eso mentiría — y la página Territorios es
+ * una lista de cifras. Antes eran dos consultas por territorio en paralelo:
+ * 50 round-trips por página de 25.
+ * `null` = la consulta falló: la vista lo dice con un banner en vez de
+ * pintar ceros que no son.
  */
 export async function cuentasTerritoriosServidor(
   supabase: SupabaseClient,
   territorios: readonly Pick<Territorio, "id">[],
 ): Promise<CuentasPorTerritorio | null> {
-  const consultas = territorios.map(async (t) => {
-    const [total, sinWeb] = await Promise.all([
-      supabase
-        .from("negocios")
-        .select("*", { count: "exact", head: true })
-        .eq("territorio_id", t.id),
-      supabase
-        .from("negocios")
-        .select("*", { count: "exact", head: true })
-        .eq("territorio_id", t.id)
-        .is("sitio_web", null),
-    ]);
-    const error = total.error ?? sinWeb.error;
-    if (error) throw new Error(error.message);
-    return [t.id, { leads: total.count ?? 0, sinWeb: sinWeb.count ?? 0 }] as const;
-  });
-  try {
-    return Object.fromEntries(await Promise.all(consultas));
-  } catch (e) {
-    console.error("[territorios] cuentas por territorio:", e instanceof Error ? e.message : e);
+  if (territorios.length === 0) return {};
+  const ids = territorios.map((t) => t.id);
+  const { data, error } = await supabase.rpc("cuentas_por_territorio", { p_ids: ids });
+  if (error) {
+    console.error("[territorios] cuentas por territorio:", error.message);
     return null;
   }
+  return cuentasDesdeFilas(ids, (data ?? []) as FilaCuentaTerritorio[]);
 }
 
 /** La caja del territorio en el literal que entiende `map.fitBounds`. */

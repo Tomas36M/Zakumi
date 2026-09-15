@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { verifySession } from "@/lib/admin/dal";
 import type { PerfilBuscado } from "@/lib/admin/perfiles-actions";
 import { Cockpit, CockpitBody } from "@/components/admin/ui/Cockpit";
+import { PageHeader } from "@/components/admin/ui/PageHeader";
 import { EquipoView } from "@/components/admin/equipo/EquipoView";
 
 export const metadata: Metadata = { title: "Equipo" };
@@ -24,14 +25,13 @@ export default async function EquipoPage() {
 
   return (
     <Cockpit>
-      <header className="border-b border-hairline px-5 py-4">
-        <h1 className="text-lg font-semibold text-tinta">Equipo</h1>
-        <p className="text-xs text-tinta-60">
-          Quién administra Zakumi. Un admin ve TODO: CRM, clientes, pagos y todos
+      <PageHeader
+        titulo="Equipo"
+        migas={["Equipo"]}
+        subtitulo="Quién administra Zakumi. Un admin ve TODO: CRM, clientes, pagos y todos
           los bots — promueve solo a gente de la casa. Las cuentas de clientes
-          del portal no se tocan desde aquí (eso vive en la ficha de cada cliente).
-        </p>
-      </header>
+          del portal no se tocan desde aquí (eso vive en la ficha de cada cliente)."
+      />
       <CockpitBody>
         <EquipoView admins={admins} miUserId={sesion.userId} />
       </CockpitBody>

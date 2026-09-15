@@ -14,6 +14,7 @@ import { Cockpit, CockpitBody } from "@/components/admin/ui/Cockpit";
 import { EmptyState } from "@/components/admin/ui/EmptyState";
 import { GridCards } from "@/components/admin/ui/GridCards";
 import { PageHeader } from "@/components/admin/ui/PageHeader";
+import { Paginador } from "@/components/admin/ui/Paginador";
 import { TarjetaTerritorioCard } from "./TarjetaTerritorioCard";
 
 const LINK_DIBUJAR =
@@ -21,20 +22,30 @@ const LINK_DIBUJAR =
 
 type Props = {
   territorios: Territorio[];
-  /** Cuentas exactas del servidor, o `null` si esa consulta falló. */
+  /** Cuentas exactas del servidor (solo de esta página), o `null` si esa consulta falló. */
   cuentas: CuentasPorTerritorio | null;
   /** La consulta de territorios falló: la lista vacía no es «no hay». */
   fallaTerritorios: boolean;
+  pagina: number;
+  totalPaginas: number;
+  /** Cuenta exacta de TODOS los territorios (no solo los de esta página), o `null` si esa consulta falló. */
+  totalTerritorios: number | null;
+  /** Total de leads en TODOS los territorios, o `null` si esa consulta falló. */
+  totalLeadsGlobal: number | null;
 };
 
 /** Territorios: el grid de todo lo que ya se barrió (o se dibujó y espera). */
-export function TerritoriosView({ territorios, cuentas, fallaTerritorios }: Props) {
+export function TerritoriosView({
+  territorios,
+  cuentas,
+  fallaTerritorios,
+  pagina,
+  totalPaginas,
+  totalTerritorios,
+  totalLeadsGlobal,
+}: Props) {
   const router = useRouter();
   const mapa = useMemo(() => new Map(Object.entries(cuentas ?? {})), [cuentas]);
-  const totalLeads = useMemo(
-    () => Object.values(cuentas ?? {}).reduce((t, c) => t + c.leads, 0),
-    [cuentas],
-  );
   const cruces = useMemo(() => {
     const m = new Map<string, boolean>();
     for (const t of territorios) m.set(t.id, poligonoSeCruza(t.poligono));
@@ -46,12 +57,19 @@ export function TerritoriosView({ territorios, cuentas, fallaTerritorios }: Prop
       <PageHeader
         titulo="Territorios"
         coletilla="lo que ya se barrió"
+        migas={["Territorios"]}
         contador={
-          cuentas !== null && (
+          totalTerritorios !== null && (
             <>
-              <strong className="text-tinta-85">{territorios.length}</strong>{" "}
-              {territorios.length === 1 ? "territorio" : "territorios"} ·{" "}
-              <strong className="text-tinta-85">{totalLeads}</strong> leads
+              <strong className="text-tinta-85">{totalTerritorios}</strong>{" "}
+              {totalTerritorios === 1 ? "territorio" : "territorios"}
+              {totalLeadsGlobal !== null && (
+                <>
+                  {" "}
+                  ·{" "}
+                  <strong className="text-tinta-85">{totalLeadsGlobal}</strong> leads
+                </>
+              )}
             </>
           )
         }
@@ -89,17 +107,25 @@ export function TerritoriosView({ territorios, cuentas, fallaTerritorios }: Prop
             }
           />
         ) : (
-          <GridCards>
-            {territorios.map((t) => (
-              <TarjetaTerritorioCard
-                key={t.id}
-                territorio={t}
-                resumen={resumenDeTerritorio(t, mapa)}
-                cruzado={cruces.get(t.id) ?? false}
-                onAbrir={(id) => router.push(`/admin/territorios/${id}`)}
-              />
-            ))}
-          </GridCards>
+          <>
+            <GridCards>
+              {territorios.map((t) => (
+                <TarjetaTerritorioCard
+                  key={t.id}
+                  territorio={t}
+                  resumen={resumenDeTerritorio(t, mapa)}
+                  cruzado={cruces.get(t.id) ?? false}
+                  sinCifras={cuentas === null}
+                  onAbrir={(id) => router.push(`/admin/territorios/${id}`)}
+                />
+              ))}
+            </GridCards>
+            <Paginador
+              pagina={pagina}
+              totalPaginas={totalPaginas}
+              hrefDePagina={(p) => `/admin/territorios?pagina=${p}`}
+            />
+          </>
         )}
       </CockpitBody>
     </Cockpit>

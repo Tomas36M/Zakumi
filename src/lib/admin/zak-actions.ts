@@ -14,6 +14,7 @@ import {
   contactables,
   verticalPorSlug,
 } from "./zak";
+import { avanzarEstadoNegocio, avanzarEstadosNegocio } from "./estado-negocio";
 import { catalogoVerticales } from "./zak-verticales";
 import type { EstadoNegocio, Negocio } from "./negocios";
 import { crearTanda, enviarPlantillaDirecta, listarProspectos } from "@/lib/bots/api";
@@ -113,18 +114,13 @@ export async function enviarTandaZak(negocioIds: string[]): Promise<
     };
   }
 
-  // 'contactado' solo para los creados y solo desde 'nuevo': un negocio que ya
-  // respondió o se interesó por otra vía no retrocede.
+  // 'contactado' solo para los creados: avanzarEstadosNegocio ya es
+  // forward-only y respeta el candado manual.
   const idsCreados = procesados
     .filter((n) => !duplicadosTels.has(sinMas(n.telefono as string)))
     .map((n) => n.id);
   if (idsCreados.length > 0) {
-    const { error: e2 } = await supabase
-      .from("negocios")
-      .update({ estado: "contactado" })
-      .in("id", idsCreados)
-      .eq("estado", "nuevo");
-    if (e2) console.error("[enviarTandaZak] estados:", e2.message);
+    await avanzarEstadosNegocio(supabase, idsCreados, "contactado");
   }
 
   revalidatePath("/admin/prospeccion");
@@ -146,6 +142,7 @@ export async function enviarTandaZak(negocioIds: string[]): Promise<
 export async function abrirChatZak(
   telefonoBruto: string,
   verticalSlug?: string,
+  negocioId?: string,
 ): Promise<{ ok: true } | { error: string }> {
   const { supabase } = await verifySession();
 
@@ -186,6 +183,9 @@ export async function abrirChatZak(
     }
     return { error: "No hay conexión con el bot para enviar el saludo." };
   }
+  if (negocioId) {
+    await avanzarEstadoNegocio(supabase, negocioId, "contactado");
+  }
   revalidatePath("/admin/zak");
   return { ok: true };
 }
@@ -210,7 +210,10 @@ export async function sincronizarEstadosZak(): Promise<
   if (relevantes.length === 0) return { respondidos: 0, interesados: 0 };
 
   const ids = [...new Set(relevantes.map((p) => p.negocio_id as string))];
-  const { data, error } = await supabase.from("negocios").select("id, estado").in("id", ids);
+  const { data, error } = await supabase
+    .from("negocios")
+    .select("id, estado, estado_fijado_manual")
+    .in("id", ids);
   if (error || !data) {
     console.error("[sincronizarEstadosZak] negocios:", error?.message);
     return { error: "No se pudieron leer los estados actuales del CRM." };
@@ -218,20 +221,16 @@ export async function sincronizarEstadosZak(): Promise<
 
   const avances = avancesDeEstado(
     r.data,
-    data as { id: string; estado: EstadoNegocio }[],
+    data as { id: string; estado: EstadoNegocio; estado_fijado_manual: boolean }[],
   );
   const aRespondido = avances.filter((a) => a.a === "respondido").map((a) => a.id);
   const aInteresado = avances.filter((a) => a.a === "interesado").map((a) => a.id);
 
   if (aRespondido.length > 0) {
-    const { error: e1 } = await supabase
-      .from("negocios").update({ estado: "respondido" }).in("id", aRespondido);
-    if (e1) console.error("[sincronizarEstadosZak] respondidos:", e1.message);
+    await avanzarEstadosNegocio(supabase, aRespondido, "respondido");
   }
   if (aInteresado.length > 0) {
-    const { error: e2 } = await supabase
-      .from("negocios").update({ estado: "interesado" }).in("id", aInteresado);
-    if (e2) console.error("[sincronizarEstadosZak] interesados:", e2.message);
+    await avanzarEstadosNegocio(supabase, aInteresado, "interesado");
   }
   if (avances.length > 0) revalidatePath("/admin/prospeccion");
 

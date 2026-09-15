@@ -11,8 +11,19 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
   const next = url.searchParams.get("next") ?? "/app";
-  // Solo paths internos: nada de open-redirect vía ?next=https://…
-  const destinoPedido = next.startsWith("/") && !next.startsWith("//") ? next : "/app";
+  // Solo paths internos: nada de open-redirect. Un prefijo "/" no alcanza
+  // —el parseo de WHATWG URL normaliza \ a / y descarta tab/CR/LF, así que
+  // "/%5Cevil.com" o "/%09/evil.com" terminan siendo otro origen aunque
+  // "empiecen con /"— así que se compara el origin ya resuelto, no el
+  // string crudo.
+  const destinoPedido = (() => {
+    try {
+      const resuelta = new URL(next, url.origin);
+      return resuelta.origin === url.origin ? resuelta.pathname + resuelta.search : "/app";
+    } catch {
+      return "/app";
+    }
+  })();
 
   if (code) {
     const supabase = await createSupabaseServer();

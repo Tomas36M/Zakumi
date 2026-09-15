@@ -38,7 +38,7 @@ describe("esPestanaZak", () => {
 
 describe("pestanaInicial", () => {
   it("respeta un deep-link válido de cualquier cara", () => {
-    expect(pestanaInicial("metricas")).toBe("metricas");
+    expect(pestanaInicial("plantillas")).toBe("plantillas");
     expect(pestanaInicial("voz-llamadas")).toBe("voz-llamadas");
   });
 

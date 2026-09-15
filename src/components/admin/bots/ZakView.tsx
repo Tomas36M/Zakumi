@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { AudioLines, MessageCircle } from "lucide-react";
 import { sincronizarEstadosZak } from "@/lib/admin/zak-actions";
@@ -11,37 +11,26 @@ import {
   caraDe,
   carasZak,
   type CaraZak,
+  type PestanaChat,
   type PestanaVoz,
   type PestanaZak,
 } from "@/lib/admin/zak-caras";
-import {
-  ID_ZAK,
-  type Instancia,
-  type PromptActivo,
-  type Prospecto,
-  type StatusInstancia,
-  type Tanda,
-  type VersionPrompt,
-} from "@/lib/bots/tipos";
+import { ID_ZAK, type Instancia, type PromptActivo, type VersionPrompt } from "@/lib/bots/tipos";
 import { Banner } from "@/components/admin/ui/Banner";
 import { Caras } from "@/components/admin/ui/Caras";
 import { Cockpit, CockpitBody } from "@/components/admin/ui/Cockpit";
 import { PageHeader } from "@/components/admin/ui/PageHeader";
 import { Tabs } from "@/components/admin/ui/Tabs";
 import { useParametroUrl } from "@/components/admin/ui/useParametroUrl";
-import { cn } from "@/lib/cn";
 import type { PlantillaZakFila } from "@/lib/admin/plantillas";
 import type { VerticalProspeccion } from "@/lib/admin/zak";
 import type { AgenteVozFila } from "@/lib/admin/voz";
 import type { VozEleven } from "@/lib/voz/api";
 import type { LlamadaVoz } from "@/lib/voz/tipos";
 import { Conversaciones } from "./Conversaciones";
-import { InteresadosZak } from "./InteresadosZak";
 import { LabsChat } from "./LabsChat";
-import { MetricasZak } from "./MetricasZak";
 import { PlantillasZak } from "./PlantillasZak";
 import { PromptEditor } from "./PromptEditor";
-import { TandasZak } from "./TandasZak";
 import { ZakVoz } from "./ZakVoz";
 import type { EstadoVozZak } from "@/components/admin/voz/BotonLlamarZak";
 
@@ -49,10 +38,7 @@ const ICONOS_CARAS = { chat: MessageCircle, voz: AudioLines } as const;
 
 const LABEL_CHAT: Record<(typeof PESTANAS_CHAT)[number], string> = {
   bandeja: "Bandeja",
-  interesados: "Interesados",
-  tandas: "Tandas",
   plantillas: "Plantillas",
-  metricas: "Métricas",
   prompt: "Prompt",
   labs: "Labs",
 };
@@ -69,9 +55,6 @@ type Props = {
   instancia: Instancia | null;
   prompt: PromptActivo | null;
   versiones: VersionPrompt[];
-  status: StatusInstancia | null;
-  tandas: Tanda[];
-  prospectos: Prospecto[];
   tabInicial: PestanaZak;
   /** Deep-link desde el CRM: abrir la bandeja directo en este chat. */
   telefonoInicial?: string | null;
@@ -101,9 +84,6 @@ export function ZakView({
   instancia,
   prompt,
   versiones,
-  status,
-  tandas,
-  prospectos,
   tabInicial,
   telefonoInicial = null,
   verticales,
@@ -122,8 +102,7 @@ export function ZakView({
   // compartir y una recarga vuelva a la misma pestaña.
   const [tab, setTab] = useState<PestanaZak>(tabInicial);
   const [, ponerTab] = useParametroUrl("tab");
-  const [sincronizando, startSync] = useTransition();
-  const [avisoSync, setAvisoSync] = useState<string | null>(null);
+  const [, startSync] = useTransition();
   const syncHecho = useRef(false);
   // El Lab de voz se monta en la primera visita y NO se desmonta después:
   // destruirlo cortaría el polling de una prueba en vuelo.
@@ -131,20 +110,12 @@ export function ZakView({
 
   const cara = caraDe(tab);
 
-  function sincronizar(silencioso: boolean) {
+  function sincronizar() {
     startSync(async () => {
       const res = await sincronizarEstadosZak();
-      if ("error" in res) {
-        if (!silencioso) setAvisoSync(res.error);
-        return;
-      }
+      if ("error" in res) return;
       if (res.respondidos + res.interesados > 0) {
-        setAvisoSync(
-          `CRM al día: ${res.respondidos} pasaron a Respondió y ${res.interesados} a Interesado.`,
-        );
         router.refresh();
-      } else if (!silencioso) {
-        setAvisoSync("El CRM ya estaba al día con la prospección.");
       }
     });
   }
@@ -154,20 +125,9 @@ export function ZakView({
   useEffect(() => {
     if (syncHecho.current) return;
     syncHecho.current = true;
-    sincronizar(true);
+    sincronizar();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  const interesados = useMemo(() => prospectos.filter((p) => p.interesado), [prospectos]);
-  const uso = status?.uso_hoy;
-
-  // Tasa de respuesta agregada de la prospección (los fallidos no cuentan
-  // como enviados; los pendientes todavía no salieron).
-  const enviados = tandas.reduce(
-    (t, x) => t + x.funnel.enviado + x.funnel.entregado + x.funnel.leido + x.funnel.respondido,
-    0,
-  );
-  const respondidos = tandas.reduce((t, x) => t + x.funnel.respondido, 0);
 
   function cambiarCara(nueva: CaraZak) {
     if (nueva === cara) return;
@@ -182,22 +142,7 @@ export function ZakView({
 
   const pestanasChat = PESTANAS_CHAT.map((p) => ({
     id: p as PestanaZak,
-    label:
-      p === "interesados" && interesados.length > 0 ? (
-        <span className="inline-flex items-center gap-1.5">
-          {LABEL_CHAT[p]}
-          <span
-            className={cn(
-              "rounded-full px-1.5 text-[0.7rem] font-bold",
-              tab === "interesados" ? "bg-white/25 text-white" : "bg-acento text-white",
-            )}
-          >
-            {interesados.length}
-          </span>
-        </span>
-      ) : (
-        LABEL_CHAT[p]
-      ),
+    label: LABEL_CHAT[p],
   }));
 
   const pestanasVoz = PESTANAS_VOZ.map((p) => ({
@@ -210,6 +155,14 @@ export function ZakView({
       <PageHeader
         titulo="Zak"
         coletilla="el cerebro comercial"
+        migas={[
+          "Zak",
+          cara === "voz" && agenteVoz === null
+            ? "Voz"
+            : cara === "chat"
+              ? LABEL_CHAT[tab as PestanaChat]
+              : LABEL_VOZ[tab as PestanaVoz],
+        ]}
         subtitulo={
           instancia && (
             <>
@@ -229,14 +182,6 @@ export function ZakView({
             etiqueta="Las dos caras de Zak"
           />
         }
-        contador={
-          uso && (
-            <>
-              hoy: {uso.llamadas} llamadas · {uso.tokens_entrada + uso.tokens_salida} tokens ·{" "}
-              {interesados.length} interesados en total
-            </>
-          )
-        }
       />
 
       {/* Avisos y pestañas: alto natural, siempre a la vista. Fuera del body
@@ -247,7 +192,6 @@ export function ZakView({
             Sin conexión con el bot: se muestra lo último conocido. Recarga en un momento.
           </Banner>
         )}
-        {avisoSync && <Banner>{avisoSync}</Banner>}
 
         {/* Sin agente de voz no hay pestañas que enseñar: solo el alta. */}
         {(cara === "chat" || agenteVoz !== null) && (
@@ -269,31 +213,11 @@ export function ZakView({
             abrirInicial={telefonoInicial}
             verticales={verticales}
             vozZak={vozZak}
+            onTickLista={sincronizar}
           />
         )}
-
-        {tab === "interesados" && (
-          <InteresadosZak
-            interesados={interesados}
-            vozZak={vozZak}
-            sincronizando={sincronizando}
-            onSincronizar={() => sincronizar(false)}
-            onAbrirChat={() => irA("bandeja")}
-          />
-        )}
-
-        {tab === "tandas" && <TandasZak tandas={tandas} />}
 
         {tab === "plantillas" && <PlantillasZak filas={plantillas} />}
-
-        {tab === "metricas" && (
-          <MetricasZak
-            enviados={enviados}
-            respondidos={respondidos}
-            interesados={interesados.length}
-            tandas={tandas.length}
-          />
-        )}
 
         {tab === "prompt" && (
           <PromptEditor

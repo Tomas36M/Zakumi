@@ -133,6 +133,7 @@ export function ProspeccionView({
       <PageHeader
         titulo="Encontrar clientes"
         coletilla="el censo de la calle"
+        migas={["Encontrar clientes", cara === "leads" ? "Leads" : "Territorio"]}
         navegacion={
           <Caras
             caras={carasProspeccion({

@@ -41,6 +41,10 @@ export type Solicitud = {
   llamada_id: string | null;
   conversacion: string | null;
   clave_origen: string | null;
+  /** El negocio de prospección del que salió, cuando se conoce (el bot de
+   *  WhatsApp no siempre lo manda todavía). Lo usa activarSolicitud() para
+   *  avanzar ese negocio a 'cliente' cuando la solicitud se activa. */
+  negocio_id: string | null;
   cita_inicio: string | null;
   cita_fin: string | null;
   cita_meet_url: string | null;

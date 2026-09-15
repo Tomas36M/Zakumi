@@ -4,14 +4,7 @@ import { catalogoVerticales } from "@/lib/admin/zak-verticales";
 import { pestanaInicial } from "@/lib/admin/zak-caras";
 import { listarVoces } from "@/lib/voz/api";
 import { estadoVozZak } from "@/lib/admin/voz-estado";
-import {
-  listarProspectos,
-  listarTandas,
-  listarVersiones,
-  obtenerInstancia,
-  obtenerPrompt,
-  statusInstancia,
-} from "@/lib/bots/api";
+import { listarVersiones, obtenerInstancia, obtenerPrompt } from "@/lib/bots/api";
 import { ID_ZAK } from "@/lib/bots/tipos";
 import { ZakView } from "@/components/admin/bots/ZakView";
 
@@ -28,17 +21,13 @@ export default async function ZakPage({
   const telefonoInicial = /^[0-9]{7,15}$/.test(telefono ?? "") ? (telefono as string) : null;
 
   // Con Railway caído el cockpit carga igual: cada pieza degrada por su lado.
-  const [instancia, prompt, versiones, status, tandas, prospectos, catalogo, zakVoz] =
-    await Promise.all([
-      obtenerInstancia(ID_ZAK),
-      obtenerPrompt(ID_ZAK),
-      listarVersiones(ID_ZAK),
-      statusInstancia(ID_ZAK),
-      listarTandas(ID_ZAK),
-      listarProspectos(ID_ZAK),
-      catalogoVerticales(supabase), // vivo; sin la tabla cae al estático
-      agenteZakVoz(supabase), // la voz de Zak: su cara de Voz y "Llamar con IA"
-    ]);
+  const [instancia, prompt, versiones, catalogo, zakVoz] = await Promise.all([
+    obtenerInstancia(ID_ZAK),
+    obtenerPrompt(ID_ZAK),
+    listarVersiones(ID_ZAK),
+    catalogoVerticales(supabase), // vivo; sin la tabla cae al estático
+    agenteZakVoz(supabase), // la voz de Zak: su cara de Voz y "Llamar con IA"
+  ]);
 
   // La cara de Voz solo necesita datos si Zak YA tiene agente; si no, lo único
   // que se pinta es el alta (que sí necesita el catálogo de voces).
@@ -64,9 +53,6 @@ export default async function ZakPage({
       instancia={instancia.ok ? instancia.data : null}
       prompt={prompt.ok ? prompt.data : null}
       versiones={versiones.ok ? versiones.data : []}
-      status={status.ok ? status.data : null}
-      tandas={tandas.ok ? tandas.data : []}
-      prospectos={prospectos.ok ? prospectos.data : []}
       tabInicial={telefonoInicial ? "bandeja" : pestanaInicial(tab)}
       verticales={[...catalogo.todos]}
       plantillas={catalogo.filas}
