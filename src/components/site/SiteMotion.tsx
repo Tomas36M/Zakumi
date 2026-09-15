@@ -53,8 +53,11 @@ export function SiteMotion({ isHome }: { isHome: boolean }) {
       // Cortina — solo en home, y solo la primera vez por sesión
       if (isHome) {
         if (curtainPlayed) {
-          // Regreso SPA a home: ocultar la cortina sin animarla de nuevo
-          gsap.set("#curtain", { display: "none" });
+          // Regreso SPA a home: ocultar la cortina sin animarla de nuevo. Puede
+          // no existir: SiteShell solo la pinta si el documento arrancó en home
+          // (y un gsap.set sobre un selector vacío avisa por consola).
+          const cortina = document.getElementById("curtain");
+          if (cortina) gsap.set(cortina, { display: "none" });
         } else {
           curtainPlayed = true;
           const counter = { v: 0 };
@@ -103,7 +106,8 @@ export function SiteMotion({ isHome }: { isHome: boolean }) {
         // así que se marca como vista. Pero la página no debe abrir en frío —
         // el nav entra igual, sin cortina.
         curtainPlayed = true;
-        // #curtain solo se renderiza en la home, así que no se toca aquí.
+        // #curtain solo se renderiza en la home (y solo si el documento
+        // arrancó ahí), así que no se toca aquí.
         navIntro(gsap.timeline(), 0);
       }
 

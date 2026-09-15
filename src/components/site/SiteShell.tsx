@@ -31,6 +31,13 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isHome = pathname === "/";
   const conMovimiento = !RUTAS_SIN_ANIMACION.has(pathname);
+  // La cortina es un gesto de carga INICIAL: solo si el documento arrancó en
+  // home. El valor se congela en el primer render (el layout persiste entre
+  // navegaciones) y es el mismo en el servidor y al hidratar. Sin esto, una
+  // visita que empieza en /privacidad —donde SiteMotion no se monta— y pasa
+  // a home pintaría la cortina negra hasta que llegue el chunk de GSAP, y
+  // después la reproduciría entera.
+  const [arrancoEnHome] = React.useState(isHome);
   const [menuOpen, setMenuOpen] = React.useState(false);
 
   // ——— CSS vars: --orange / bg-* ———
@@ -83,7 +90,7 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
 
       {conMovimiento && <SiteMotion isHome={isHome} />}
 
-      {isHome && (
+      {isHome && arrancoEnHome && (
         <div className="curtain" id="curtain">
           <div className="curtain-panel" id="curtain-panel" />
           <div className="curtain-inner"><span>ZAKUMI</span><span className="dot" /><span>ESTUDIO</span></div>

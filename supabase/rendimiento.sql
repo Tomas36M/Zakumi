@@ -1,8 +1,10 @@
 -- ============================================================================
 -- Rendimiento — índice de búsqueda por nombre y conteos agrupados.
 -- Ejecutar en el SQL Editor de Supabase DESPUÉS de prospeccion.sql (usa
--- negocios.territorio_id y negocios.sitio_web). Idempotente y aditivo: no
--- cambia datos ni permisos de ninguna tabla.
+-- negocios.territorio_id y negocios.sitio_web) y ANTES de desplegar el
+-- código que llama a estas funciones: sin ellas /admin/territorios pinta sus
+-- tarjetas sin cifras y /admin/metricas pinta "—" en todo el embudo.
+-- Idempotente y aditivo: no cambia datos ni permisos de ninguna tabla.
 --
 -- Tres cosas:
 -- 1. pg_trgm + un índice GIN sobre negocios.nombre. La búsqueda de

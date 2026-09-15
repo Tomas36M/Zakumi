@@ -33,8 +33,10 @@ de esta sesión (artifact "Radiografía Zakumi").
   Solo la Task 2 lleva TDD (el helper puro `cuentasDesdeFilas`). El SQL no
   corre en CI — se verifica a mano en Supabase, con el bloque que la Task 1
   deja en su reporte.
-- **`supabase/rendimiento.sql` corre DESPUÉS de `prospeccion.sql`** (usa
-  `negocios.territorio_id`, que ese archivo agrega). Es aditivo e
+- **`supabase/rendimiento.sql` corre DESPUÉS de `prospeccion.sql` y ANTES
+  del deploy** (usa `negocios.territorio_id`, que ese archivo agrega; sin las
+  RPC, Territorios pinta sus tarjetas sin cifras y Métricas pinta "—" — un
+  hallazgo del review final). Es aditivo e
   idempotente (`create extension if not exists`, `create index if not
   exists`, `create or replace function`) — no necesita "parche" para bases
   que ya corrieron versiones anteriores.

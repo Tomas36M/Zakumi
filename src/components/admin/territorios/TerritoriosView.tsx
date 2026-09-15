@@ -115,6 +115,7 @@ export function TerritoriosView({
                   territorio={t}
                   resumen={resumenDeTerritorio(t, mapa)}
                   cruzado={cruces.get(t.id) ?? false}
+                  sinCifras={cuentas === null}
                   onAbrir={(id) => router.push(`/admin/territorios/${id}`)}
                 />
               ))}
