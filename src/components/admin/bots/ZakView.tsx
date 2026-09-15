@@ -114,7 +114,7 @@ export function ZakView({
     startSync(async () => {
       const res = await sincronizarEstadosZak();
       if ("error" in res) return;
-      if (res.respondidos + res.interesados > 0) {
+      if (res.contactados + res.respondidos + res.interesados > 0) {
         router.refresh();
       }
     });

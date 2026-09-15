@@ -4,6 +4,7 @@
 // prospección de Zak (bot en Railway). Mismo contrato que las demás actions:
 // verifySession() primera línea, retornos que nunca lanzan, español al usuario.
 
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { revalidatePath } from "next/cache";
 import { verifySession } from "./dal";
 import { admiteWhatsApp, normalizarTelefonoCO, sinMas } from "./telefono";
@@ -14,13 +15,26 @@ import {
   despacharTandas,
   TANDA_MAX_BOT,
   verticalPorSlug,
+  type AvanceEstado,
 } from "./zak";
 import { gruposParaEnvio, modoDesdeCliente, prospectoParaTanda } from "./envio";
 import { avanzarEstadoNegocio, avanzarEstadosNegocio } from "./estado-negocio";
+import {
+  avancesDesdeChats,
+  chatsParaHistorial,
+  e164DeChat,
+  type NegocioSync,
+} from "./estados-chats";
 import { catalogoVerticales } from "./zak-verticales";
 import type { EstadoNegocio, Negocio } from "./negocios";
-import { crearTanda, enviarPlantillaDirecta, listarProspectos } from "@/lib/bots/api";
-import { ID_ZAK } from "@/lib/bots/tipos";
+import {
+  crearTanda,
+  enviarPlantillaDirecta,
+  historial,
+  listarConversaciones,
+  listarProspectos,
+} from "@/lib/bots/api";
+import { ID_ZAK, type Conversacion } from "@/lib/bots/tipos";
 
 const ENVIO_MAX = 250; // cupo diario del número en Meta (TIER_250): más que esto no sale hoy
 
@@ -198,49 +212,168 @@ export async function abrirChatZak(
   return { ok: true };
 }
 
+const PAGINA_CONVERSACIONES = 200; // el tope por página de /conversations en el bot
+const MAX_CONVERSACIONES = 1000;
+const HISTORIALES_EN_PARALELO = 5;
+
+/** Todas las conversaciones de Zak (el bot pagina de a 200), o null si el bot
+ * no respondió ni la primera página. */
+async function todasLasConversaciones(): Promise<Conversacion[] | null> {
+  const todas: Conversacion[] = [];
+  for (let offset = 0; offset < MAX_CONVERSACIONES; offset += PAGINA_CONVERSACIONES) {
+    const r = await listarConversaciones(ID_ZAK, { limit: PAGINA_CONVERSACIONES, offset });
+    if (!r.ok) return offset === 0 ? null : todas;
+    todas.push(...r.data);
+    if (r.data.length < PAGINA_CONVERSACIONES) break;
+  }
+  return todas;
+}
+
+/** Los negocios del CRM con esos teléfonos, de a 100 por consulta para que la
+ * URL no crezca sin tope. null si la base falla. */
+async function negociosPorTelefono(
+  supabase: SupabaseClient,
+  telefonos: string[],
+): Promise<NegocioSync[] | null> {
+  const filas: NegocioSync[] = [];
+  for (let i = 0; i < telefonos.length; i += 100) {
+    const { data, error } = await supabase
+      .from("negocios")
+      .select("id, telefono, estado, estado_fijado_manual")
+      .in("telefono", telefonos.slice(i, i + 100));
+    if (error || !data) {
+      console.error("[sincronizarEstadosZak] negocios por teléfono:", error?.message);
+      return null;
+    }
+    filas.push(...(data as NegocioSync[]));
+  }
+  return filas;
+}
+
+// Tope de historiales por sincronización: con muchos chats pendientes, la
+// primera pasada no puede quedarse pidiendo historiales hasta que la función
+// se corte. Lo que no alcanza se revisa en la siguiente visita.
+const MAX_HISTORIALES_POR_SYNC = 20;
+
+/** Quién escribió en cada chat: true si el negocio escribió, false si solo
+ * Zak. Un historial que no llega no entra en el mapa: queda sin decidir. */
+async function consultarRespuestas(telefonos: string[]): Promise<Map<string, boolean>> {
+  const resultados = await Promise.all(telefonos.map((t) => historial(ID_ZAK, t)));
+  const respuestas = new Map<string, boolean>();
+  resultados.forEach((r, i) => {
+    if (!r.ok) return;
+    respuestas.set(
+      telefonos[i],
+      r.data.ultimo_del_cliente !== null || r.data.messages.some((m) => m.role === "user"),
+    );
+  });
+  return respuestas;
+}
+
+type ConteoSync = { contactados: number; respondidos: number; interesados: number };
+
+/** Escribe los avances en orden (contactado → respondido → interesado) y suma
+ * al conteo lo que la base aceptó. El UPDATE es forward-only: un avance menor
+ * sobre un negocio que ya está más arriba no hace nada. */
+async function aplicarAvances(
+  supabase: SupabaseClient,
+  avances: AvanceEstado[],
+  conteo: ConteoSync,
+): Promise<void> {
+  const pasos: [EstadoNegocio, keyof ConteoSync][] = [
+    ["contactado", "contactados"],
+    ["respondido", "respondidos"],
+    ["interesado", "interesados"],
+  ];
+  for (const [estado, clave] of pasos) {
+    const ids = [...new Set(avances.filter((a) => a.a === estado).map((a) => a.id))];
+    if (ids.length === 0) continue;
+    const { error } = await avanzarEstadosNegocio(supabase, ids, estado);
+    if (!error) conteo[clave] += ids.length;
+  }
+}
+
 /**
- * Trae la prospección del bot y avanza los estados del CRM (forward-only,
- * por negocio_id). Se dispara al abrir /admin/zak y con el botón de la
- * pestaña Interesados.
+ * Pone al día los estados del CRM con lo que pasó en Zak. Dos fuentes: los
+ * prospectos de las tandas (respondido/interesado, por negocio_id) y las
+ * conversaciones de la bandeja, que cuentan aunque no hayan salido de una
+ * tanda (chats abiertos uno por uno desde la ficha o con «+ Nuevo chat»): solo
+ * escribió Zak → contactado; escribió el negocio → respondido. Los chats se
+ * cruzan por teléfono y se decide con su historial, hasta
+ * MAX_HISTORIALES_POR_SYNC por visita y guardando de a grupos: si la función se
+ * corta, lo ya revisado queda escrito. Forward-only y respetando el candado
+ * manual; también pone al día los contactos viejos. Se dispara al abrir
+ * /admin/zak.
  */
-export async function sincronizarEstadosZak(): Promise<
-  { respondidos: number; interesados: number } | { error: string }
-> {
+export async function sincronizarEstadosZak(): Promise<ConteoSync | { error: string }> {
   const { supabase } = await verifySession();
 
-  const r = await listarProspectos(ID_ZAK);
-  if (!r.ok) {
+  const [prospectos, chats] = await Promise.all([
+    listarProspectos(ID_ZAK),
+    todasLasConversaciones(),
+  ]);
+  if (!prospectos.ok && chats === null) {
     return { error: "No hay conexión con el bot para sincronizar." };
   }
-  const relevantes = r.data.filter(
-    (p) => p.negocio_id !== null && (p.estado_envio === "respondido" || p.interesado),
-  );
-  if (relevantes.length === 0) return { respondidos: 0, interesados: 0 };
 
-  const ids = [...new Set(relevantes.map((p) => p.negocio_id as string))];
-  const { data, error } = await supabase
-    .from("negocios")
-    .select("id, estado, estado_fijado_manual")
-    .in("id", ids);
-  if (error || !data) {
-    console.error("[sincronizarEstadosZak] negocios:", error?.message);
-    return { error: "No se pudieron leer los estados actuales del CRM." };
+  const conteo: ConteoSync = { contactados: 0, respondidos: 0, interesados: 0 };
+
+  // 1) Prospectos de las tandas: respondido / interesado, por negocio_id.
+  if (prospectos.ok) {
+    const relevantes = prospectos.data.filter(
+      (p) => p.negocio_id !== null && (p.estado_envio === "respondido" || p.interesado),
+    );
+    const ids = [...new Set(relevantes.map((p) => p.negocio_id as string))];
+    if (ids.length > 0) {
+      const { data, error } = await supabase
+        .from("negocios")
+        .select("id, estado, estado_fijado_manual")
+        .in("id", ids);
+      if (error || !data) {
+        console.error("[sincronizarEstadosZak] negocios:", error?.message);
+      } else {
+        await aplicarAvances(
+          supabase,
+          avancesDeEstado(
+            prospectos.data,
+            data as { id: string; estado: EstadoNegocio; estado_fijado_manual: boolean }[],
+          ),
+          conteo,
+        );
+      }
+    }
   }
 
-  const avances = avancesDeEstado(
-    r.data,
-    data as { id: string; estado: EstadoNegocio; estado_fijado_manual: boolean }[],
-  );
-  const aRespondido = avances.filter((a) => a.a === "respondido").map((a) => a.id);
-  const aInteresado = avances.filter((a) => a.a === "interesado").map((a) => a.id);
-
-  if (aRespondido.length > 0) {
-    await avanzarEstadosNegocio(supabase, aRespondido, "respondido");
+  // 2) Conversaciones de la bandeja: contactado / respondido, por teléfono,
+  // de a HISTORIALES_EN_PARALELO y guardando cada grupo.
+  if (chats && chats.length > 0) {
+    const telefonos = [
+      ...new Set(chats.map((c) => e164DeChat(c.phone)).filter((t): t is string => t !== null)),
+    ];
+    const negocios = telefonos.length > 0 ? await negociosPorTelefono(supabase, telefonos) : [];
+    if (negocios && negocios.length > 0) {
+      const aConsultar = chatsParaHistorial(
+        chats.map((c) => ({ telefono: c.phone, mensajes: c.messages })),
+        negocios,
+        MAX_HISTORIALES_POR_SYNC,
+      );
+      for (let i = 0; i < aConsultar.length; i += HISTORIALES_EN_PARALELO) {
+        const grupo = aConsultar.slice(i, i + HISTORIALES_EN_PARALELO);
+        const respuestas = await consultarRespuestas(grupo);
+        await aplicarAvances(
+          supabase,
+          avancesDesdeChats(
+            grupo.map((t) => ({ telefono: t, respondio: respuestas.get(t) ?? null })),
+            negocios,
+          ),
+          conteo,
+        );
+      }
+    }
   }
-  if (aInteresado.length > 0) {
-    await avanzarEstadosNegocio(supabase, aInteresado, "interesado");
-  }
-  if (avances.length > 0) revalidatePath("/admin/prospeccion");
 
-  return { respondidos: aRespondido.length, interesados: aInteresado.length };
+  if (conteo.contactados + conteo.respondidos + conteo.interesados > 0) {
+    revalidatePath("/admin/prospeccion");
+  }
+  return conteo;
 }
