@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { verifySession } from "./dal";
 import { hoyBogota, CICLOS, type Ciclo } from "./cartera";
 import { crearProducto, registrarPago } from "./cartera-actions";
+import { normalizarTelefonoCO } from "./telefono";
 import { servicioDelSlug } from "@/lib/catalogo";
 import { avanzarEstadoNegocio } from "./estado-negocio";
 import {
@@ -191,14 +192,21 @@ export async function eliminarSolicitud(id: string): Promise<{ error: string | n
 
 /**
  * La transacción gorda: confirma el pago y deja el servicio andando.
- * 1. Crea el cliente de la cartera si el perfil no tiene (y lo vincula).
+ * 1. Resuelve el cliente de la cartera — con cuenta de portal (desde el
+ *    perfil), sin cuenta en un reintento (desde el producto ya
+ *    referenciado), o sin cuenta la primera vez (directo desde el contacto
+ *    de la solicitud, ver el paso 1 más abajo para los cuatro caminos).
  * 2. Crea el producto contratado con la cotización.
  * 3. Registra el primer pago (avanza la próxima fecha de cobro).
  * 4. Marca la solicitud como activa.
  *
  * No es atómica (cuatro escrituras); por eso el producto_id se guarda en la
- * solicitud APENAS existe: re-ejecutar tras un fallo parcial no duplica ni
- * cliente (perfil ya vinculado) ni producto (ya referenciado).
+ * solicitud APENAS existe: re-ejecutar tras un fallo parcial nunca duplica
+ * el producto (ya referenciado), y tampoco el cliente cuando hay cuenta de
+ * portal (perfil ya vinculado) o negocio vinculado (negocio_id es UNIQUE en
+ * clientes) — sin ninguno de los dos, un fallo justo después de crear el
+ * cliente pero antes de guardar producto_id sí puede duplicarlo (caso raro,
+ * documentado en el paso 1).
  */
 export async function activarSolicitud(
   id: string,
@@ -215,14 +223,21 @@ export async function activarSolicitud(
     return { error: "La solicitud no tiene cotización completa." };
   }
 
-  // 1. Cliente de la cartera — tres caminos:
+  // 1. Cliente de la cartera — cuatro caminos:
   //    (a) con cuenta de portal: desde el perfil, como siempre;
   //    (b) sin cuenta, reintento: el cliente ya existe, se recupera del
   //        producto ya referenciado (misma idempotencia que protege el
   //        paso 2 más abajo);
-  //    (c) sin cuenta, primera vez: se crea directo desde el contacto de
-  //        la solicitud. Darle acceso al portal después sigue siendo un
-  //        paso aparte que esta función no hace.
+  //    (c) sin cuenta, primera vez, CON negocio vinculado: upsert atómico
+  //        sobre el UNIQUE de clientes.negocio_id — nunca duplica, sea cual
+  //        sea el camino por el que ese negocio ya se volvió cliente antes;
+  //    (d) sin cuenta, primera vez, SIN negocio vinculado: insert directo.
+  //        Sin negocio_id no hay con qué cruzar de forma confiable (el
+  //        teléfono no es una clave única) — un fallo justo después de este
+  //        insert pero antes de guardar producto_id puede duplicar el
+  //        cliente en un reintento; caso raro, aceptado.
+  //    Ninguno de los cuatro da acceso al portal — eso sigue siendo un paso
+  //    aparte que esta función no hace.
   let clienteId: string;
   if (sol.user_id) {
     const { data: perfil } = await supabase
@@ -280,11 +295,19 @@ export async function activarSolicitud(
     // confiable en el diseño original de este vínculo, Decisión 5 del spec)
     // — ese caso puede duplicar en un fallo-parcial raro, igual que antes de
     // este cambio.
+    // El teléfono/email de la solicitud son texto libre (documentado así
+    // en portal/solicitudes.ts y en la Decisión 5 del spec); clientes.
+    // telefono/email tienen CHECK de formato (E.164 / "contiene @"). Un
+    // valor que no se puede normalizar se guarda en null en vez de romper
+    // la escritura — bloquear la creación del cliente después de que el
+    // admin ya confirmó un pago real sería el fallo peor de los dos.
+    const telefonoNormalizado = normalizarTelefonoCO(sol.contacto_telefono).telefono;
+    const emailValido = sol.contacto_email?.includes("@") ? sol.contacto_email : null;
     const datosCliente = {
       nombre:
         sol.contacto_nombre?.trim() || sol.contacto_telefono || "Cliente sin cuenta de portal",
-      telefono: sol.contacto_telefono,
-      email: sol.contacto_email,
+      telefono: telefonoNormalizado,
+      email: emailValido,
       negocio_id: sol.negocio_id,
     };
 

@@ -104,6 +104,7 @@ function supabaseActivar(cfg: {
   productoExistente?: { cliente_id: string } | null;
   clienteCreadoId?: string;
   clienteExistentePorNegocio?: { id: string } | null;
+  insertClienteError?: string;
 }) {
   return {
     from: (tabla: string) => {
@@ -149,7 +150,10 @@ function supabaseActivar(cfg: {
             insertClienteMock(fila);
             return {
               select: () => ({
-                single: async () => ({ data: { id: cfg.clienteCreadoId ?? "cli-nuevo" }, error: null }),
+                single: async () =>
+                  cfg.insertClienteError
+                    ? { data: null, error: { message: cfg.insertClienteError } }
+                    : { data: { id: cfg.clienteCreadoId ?? "cli-nuevo" }, error: null },
               }),
             };
           },
@@ -227,6 +231,9 @@ describe("activarSolicitud — resolución del cliente", () => {
       email: null,
       negocio_id: null,
     });
+    expect(crearProductoMock).toHaveBeenCalledWith(
+      expect.objectContaining({ cliente_id: "cli-nuevo" }),
+    );
   });
 
   it("sin cuenta de portal, con negocio vinculado: un reintento antes de guardar producto_id reusa el cliente por negocio_id, no duplica", async () => {
@@ -337,5 +344,70 @@ describe("activarSolicitud — resolución del cliente", () => {
     expect(r).toEqual({ error: null });
     expect(insertClienteMock).toHaveBeenCalledWith({ nombre: "Ana", email: "ana@x.com" });
     expect(updatePerfilMock).toHaveBeenCalledWith({ cliente_id: "cli-nuevo" });
+  });
+
+  it("sin cuenta de portal: normaliza el teléfono del bot (sin +) antes de guardarlo", async () => {
+    const solicitud = {
+      ...BASE_ACTIVABLE,
+      user_id: null,
+      producto_id: null,
+      negocio_id: null,
+      contacto_nombre: "Panadería Doña Rosa",
+      contacto_telefono: "573001112233",
+      contacto_email: "no-es-un-email",
+    };
+    crearProductoMock.mockResolvedValue({ id: "prod-5" });
+    verifySessionMock.mockResolvedValue({ supabase: supabaseActivar({ solicitud }) });
+
+    const { activarSolicitud } = await import("../solicitudes-actions");
+    const r = await activarSolicitud("sol-2");
+
+    expect(r).toEqual({ error: null });
+    expect(insertClienteMock).toHaveBeenCalledWith(
+      expect.objectContaining({ telefono: "+573001112233", email: null }),
+    );
+  });
+
+  it("sin cuenta de portal, con negocio Y producto ya referenciados: el reintento usa el cliente del producto, no re-consulta por negocio", async () => {
+    const solicitud = {
+      ...BASE_ACTIVABLE,
+      user_id: null,
+      producto_id: "prod-6",
+      negocio_id: "neg-3",
+      contacto_nombre: "Ferretería El Tornillo",
+      contacto_telefono: "+573009998877",
+      contacto_email: null,
+    };
+    verifySessionMock.mockResolvedValue({
+      supabase: supabaseActivar({ solicitud, productoExistente: { cliente_id: "cli-del-producto" } }),
+    });
+
+    const { activarSolicitud } = await import("../solicitudes-actions");
+    const r = await activarSolicitud("sol-2");
+
+    expect(r).toEqual({ error: null });
+    expect(insertClienteMock).not.toHaveBeenCalled();
+    expect(upsertClienteMock).not.toHaveBeenCalled();
+  });
+
+  it("sin cuenta de portal: si Supabase rechaza el insert del cliente, no sigue de largo", async () => {
+    const solicitud = {
+      ...BASE_ACTIVABLE,
+      user_id: null,
+      producto_id: null,
+      negocio_id: null,
+      contacto_nombre: "Ferretería El Tornillo",
+      contacto_telefono: "+573009998877",
+      contacto_email: null,
+    };
+    verifySessionMock.mockResolvedValue({
+      supabase: supabaseActivar({ solicitud, insertClienteError: "clientes_telefono_check violado" }),
+    });
+
+    const { activarSolicitud } = await import("../solicitudes-actions");
+    const r = await activarSolicitud("sol-2");
+
+    expect(r.error).toMatch(/No se pudo crear el cliente/);
+    expect(crearProductoMock).not.toHaveBeenCalled();
   });
 });
