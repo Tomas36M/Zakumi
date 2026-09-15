@@ -1,3 +1,4 @@
+import "server-only";
 // Cliente service-role de Supabase — la excepción a "la app solo usa
 // anon + RLS", reservada a los endpoints server-to-server que no tienen
 // sesión de usuario:

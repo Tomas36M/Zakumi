@@ -1,3 +1,4 @@
+import "server-only";
 // Google Calendar por API REST, sin SDK: son dos POST y el repo no usa SDKs
 // (misma decisión que el cliente del bot y el de ElevenLabs).
 //

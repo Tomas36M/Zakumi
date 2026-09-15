@@ -1,3 +1,4 @@
+import "server-only";
 // Cliente del API admin del bot (Flask en Railway, /admin/api/v1).
 //
 // SOLO SERVIDOR: se importa desde pages, server actions y route handlers —

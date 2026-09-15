@@ -87,7 +87,7 @@ export default async function Cliente360Page({
       ? supabase
           .from("perfiles")
           .select("user_id, email, nombre, cliente_id")
-          .ilike("email", cliente.email)
+          .eq("email", cliente.email)
           .is("cliente_id", null)
           .eq("rol", "cliente")
           .limit(1)

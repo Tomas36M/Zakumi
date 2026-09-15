@@ -1,3 +1,4 @@
+import "server-only";
 // Cliente de Twilio para la telefonía del panel (/admin/voz → Telefonía).
 //
 // SOLO SERVIDOR: TWILIO_ACCOUNT_SID + (API key o auth token — ver
