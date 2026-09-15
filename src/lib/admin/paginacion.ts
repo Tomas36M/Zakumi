@@ -26,3 +26,15 @@ export function rangoDePagina(pagina: number, porPagina: number): [number, numbe
   const desde = (pagina - 1) * porPagina;
   return [desde, desde + porPagina - 1];
 }
+
+/** Cuántas páginas hacen falta para `total` filas. Al menos una: una lista
+ * vacía es una página vacía, no cero páginas. */
+export function totalDePaginas(total: number, porPagina: number): number {
+  return Math.max(1, Math.ceil(total / porPagina));
+}
+
+/** La página pedida, o la última que existe si se pidió una más allá (un
+ * enlace viejo, filas que se borraron): nunca una página vacía que miente. */
+export function acotarPagina(pagina: number, total: number, porPagina: number): number {
+  return Math.min(pagina, totalDePaginas(total, porPagina));
+}

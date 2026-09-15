@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { paginaDesdeParam, rangoDePagina } from "../paginacion";
+import { acotarPagina, paginaDesdeParam, rangoDePagina, totalDePaginas } from "../paginacion";
 
 describe("paginaDesdeParam", () => {
   it("cae a la página 1 sin parámetro", () => {
@@ -42,5 +42,33 @@ describe("rangoDePagina", () => {
 
   it("funciona con un tamaño de página distinto", () => {
     expect(rangoDePagina(3, 10)).toEqual([20, 29]);
+  });
+});
+
+describe("totalDePaginas", () => {
+  it("una lista vacía es una página (vacía), no cero páginas", () => {
+    expect(totalDePaginas(0, 50)).toBe(1);
+  });
+
+  it("una página llena justa no abre otra", () => {
+    expect(totalDePaginas(50, 50)).toBe(1);
+  });
+
+  it("una fila de más abre la siguiente", () => {
+    expect(totalDePaginas(51, 50)).toBe(2);
+  });
+});
+
+describe("acotarPagina", () => {
+  it("una página que existe se respeta", () => {
+    expect(acotarPagina(2, 120, 50)).toBe(2);
+  });
+
+  it("una página más allá de la última cae a la última", () => {
+    expect(acotarPagina(9, 120, 50)).toBe(3);
+  });
+
+  it("sin filas, cualquier página cae a la 1", () => {
+    expect(acotarPagina(4, 0, 50)).toBe(1);
   });
 });

@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { FILTRO_VACIO, type FiltroLeads } from "../filtros-leads";
-import { filtroDesdeParams, paramsDeFiltro } from "../leads-consulta";
+import {
+  aplicarFiltros,
+  filtroDesdeParams,
+  opcionesDe,
+  paramsDeFiltro,
+  rangoEnPantalla,
+  totalDeConteos,
+} from "../leads-consulta";
+import { conteoPorEstado } from "../negocios";
 import { LEADS_POR_PAGINA } from "../paginacion";
 import { TANDA_MAX_BOT } from "../zak";
 
@@ -82,5 +90,123 @@ describe("paramsDeFiltro", () => {
 describe("LEADS_POR_PAGINA", () => {
   it("una página es exactamente una tanda de Zak: «seleccionar la página» cabe en un envío", () => {
     expect(LEADS_POR_PAGINA).toBe(TANDA_MAX_BOT);
+  });
+});
+
+/** Consulta falsa: registra cada condición que se le aplica, en orden, y se
+ * devuelve a sí misma como el query builder de Supabase. */
+function consultaFalsa() {
+  const llamadas: unknown[][] = [];
+  const consulta = {
+    eq(columna: string, valor: unknown) {
+      llamadas.push(["eq", columna, valor]);
+      return consulta;
+    },
+    in(columna: string, valores: unknown) {
+      llamadas.push(["in", columna, valores]);
+      return consulta;
+    },
+    is(columna: string, valor: unknown) {
+      llamadas.push(["is", columna, valor]);
+      return consulta;
+    },
+    not(columna: string, operador: string, valor: unknown) {
+      llamadas.push(["not", columna, operador, valor]);
+      return consulta;
+    },
+    ilike(columna: string, patron: string) {
+      llamadas.push(["ilike", columna, patron]);
+      return consulta;
+    },
+  };
+  return { consulta: consulta as never, llamadas };
+}
+
+describe("aplicarFiltros", () => {
+  it("el filtro vacío no toca la consulta", () => {
+    const { consulta, llamadas } = consultaFalsa();
+    expect(aplicarFiltros(consulta, FILTRO_VACIO)).toBe(consulta);
+    expect(llamadas).toEqual([]);
+  });
+
+  it("traduce cada filtro a su condición en la base, en orden", () => {
+    const { consulta, llamadas } = consultaFalsa();
+    aplicarFiltros(consulta, COMPLETO);
+    expect(llamadas).toEqual([
+      ["eq", "ciudad", "Bogotá"],
+      ["eq", "categoria", "ferreteria"],
+      ["eq", "territorio_id", TERRITORIO],
+      ["in", "estado", ["respondido"]],
+      ["not", "telefono", "is", null],
+      ["is", "sitio_web", null],
+      ["ilike", "nombre", "%el tornillo%"],
+    ]);
+  });
+
+  it("sinEstado deja fuera solo el filtro de estado (los conteos de la franja)", () => {
+    const { consulta, llamadas } = consultaFalsa();
+    aplicarFiltros(consulta, COMPLETO, { sinEstado: true });
+    expect(llamadas.map((l) => l[1])).toEqual([
+      "ciudad",
+      "categoria",
+      "territorio_id",
+      "telefono",
+      "sitio_web",
+      "nombre",
+    ]);
+  });
+
+  it("sin teléfono y con web son las condiciones contrarias", () => {
+    const { consulta, llamadas } = consultaFalsa();
+    aplicarFiltros(consulta, { ...FILTRO_VACIO, telefono: "sin", web: "con" });
+    expect(llamadas).toEqual([
+      ["is", "telefono", null],
+      ["not", "sitio_web", "is", null],
+    ]);
+  });
+
+  it("escapa los comodines del texto: «50%» busca el porcentaje literal", () => {
+    const { consulta, llamadas } = consultaFalsa();
+    aplicarFiltros(consulta, { ...FILTRO_VACIO, q: "50%" });
+    expect(llamadas).toEqual([["ilike", "nombre", "%50\\%%"]]);
+  });
+});
+
+describe("totalDeConteos", () => {
+  const conteos = { ...conteoPorEstado([]), nuevo: 30, contactado: 12, respondido: 5, descartado: 3 };
+
+  it("sin estado elegido, el total es la suma de los seis", () => {
+    expect(totalDeConteos(conteos, [])).toBe(50);
+  });
+
+  it("con un estado elegido, el total es el de ese estado", () => {
+    expect(totalDeConteos(conteos, ["contactado"])).toBe(12);
+  });
+});
+
+describe("opcionesDe", () => {
+  it("ciudades y categorías sin repetir, sin vacíos y en orden alfabético", () => {
+    expect(
+      opcionesDe([
+        { ciudad: "Chía", categoria: "ferreteria" },
+        { ciudad: "Bogotá", categoria: null },
+        { ciudad: "Chía", categoria: "belleza" },
+        { ciudad: null, categoria: "ferreteria" },
+      ]),
+    ).toEqual({ ciudades: ["Bogotá", "Chía"], categorias: ["belleza", "ferreteria"] });
+  });
+});
+
+describe("rangoEnPantalla", () => {
+  it("la primera página llena va del 1 al 50", () => {
+    expect(rangoEnPantalla(1, 50, 50)).toEqual({ desde: 1, hasta: 50 });
+  });
+
+  it("la última página corta termina en la última fila", () => {
+    expect(rangoEnPantalla(3, 12, 50)).toEqual({ desde: 101, hasta: 112 });
+  });
+
+  it("sin filas no hay tramo", () => {
+    expect(rangoEnPantalla(1, 0, 50)).toBeNull();
   });
 });
