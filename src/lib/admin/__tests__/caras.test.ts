@@ -36,6 +36,16 @@ describe("carasProspeccion", () => {
     expect(leads.detalle).toBe("1 lead · 0 sin web");
   });
 
+  it("un piso se dice con «+» y lo que no se sabe con «—»", () => {
+    const caras = carasProspeccion({
+      territorios: 1,
+      leads: { n: 900, mas: true },
+      sinWeb: null,
+      barriendo: false,
+    });
+    expect(caras.map((c) => c.detalle)).toEqual(["1 territorio · 900+ leads", "900+ leads · — sin web"]);
+  });
+
   it("solo con barrido abierto la cara de Territorio lleva punto, y late", () => {
     const sin = carasProspeccion({
       territorios: 2,

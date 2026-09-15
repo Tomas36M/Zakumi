@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { caraDe, carasProspeccion, cifrasCabecera, pestanaInicial } from "../prospeccion-caras";
+import { caraDe, cifrasCabecera, pestanaInicial } from "../prospeccion-caras";
 
 describe("caraDe", () => {
   it("sin tab, abre en Territorio: el mapa es la puerta", () => {
@@ -76,37 +76,5 @@ describe("cifrasCabecera", () => {
     expect(
       cifrasCabecera({ cargados: 0, sinWebCargados: 0, total: null, sinWebTotal: null, fallaCargados: true }),
     ).toEqual({ leads: null, sinWeb: null });
-  });
-});
-
-describe("carasProspeccion", () => {
-  it("el detalle de las caras usa las cifras de la base", () => {
-    const caras = carasProspeccion({
-      territorios: 4,
-      leads: { n: 2400, mas: false },
-      sinWeb: { n: 610, mas: false },
-      barriendo: false,
-    });
-    expect(caras.map((c) => c.detalle)).toEqual(["4 territorios · 2400 leads", "2400 leads · 610 sin web"]);
-  });
-
-  it("un piso se dice con «+» y lo que no se sabe con «—»", () => {
-    const caras = carasProspeccion({
-      territorios: 1,
-      leads: { n: 900, mas: true },
-      sinWeb: null,
-      barriendo: false,
-    });
-    expect(caras.map((c) => c.detalle)).toEqual(["1 territorio · 900+ leads", "900+ leads · — sin web"]);
-  });
-
-  it("un solo lead va en singular", () => {
-    const caras = carasProspeccion({
-      territorios: 1,
-      leads: { n: 1, mas: false },
-      sinWeb: { n: 1, mas: false },
-      barriendo: false,
-    });
-    expect(caras[1]?.detalle).toBe("1 lead · 1 sin web");
   });
 });
