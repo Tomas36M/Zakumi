@@ -605,9 +605,9 @@ En `next.config.ts`, agregar al array `securityHeaders` (después de
     key: "Content-Security-Policy",
     value: [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' https://maps.googleapis.com https://cdn.jsdelivr.net",
+      "script-src 'self' 'unsafe-inline' https://maps.googleapis.com https://cdn.jsdelivr.net/npm/@alexanderolsen/libsamplerate-js@2.1.2/",
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-      "img-src 'self' data: https:",
+      "img-src 'self' data: https: blob:",
       "font-src 'self' data: https://fonts.gstatic.com",
       "media-src 'self' https:",
       "connect-src 'self' https://maps.googleapis.com https://*.supabase.co https://*.elevenlabs.io wss://*.elevenlabs.io",
