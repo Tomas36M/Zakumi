@@ -13,24 +13,26 @@ export const metadata: Metadata = { title: "Métricas" };
 export default async function MetricasPage() {
   const { supabase } = await verifySession();
 
-  const [tandas, ...conteos] = await Promise.all([
+  const [tandas, conteo] = await Promise.all([
     listarTandas(ID_ZAK),
-    ...ESTADOS.map((e) =>
-      supabase.from("negocios").select("*", { count: "exact", head: true }).eq("estado", e.valor),
-    ),
+    // Una consulta agrupada (RPC, security invoker) en vez de seis head-counts
+    // en paralelo — supabase/rendimiento.sql.
+    supabase.rpc("conteo_por_estado"),
   ]);
 
   // Un conteo que falla y uno que da 0 de verdad son indistinguibles para
   // quien mira la pantalla (mismo riesgo que prospeccion/page.tsx y
   // negocios.ts ya nombran para esta misma tabla) — al menos que quede en
-  // el log del servidor. Si falló, el tile se pinta como "—" en vez de 0
-  // (EmbudoEstados.tsx) para no mentir con un cero que no es real.
-  for (const c of conteos) {
-    if (c.error) console.error("[metricas] conteo de negocios:", c.error.message);
-  }
+  // el log del servidor. Si falló, TODOS los tiles se pintan como "—" en vez
+  // de 0 (EmbudoEstados.tsx): con una sola consulta no hay fallo parcial.
+  if (conteo.error) console.error("[metricas] conteo por estado:", conteo.error.message);
 
+  const porEstado = new Map(
+    ((conteo.data ?? []) as { estado: EstadoNegocio; n: number }[]).map((f) => [f.estado, f.n]),
+  );
+  // Un estado sin negocios no viene en el GROUP BY: es 0, no "—".
   const embudo = Object.fromEntries(
-    ESTADOS.map((e, i) => [e.valor, conteos[i]?.error ? null : (conteos[i]?.count ?? 0)]),
+    ESTADOS.map((e) => [e.valor, conteo.error ? null : (porEstado.get(e.valor) ?? 0)]),
   ) as Record<EstadoNegocio, number | null>;
 
   // Tasa de respuesta agregada de la prospección: los fallidos no cuentan
