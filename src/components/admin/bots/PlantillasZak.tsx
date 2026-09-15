@@ -210,7 +210,7 @@ export function PlantillasZak({ filas: filasIniciales }: Props) {
       {aviso && <Banner>{aviso}</Banner>}
       {errorAviso && <Banner variante="error">{errorAviso}</Banner>}
 
-      <div className="barra-fina grid grid-cols-1 gap-4 min-[700px]:grid-cols-2 min-[1200px]:grid-cols-3 min-[900px]:min-h-0 min-[900px]:flex-1 min-[900px]:overflow-y-auto min-[900px]:pr-1">
+      <div className="barra-fina grid grid-cols-1 gap-4 min-[700px]:grid-cols-2 min-[1200px]:grid-cols-3 min-[900px]:min-h-0 min-[900px]:overflow-y-auto min-[900px]:pr-1">
       {filas.map((f) => {
         const vertical = verticalDeFila(f);
         const local = estadoLocal(f);

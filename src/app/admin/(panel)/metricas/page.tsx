@@ -33,9 +33,9 @@ export default async function MetricasPage() {
     ESTADOS.map((e, i) => [e.valor, conteos[i]?.error ? null : (conteos[i]?.count ?? 0)]),
   ) as Record<EstadoNegocio, number | null>;
 
-  // Tasa de respuesta agregada de la prospección — misma fórmula que
-  // ZakView.tsx/MetricasZak.tsx (los fallidos no cuentan como enviados; los
-  // pendientes todavía no salieron).
+  // Tasa de respuesta agregada de la prospección: los fallidos no cuentan
+  // como enviados y los pendientes todavía no salieron. Esta página es el
+  // único dueño de la fórmula desde que Métricas salió de las pestañas de Zak.
   const tandasData = tandas.ok ? tandas.data : [];
   const enviados = tandasData.reduce(
     (t, x) => t + x.funnel.enviado + x.funnel.entregado + x.funnel.leido + x.funnel.respondido,
