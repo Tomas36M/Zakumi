@@ -139,12 +139,10 @@ export function ProspeccionView({
   }
 
   // Los avisos ocupan una banda propia solo cuando hay alguno: una banda
-  // vacía le roba 16px al mapa por nada. El recorte de 900 es del mapa: la
-  // lista de Leads pagina la base entera y no lo tiene.
-  const hayAvisos =
-    fallaNegocios ||
-    (cara === "leads" && aviso !== null) ||
-    (cara === "territorio" && censo.tipo !== "completo");
+  // vacía le roba 16px al mapa por nada. El recorte de 900 NO está aquí: es
+  // del mapa y se dice dentro del mapa, en el panel de filtros (donde están
+  // las cifras de pines), no en una banda roja encima de todo.
+  const hayAvisos = fallaNegocios || (cara === "leads" && aviso !== null);
 
   return (
     <Cockpit>
@@ -220,22 +218,6 @@ export function ProspeccionView({
             </Banner>
           )}
 
-          {/* Un censo que no dice que está recortado no es un censo. El tope es
-              del mapa: la lista de Leads pagina la base entera. */}
-          {cara === "territorio" && censo.tipo === "recortado" && (
-            <Banner variante="error">
-              El mapa cargó los <strong>{negocios.length}</strong> negocios más recientes de{" "}
-              <strong>{censo.total}</strong>: los pines y las cifras por territorio del mapa
-              cuentan solo esos. La lista de Leads y las cifras de arriba cuentan la base entera.
-            </Banner>
-          )}
-          {cara === "territorio" && censo.tipo === "recortado_sin_conteo" && (
-            <Banner variante="error">
-              El mapa cargó <strong>{negocios.length}</strong> negocios, su tope, y la cuenta de
-              cuántos hay en la base falló: es casi seguro que faltan pines. La lista de Leads
-              pagina la base entera y sí los tiene. Recarga la página para reintentar la cuenta.
-            </Banner>
-          )}
         </div>
       )}
 
@@ -251,6 +233,7 @@ export function ProspeccionView({
         onBarrido={setBarrido}
         onAvisoBarrido={setAviso}
         oculta={cara !== "territorio"}
+        censo={censo}
         onAbrirLead={abrirLead}
         leadAbierto={leadId}
         territorioInicial={territorioInicial}
