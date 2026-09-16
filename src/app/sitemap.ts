@@ -11,6 +11,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     ...SERVICE_SLUGS.map((s) => `/${s}`),
     // /academia entra al sitemap cuando su checkout cobre. Ver CHECKOUT_ACTIVO.
     ...(CHECKOUT_ACTIVO ? ["/academia"] : []),
+    "/precios",
     "/contacto",
   ];
   return paths.map((p) => ({

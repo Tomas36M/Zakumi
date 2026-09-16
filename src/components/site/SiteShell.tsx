@@ -22,6 +22,7 @@ const TWEAK_DEFAULTS = { bgMode: "full" as const, accent: "#DB5227" };
 const NAV_ITEMS = [
   ...SERVICE_SLUGS.map((s) => ({ href: `/${s}`, label: SERVICIOS[s].nav })),
   { href: "/academia", label: "Academia" },
+  { href: "/precios", label: "Precios" },
   { href: "/contacto", label: "Contacto" },
   // «Mi Zakumi» (portal /app) fuera del nav mientras el portal esté apagado
   // (flag PORTAL_ABIERTO en proxy.ts): aún no es presentable.

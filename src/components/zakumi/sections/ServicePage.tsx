@@ -427,8 +427,9 @@ export function ServicePage({ data }: { data: Service }) {
           ))}
         </div>
         <p className="planes-nota reveal-item">
-          Cotizamos por proyecto o por mes según tu alcance. Trabajamos con presupuestos pensados para el mercado
-          colombiano — escríbenos y armamos una propuesta a tu medida.
+          Los precios de entrada están publicados en <Link href="/precios">la página de precios</Link>: son
+          para negocios de barrio, sin permanencia, y el valor final depende del alcance. Escríbenos y armamos
+          la propuesta a tu medida.
         </p>
       </section>
 

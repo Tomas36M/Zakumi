@@ -3861,3 +3861,187 @@
 .legal li { margin-bottom: 0.5rem; }
 .legal a { color: var(--orange); }
 .legal strong { color: var(--paper); }
+
+/* ——— /precios · el tarifario ———
+   Mismo sistema editorial (Playfair para las cifras, hairlines, un acento).
+   La estructura es el ritmo de cobro —al mes, una vez, desde—, no un orden. */
+.precios-hero {
+  --gutter: max(4vw, calc((100% - var(--content)) / 2));
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: clamp(2rem, 4vw, 4.5rem);
+  align-items: center;
+  padding: 1rem var(--gutter) clamp(3rem, 5vw, 5rem);
+}
+.precios-hero h1 {
+  font-family: var(--font-playfair), 'Playfair Display', serif;
+  font-weight: 400;
+  font-size: clamp(2.9rem, 6vw, 5.6rem);
+  line-height: 1;
+  letter-spacing: -0.015em;
+  margin: 1.25rem 0 1.5rem;
+}
+.precios-hero h1 em { font-style: italic; color: var(--orange); }
+.precios-hero .service-lead { max-width: 46ch; }
+
+.precios-destacado {
+  background: var(--orange);
+  color: var(--black);
+  padding: clamp(1.75rem, 2.5vw, 2.5rem);
+  display: grid;
+  gap: 0.9rem;
+  align-content: start;
+}
+.precios-destacado-label {
+  font-size: 0.7rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  opacity: 0.8;
+}
+.precios-destacado h2 {
+  font-family: var(--font-playfair), 'Playfair Display', serif;
+  font-weight: 400;
+  font-size: clamp(1.9rem, 2.8vw, 2.6rem);
+  line-height: 1.05;
+  color: var(--black);
+}
+.precios-destacado-para { font-style: italic; font-family: var(--font-playfair), serif; opacity: 0.85; }
+.precios-destacado ul { list-style: none; margin: 0.25rem 0; padding: 0; display: grid; gap: 0.5rem; }
+.precios-destacado li { padding-left: 1.25rem; position: relative; line-height: 1.45; }
+.precios-destacado li::before { content: '—'; position: absolute; left: 0; }
+.precios-destacado-nota { font-size: 0.86rem; line-height: 1.5; opacity: 0.85; }
+.precios-destacado .precios-cifra,
+.precios-destacado .precios-sufijo { color: var(--black); }
+.precios-destacado .cta { background: var(--black); color: var(--paper); border-color: var(--black); justify-content: center; }
+.precios-destacado .cta::after { background: var(--paper); }
+.precios-destacado .cta:hover { color: var(--black); border-color: var(--paper); }
+
+/* La cifra: Playfair, grande, con el ritmo de cobro debajo en versalitas. */
+.precios-precio { display: grid; gap: 0.2rem; justify-items: start; }
+.precios-cifra {
+  font-family: var(--font-playfair), 'Playfair Display', serif;
+  font-size: clamp(1.8rem, 2.6vw, 2.4rem);
+  line-height: 1;
+  letter-spacing: -0.01em;
+  color: var(--paper);
+  font-variant-numeric: lining-nums;
+}
+.precios-precio-grande .precios-cifra { font-size: clamp(2.6rem, 4.6vw, 3.8rem); }
+.precios-sufijo { font-size: 0.7rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--ink-2); }
+.precios-montaje { font-size: 0.82rem; color: var(--ink-2); }
+
+.precios-grid {
+  display: grid;
+  grid-template-columns: 1.35fr 0.65fr;
+  gap: clamp(2.5rem, 4vw, 4.5rem);
+  align-items: start;
+}
+.precios-grupo + .precios-grupo { margin-top: clamp(2.5rem, 4vw, 3.5rem); }
+.precios-cadencia {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem 1rem;
+  margin: 0 0 0.5rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--orange);
+  font-weight: 500;
+}
+.precios-cadencia small { font-size: 0.84rem; letter-spacing: 0.02em; text-transform: none; color: var(--ink-2); font-weight: 400; }
+.precios-grupo ul { list-style: none; margin: 0; padding: 0; }
+.precios-fila {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.6rem clamp(1.5rem, 3vw, 3rem);
+  align-items: start;
+  padding: 1.4rem 0;
+  border-top: 1px solid color-mix(in srgb, var(--slate) 18%, transparent);
+}
+.precios-grupo li:last-child { border-bottom: 1px solid color-mix(in srgb, var(--slate) 18%, transparent); }
+.precios-fila-texto strong {
+  display: block;
+  font-family: var(--font-playfair), 'Playfair Display', serif;
+  font-weight: 400;
+  font-size: clamp(1.2rem, 1.8vw, 1.5rem);
+  color: var(--paper);
+  margin-bottom: 0.35rem;
+}
+.precios-fila-texto p { color: var(--ink-2); font-size: 0.93rem; line-height: 1.55; max-width: 48ch; }
+.precios-fila-precio { display: grid; justify-items: end; gap: 0.3rem; text-align: right; }
+.precios-fila-precio .precios-precio { justify-items: end; }
+.precios-fila-cta {
+  grid-column: 1 / -1;
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.86rem;
+  color: var(--orange);
+  text-decoration: none;
+  transition: gap 0.25s ease;
+}
+.precios-fila-cta:hover,
+.precios-fila-cta:focus-visible { gap: 0.8rem; }
+.precios-fila-cta:focus-visible { outline: 2px solid var(--orange); outline-offset: 4px; }
+
+.precios-aside {
+  position: sticky;
+  top: 7rem;
+  border: 1px solid color-mix(in srgb, var(--orange) 45%, transparent);
+  padding: clamp(1.75rem, 2.5vw, 2.5rem);
+  display: grid;
+  gap: 1.1rem;
+  background: color-mix(in srgb, var(--navy) 22%, var(--black));
+}
+.precios-aside-label { font-size: 0.7rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--orange); }
+.precios-aside ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.85rem; }
+.precios-aside li { padding-left: 1.25rem; position: relative; color: var(--ink-2); font-size: 0.95rem; line-height: 1.5; }
+.precios-aside li::before { content: '—'; position: absolute; left: 0; color: var(--orange); }
+.precios-aside li strong { color: var(--paper); font-weight: 500; }
+.precios-aside .cta { width: 100%; justify-content: center; }
+.precios-aside-nota { font-size: 0.86rem; color: var(--ink-2); line-height: 1.5; }
+
+.plan-card .precios-precio { margin: 0.25rem 0 0.5rem; }
+.plan-card .precios-cifra { font-size: clamp(2rem, 3vw, 2.6rem); }
+.precios-mensual-nota { font-size: 0.86rem; color: var(--ink-2); line-height: 1.5; margin-bottom: 1rem; }
+.precios-ahorro { color: var(--orange); }
+.plan-featured .precios-mensual-nota,
+.plan-featured .precios-ahorro,
+.plan-featured .precios-sufijo,
+.plan-featured .precios-cifra { color: var(--black); }
+
+.precios-empresas-lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 clamp(1.5rem, 3vw, 3rem);
+}
+.precios-empresas-lista li { padding: 1.4rem 0; border-top: 1px solid color-mix(in srgb, var(--slate) 18%, transparent); }
+.precios-empresas-lista h3 {
+  font-family: var(--font-playfair), 'Playfair Display', serif;
+  font-weight: 400;
+  font-size: clamp(1.2rem, 1.8vw, 1.5rem);
+  color: var(--paper);
+  margin-bottom: 0.35rem;
+}
+.precios-empresas-lista p { color: var(--ink-2); font-size: 0.93rem; line-height: 1.55; max-width: 48ch; }
+.precios-empresas-cta { margin-top: clamp(2rem, 3vw, 3rem); }
+
+.planes-nota a { color: var(--orange); text-decoration: none; border-bottom: 1px solid color-mix(in srgb, var(--orange) 50%, transparent); }
+.planes-nota a:hover { border-bottom-color: var(--orange); }
+
+@media (max-width: 900px) {
+  .precios-hero { grid-template-columns: 1fr; align-items: start; }
+  .precios-grid { grid-template-columns: 1fr; }
+  .precios-aside { position: static; }
+  .precios-empresas-lista { grid-template-columns: 1fr; }
+}
+@media (max-width: 640px) {
+  .precios-fila { grid-template-columns: 1fr; }
+  .precios-fila-precio { justify-items: start; text-align: left; }
+  .precios-fila-precio .precios-precio { justify-items: start; }
+}
