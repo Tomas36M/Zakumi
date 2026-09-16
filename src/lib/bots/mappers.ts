@@ -179,6 +179,11 @@ export function mapConversaciones(crudo: unknown): Conversacion[] {
     paused: f.paused === true,
     last: texto(f.last),
     last_at: textoONull(f.last_at),
+    // Un bot anterior a esta versión no los manda: se cae al comportamiento
+    // de antes (todos los turnos) en vez de dejar la bandeja sin badges.
+    messages_cliente: f.messages_cliente === undefined ? num(f.messages) : num(f.messages_cliente),
+    ultimo_del_cliente:
+      f.messages_cliente === undefined ? textoONull(f.last_at) : textoONull(f.ultimo_del_cliente),
     humano: triestado(f.humano),
     contestadora: f.contestadora === true,
   }));

@@ -15,20 +15,30 @@ export function mismoJson(a: unknown, b: unknown): boolean {
 // El "visto" vive en localStorage del browser (cada admin tiene el suyo):
 // cuándo abrió el chat por última vez y cuántos mensajes había.
 
+/** `messages` son los mensajes DEL CLIENTE que había cuando se abrió el chat. */
 export type Visto = { at: string; messages: number };
 
-type ConvResumen = { phone: string; messages: number; last_at: string | null };
+type ConvResumen = {
+  phone: string;
+  /** Lo que escribió el cliente. Los mensajes de Zak no son «sin leer»: una
+   * tanda recién enviada dejaba la bandeja entera con badge por los suyos. */
+  messages_cliente: number;
+  ultimo_del_cliente: string | null;
+};
 
-/** Mensajes sin leer de una conversación: 0 si el visto es posterior a la
- * última actividad; si no, la diferencia de conteos. Tiempos comparados por
- * Date.parse (el bot escribe "+00:00", el browser "Z"). */
+/** Mensajes del CLIENTE sin leer: 0 si el visto es posterior a su último
+ * mensaje; si no, la diferencia de conteos. Tiempos comparados por Date.parse
+ * (el bot escribe "+00:00", el browser "Z"). */
 export function noLeidos(c: ConvResumen, visto: Visto | undefined): number {
-  if (!c.last_at) return 0;
-  if (!visto) return c.messages;
-  const ultima = Date.parse(c.last_at);
+  if (!c.ultimo_del_cliente || c.messages_cliente <= 0) return 0;
+  if (!visto) return c.messages_cliente;
+  const ultima = Date.parse(c.ultimo_del_cliente);
   const vistoEn = Date.parse(visto.at);
   if (!Number.isNaN(ultima) && !Number.isNaN(vistoEn) && vistoEn >= ultima) return 0;
-  return Math.max(0, c.messages - visto.messages);
+  // Un «visto» guardado por la versión anterior contaba TODOS los turnos, así
+  // que la resta puede salir negativa: Math.max la deja en 0 (no inventa
+  // badges) y el siguiente mensaje del cliente la recalibra.
+  return Math.max(0, c.messages_cliente - visto.messages);
 }
 
 /** Primera visita (sin registro previo): todo lo existente queda como visto —
@@ -37,7 +47,7 @@ export function sembrarVistos(convs: ConvResumen[]): Record<string, Visto> {
   const vistos: Record<string, Visto> = {};
   const ahora = new Date().toISOString();
   for (const c of convs) {
-    vistos[c.phone] = { at: c.last_at ?? ahora, messages: c.messages };
+    vistos[c.phone] = { at: c.ultimo_del_cliente ?? ahora, messages: c.messages_cliente };
   }
   return vistos;
 }

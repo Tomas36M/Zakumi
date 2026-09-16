@@ -21,6 +21,13 @@ import {
 import { abrirChatZak, noEraInteresReal } from "@/lib/admin/zak-actions";
 import { usePollingVivo } from "@/lib/admin/usePollingVivo";
 import { mismoJson, noLeidos, sembrarVistos, type Visto } from "@/lib/admin/vivo";
+import {
+  FILTROS_BANDEJA,
+  filtrarBandeja,
+  pasaFiltro,
+  type FiltroBandeja,
+} from "@/lib/admin/bandeja";
+import { cn } from "@/lib/cn";
 import { esLabs, type Conversacion, type Historial } from "@/lib/bots/tipos";
 import { Badge } from "@/components/admin/ui/Badge";
 import { Banner } from "@/components/admin/ui/Banner";
@@ -108,6 +115,9 @@ export function Conversaciones({
   const { confirmar, dialogo } = useConfirmar();
 
   const [abriendoChat, setAbriendoChat] = useState(false);
+  // Recorta la página cargada (50 chats), que es lo que la bandeja tiene en la
+  // mano; la cifra de cada chip dice sobre cuántos.
+  const [filtro, setFiltro] = useState<FiltroBandeja>("todos");
 
   // Fichas del CRM por teléfono (formato del bot): quién es cada número,
   // qué tipo de negocio es y en qué estado va. Sin ficha = número suelto.
@@ -135,10 +145,14 @@ export function Conversaciones({
   const marcarVisto = useCallback(
     (tel: string) => {
       const conv = conversacionesRef.current?.find((c) => c.phone === tel);
-      const actuales = vistosRef.current ?? {};
+      // Si la lista todavía no ha cargado (deep-link del CRM), el mapa en
+      // memoria está vacío: sin releer el storage, guardar UN visto borraba
+      // los de todos los demás chats y la bandeja volvía llena de badges al
+      // recargar. Se cuentan solo los mensajes del cliente.
+      const actuales = vistosRef.current ?? leerVistos(instanciaId) ?? {};
       const siguientes = {
         ...actuales,
-        [tel]: { at: new Date().toISOString(), messages: conv?.messages ?? 0 },
+        [tel]: { at: new Date().toISOString(), messages: conv?.messages_cliente ?? 0 },
       };
       vistosRef.current = siguientes;
       guardarVistos(instanciaId, siguientes);
@@ -434,6 +448,17 @@ export function Conversaciones({
   const ventanaCerrada =
     esZak && historial !== null && !esLabs(historial.phone) && ventanaVencida;
 
+  const todas = conversaciones ?? [];
+  const visibles = filtrarBandeja(todas, filtro, fichas, vistos);
+  const cuentas = FILTROS_BANDEJA.map((f) => ({
+    ...f,
+    n:
+      f.valor === "todos"
+        ? todas.length
+        : todas.filter((c) => pasaFiltro(c, f.valor, fichas[c.phone], noLeidos(c, vistos[c.phone])))
+            .length,
+  }));
+
   const fichaActual = telefono ? fichas[telefono] : undefined;
   const slugParaReabrir = slugReabrir ?? fichaActual?.verticalSlug ?? "generico";
 
@@ -503,6 +528,27 @@ export function Conversaciones({
             </Button>
           )
         )}
+        {esZak && conversaciones !== null && conversaciones.length > 0 && (
+          <div role="group" aria-label="Filtrar la bandeja" className="flex flex-wrap gap-1">
+            {cuentas.map((f) => (
+              <button
+                key={f.valor}
+                type="button"
+                aria-pressed={filtro === f.valor}
+                onClick={() => setFiltro(f.valor)}
+                className={cn(
+                  "flex h-7 items-center gap-1.5 rounded-full border px-2.5 text-xs transition-colors",
+                  filtro === f.valor
+                    ? "border-acento bg-acento-10 text-tinta"
+                    : "border-hairline text-tinta-60 hover:bg-isla-alta",
+                )}
+              >
+                {f.label}
+                <span className={filtro === f.valor ? "text-tinta-60" : "text-tinta-40"}>{f.n}</span>
+              </button>
+            ))}
+          </div>
+        )}
         {error && <Banner>{error}</Banner>}
         {conversaciones === null && !error && (
           <div className="flex flex-col gap-2 px-3 py-2">
@@ -514,8 +560,11 @@ export function Conversaciones({
         {conversaciones?.length === 0 && (
           <EmptyState titulo="Todavía no hay conversaciones." />
         )}
+        {conversaciones !== null && conversaciones.length > 0 && visibles.length === 0 && (
+          <EmptyState titulo="Ningún chat de esta página pasa el filtro." />
+        )}
         <ul className="barra-fina flex max-h-[45vh] flex-col gap-2 overflow-y-auto pr-0.5 min-[900px]:max-h-none min-[900px]:min-h-0 min-[900px]:flex-1">
-          {(conversaciones ?? []).map((c) => {
+          {visibles.map((c) => {
             const ficha = fichas[c.phone];
             const activa = c.phone === telefono;
             // El chat abierto nunca acumula badge: se marca visto en cada tick.
