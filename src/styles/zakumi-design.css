@@ -4045,3 +4045,17 @@
   .precios-fila-precio { justify-items: start; text-align: left; }
   .precios-fila-precio .precios-precio { justify-items: start; }
 }
+
+/* El brochure, al lado de los CTA del hero de /precios: un enlace, no un tercer
+   botón — el que quiere el PDF ya sabe que lo quiere. */
+.precios-brochure {
+  align-self: center;
+  font-size: 0.86rem;
+  color: var(--ink-2);
+  text-decoration: none;
+  border-bottom: 1px solid color-mix(in srgb, var(--slate) 40%, transparent);
+  transition: color 0.25s ease, border-color 0.25s ease;
+}
+.precios-brochure:hover,
+.precios-brochure:focus-visible { color: var(--paper); border-bottom-color: var(--orange); }
+.precios-brochure:focus-visible { outline: 2px solid var(--orange); outline-offset: 4px; }

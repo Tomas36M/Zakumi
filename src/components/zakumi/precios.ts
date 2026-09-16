@@ -227,6 +227,13 @@ export const WA_PRECIOS = waLink(
   "Hola Zakumi, vi los precios y no sé qué me conviene. ¿Me ayudan a elegir?",
 );
 
+/** El brochure en PDF: los MISMOS precios de esta página, para mandar por
+ * WhatsApp o imprimir. Lleva la fecha en el nombre a propósito — el de un mes
+ * no puede quedar cacheado como el del siguiente, ni en el navegador ni en
+ * WhatsApp. Al rehacerlo: archivo nuevo en public/folletos/, esta constante y
+ * `_SUFIJO_BROCHURE` en el bot. */
+export const BROCHURE = "/folletos/brochure-zakumi-servicios-precios-2026-09.pdf";
+
 export const SEO = {
   title: "Precios | Zakumi — agentes de IA, páginas web y tiendas para negocios en Colombia",
   description:
