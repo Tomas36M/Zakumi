@@ -3,18 +3,23 @@ import { describe, expect, it } from "vitest";
 import { mismoJson, noLeidos, sembrarVistos, type Visto } from "../vivo";
 
 describe("noLeidos", () => {
-  const conv = { phone: "573001", messages: 8, last_at: "2026-08-29T14:00:00+00:00" };
+  // 8 mensajes del cliente; el total de turnos (con los de Zak) no importa.
+  const conv = {
+    phone: "573001",
+    messages_cliente: 8,
+    ultimo_del_cliente: "2026-08-29T14:00:00+00:00",
+  };
 
-  it("sin registro de visto, todo el chat está sin leer (chat nuevo)", () => {
+  it("sin registro de visto, todo lo del cliente está sin leer (chat nuevo)", () => {
     expect(noLeidos(conv, undefined)).toBe(8);
   });
 
-  it("visto DESPUÉS de la última actividad → 0 (aunque el conteo esté viejo)", () => {
+  it("visto DESPUÉS del último mensaje del cliente → 0 (aunque el conteo esté viejo)", () => {
     const visto: Visto = { at: "2026-08-29T15:00:00Z", messages: 3 };
     expect(noLeidos(conv, visto)).toBe(0);
   });
 
-  it("actividad nueva después del visto → la diferencia de mensajes", () => {
+  it("mensajes nuevos del cliente después del visto → la diferencia", () => {
     const visto: Visto = { at: "2026-08-29T13:00:00Z", messages: 5 };
     expect(noLeidos(conv, visto)).toBe(3);
   });
@@ -30,21 +35,36 @@ describe("noLeidos", () => {
     expect(noLeidos(conv, visto)).toBe(0);
   });
 
-  it("sin last_at no hay actividad que contar", () => {
-    expect(noLeidos({ ...conv, last_at: null }, undefined)).toBe(0);
+  // El bug que llenaba la bandeja de badges: al mandar una tanda, cada chat
+  // tenía UN mensaje —el saludo de Zak— y salía «1 sin leer».
+  it("un chat donde solo escribió Zak no tiene nada sin leer", () => {
+    expect(
+      noLeidos({ phone: "573001", messages_cliente: 0, ultimo_del_cliente: null }, undefined),
+    ).toBe(0);
+  });
+
+  it("un «visto» de la versión vieja (contaba los turnos de Zak) no inventa badges", () => {
+    // La versión anterior guardaba el total de turnos: la resta sale negativa.
+    const vistoViejo: Visto = { at: "2026-08-29T13:00:00Z", messages: 14 };
+    expect(noLeidos(conv, vistoViejo)).toBe(0);
   });
 });
 
 describe("sembrarVistos", () => {
   it("la primera visita marca TODO lo existente como visto (cero ruido inicial)", () => {
     const vistos = sembrarVistos([
-      { phone: "573001", messages: 8, last_at: "2026-08-29T14:00:00+00:00" },
-      { phone: "573002", messages: 2, last_at: null },
+      { phone: "573001", messages_cliente: 8, ultimo_del_cliente: "2026-08-29T14:00:00+00:00" },
+      { phone: "573002", messages_cliente: 2, ultimo_del_cliente: null },
     ]);
     expect(vistos["573001"]).toEqual({ at: "2026-08-29T14:00:00+00:00", messages: 8 });
     expect(vistos["573002"].messages).toBe(2);
-    // A partir de ahí, cualquier actividad nueva sí cuenta.
-    expect(noLeidos({ phone: "573001", messages: 9, last_at: "2026-08-29T15:00:00Z" }, vistos["573001"])).toBe(1);
+    // A partir de ahí, cualquier mensaje nuevo del cliente sí cuenta.
+    expect(
+      noLeidos(
+        { phone: "573001", messages_cliente: 9, ultimo_del_cliente: "2026-08-29T15:00:00Z" },
+        vistos["573001"],
+      ),
+    ).toBe(1);
   });
 });
 

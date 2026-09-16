@@ -78,6 +78,10 @@ export type Conversacion = {
   paused: boolean;
   last: string;
   last_at: string | null;
+  /** Cuántos escribió EL CLIENTE y cuándo fue el último: de ahí salen los
+   * no-leídos, que no pueden contar los mensajes de Zak. */
+  messages_cliente: number;
+  ultimo_del_cliente: string | null;
   /** Veredicto del bot: true persona, false solo contestadora, null sin prospecto. */
   humano: boolean | null;
   contestadora: boolean;
