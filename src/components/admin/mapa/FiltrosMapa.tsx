@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { SlidersHorizontal, X } from "lucide-react";
 import { categoriasDe, FILTRO_VACIO, hayFiltro, type FiltroLeads } from "@/lib/admin/filtros-leads";
-import { ESTADOS, type EstadoNegocio, type Negocio } from "@/lib/admin/negocios";
+import { ESTADOS, type EstadoCenso, type EstadoNegocio, type Negocio } from "@/lib/admin/negocios";
 import type { Territorio } from "@/lib/admin/territorios";
 import { cn } from "@/lib/cn";
 import { Button } from "@/components/admin/ui/Button";
@@ -20,6 +20,10 @@ type Props = {
   territorios: readonly Territorio[];
   /** Cuántos pines quedan tras filtrar. */
   visibles: number;
+  /** Si la lista de pines viene topada por el tope de la consulta. El aviso
+   * vive aquí, con las cifras de pines, y no en una banda encima del mapa:
+   * el que mira el mapa es el que necesita saber que faltan pines. */
+  censo: EstadoCenso;
 };
 
 /**
@@ -29,7 +33,7 @@ type Props = {
  * La fila «Mostrando N de M» tiene altura fija para que abrir y cerrar no
  * mueva nada.
  */
-export function FiltrosMapa({ filtro, onCambiar, negocios, territorios, visibles }: Props) {
+export function FiltrosMapa({ filtro, onCambiar, negocios, territorios, visibles, censo }: Props) {
   const [abierto, setAbierto] = useState(false);
   const categorias = useMemo(() => categoriasDe(negocios), [negocios]);
   const territoriosOrdenados = useMemo(
@@ -37,6 +41,7 @@ export function FiltrosMapa({ filtro, onCambiar, negocios, territorios, visibles
     [territorios],
   );
   const activo = hayFiltro(filtro);
+  const topado = censo.tipo !== "completo";
 
   function poner<K extends keyof FiltroLeads>(clave: K, valor: FiltroLeads[K]) {
     onCambiar({ ...filtro, [clave]: valor });
@@ -72,8 +77,18 @@ export function FiltrosMapa({ filtro, onCambiar, negocios, territorios, visibles
           )}
           {/* Altura fija: la cifra cambia, la fila no se mueve. */}
           <span className="text-tinta-40">
-            · {visibles} de {negocios.length}
+            · {visibles} de {censo.tipo === "recortado" ? censo.total : negocios.length}
+            {topado && " pines"}
           </span>
+          {/* Un mapa topado que no lo dice es un mapa que miente. */}
+          {topado && (
+            <span
+              title="El mapa no tiene todos los pines"
+              className="flex h-4 items-center rounded-full bg-acento-10 px-1.5 text-[0.65rem] font-semibold text-acento"
+            >
+              parcial
+            </span>
+          )}
         </button>
         {abierto && (
           <IconButton etiqueta="Cerrar filtros" className="h-7 w-7" onClick={() => setAbierto(false)}>
@@ -84,6 +99,23 @@ export function FiltrosMapa({ filtro, onCambiar, negocios, territorios, visibles
 
       {abierto && (
         <div className="flex flex-col gap-3 border-t border-hairline p-3">
+          {topado && (
+            <p className="rounded-fila border border-acento-25 bg-acento-10 p-2 text-xs leading-relaxed text-tinta-85">
+              {censo.tipo === "recortado" ? (
+                <>
+                  El mapa pinta los <strong>{negocios.length}</strong> negocios más recientes de{" "}
+                  <strong>{censo.total}</strong>. Los pines y las cifras por territorio cuentan solo
+                  esos; la lista de Leads cuenta la base entera.
+                </>
+              ) : (
+                <>
+                  El mapa pinta <strong>{negocios.length}</strong> negocios, su tope, y la cuenta de
+                  cuántos hay en la base falló: es casi seguro que faltan pines. La lista de Leads sí
+                  los tiene.
+                </>
+              )}
+            </p>
+          )}
           <div role="group" aria-label="Estado" className="flex flex-wrap gap-1">
             {ESTADOS.map((e) => {
               const marcado = filtro.estados.includes(e.valor);

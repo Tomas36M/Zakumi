@@ -4,7 +4,7 @@ import { useCallback, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { poligonoSeCruza, type PermisoBarrido, type Punto } from "@/lib/admin/barrido";
 import { FILTRO_VACIO, filtrarLeads, type FiltroLeads } from "@/lib/admin/filtros-leads";
-import type { Negocio } from "@/lib/admin/negocios";
+import type { EstadoCenso, Negocio } from "@/lib/admin/negocios";
 import type { ResultadoPlace } from "@/lib/admin/places";
 import {
   cuentasPorTerritorio,
@@ -76,6 +76,8 @@ type Props = {
   leadAbierto: string | null;
   /** `?territorio=<id>`: arrancar con su ficha abierta y el mapa encuadrado. */
   territorioInicial: string | null;
+  /** Si la lista de pines viene topada: se dice DENTRO del mapa, en los filtros. */
+  censo: EstadoCenso;
 };
 
 /**
@@ -96,6 +98,7 @@ export function TerritorioView({
   onAbrirLead,
   leadAbierto,
   territorioInicial,
+  censo,
 }: Props) {
   const router = useRouter();
   const busqueda = useBusquedaPlaces();
@@ -332,6 +335,7 @@ export function TerritorioView({
             negocios={negocios}
             territorios={territorios}
             visibles={negociosVisibles.length}
+            censo={censo}
           />
         </div>
 
