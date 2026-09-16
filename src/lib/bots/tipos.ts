@@ -78,6 +78,9 @@ export type Conversacion = {
   paused: boolean;
   last: string;
   last_at: string | null;
+  /** Veredicto del bot: true persona, false solo contestadora, null sin prospecto. */
+  humano: boolean | null;
+  contestadora: boolean;
 };
 
 export type MensajeChat = {
@@ -93,6 +96,9 @@ export type Historial = {
   messages: MensajeChat[];
   /** Última vez que escribió EL CLIENTE: define la ventana de 24h de Meta. */
   ultimo_del_cliente: string | null;
+  /** Veredicto del bot: true persona, false solo contestadora, null sin prospecto. */
+  humano: boolean | null;
+  contestadora: boolean;
 };
 
 /** Estados de una plantilla en Meta (lo que devuelve Graph, más el fallback). */
@@ -203,7 +209,19 @@ export type Prospecto = {
   tanda_id: number;
   telefono: string; // sin '+', formato del bot
   negocio_id: string | null; // uuid del negocio en Supabase (clave del sync)
-  contexto: { nombre?: string; categoria?: string; ciudad?: string };
+  contexto: {
+    nombre?: string;
+    categoria?: string;
+    ciudad?: string;
+    sin_web?: boolean;
+    ganchos?: string[];
+    senal_tipica?: string;
+    /** Evidencia del bot: true = escribió una persona; false = solo contestadora; ausente = sin clasificar. */
+    humano?: boolean;
+    contestadora?: boolean;
+    /** Tomás dijo «no era interés real»; el bot lo borra con el siguiente mensaje humano. */
+    interes_descartado?: boolean;
+  };
   estado_envio: EstadoEnvio;
   interesado: boolean;
   interes_resumen: string | null;
@@ -221,6 +239,8 @@ export type Tanda = {
   creado_en: string;
   funnel: FunnelTanda;
   interesados: number;
+  /** Respondidos que fueron persona (o sin clasificar); excluye lo que el bot marcó contestadora. */
+  humanos: number;
 };
 
 /** Conversaciones y leads del Labs llevan teléfono sentinel "labs:<session>". */

@@ -7,6 +7,7 @@ import {
   gruposParaEnvio,
   modoDesdeCliente,
   previsualizarEnvio,
+  contextoDeProspecto,
   prospectoParaTanda,
 } from "../envio";
 
@@ -161,5 +162,37 @@ describe("modoDesdeCliente", () => {
     expect(modoDesdeCliente({ tipo: "una" })).toBeNull();
     expect(modoDesdeCliente({ tipo: "otra" })).toBeNull();
     expect(modoDesdeCliente("generico")).toBeNull();
+  });
+});
+
+describe("contextoDeProspecto", () => {
+  it("un restaurante sin web lleva sin_web, la señal y los tres ganchos de su vertical", () => {
+    const n = negocio({ categoria: "restaurant", sitio_web: null, telefono: "+573101234567" });
+    const c = contextoDeProspecto(n, VERTICAL_GENERICO, CATALOGO);
+    expect(c.sin_web).toBe(true);
+    expect(c.ganchos).toHaveLength(3);
+    expect(c.ganchos?.[0]).toMatch(/QR/);
+    expect(c.senal_tipica).toBeTruthy();
+    expect(c.angulo).toBe(verticalPorSlug("restaurante").angulo); // sigue viajando (bot viejo)
+  });
+
+  it("con web, sin_web es false", () => {
+    const n = negocio({ categoria: "bakery", sitio_web: "https://ejemplo.invalid", telefono: "+573101234567" });
+    expect(contextoDeProspecto(n, VERTICAL_GENERICO, CATALOGO).sin_web).toBe(false);
+  });
+
+  it("un negocio genérico no lleva ganchos ni señal: las claves no van (ni null)", () => {
+    const n = negocio({ categoria: "lawyer", sitio_web: null, telefono: "+573101234567" });
+    const c = contextoDeProspecto(n, VERTICAL_GENERICO, CATALOGO);
+    expect("ganchos" in c).toBe(false);
+    expect("senal_tipica" in c).toBe(false);
+    expect(c.sin_web).toBe(true);
+  });
+
+  it("prospectoParaTanda usa el mismo contexto", () => {
+    const n = negocio({ categoria: "restaurant", telefono: "+573101234567" });
+    expect(prospectoParaTanda(n, VERTICAL_GENERICO, CATALOGO).contexto).toEqual(
+      contextoDeProspecto(n, VERTICAL_GENERICO, CATALOGO),
+    );
   });
 });

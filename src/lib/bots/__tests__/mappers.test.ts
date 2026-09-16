@@ -350,3 +350,37 @@ describe("prospección", () => {
     expect(mapProspectos({ prospectos: "nada" })).toEqual([]);
   });
 });
+
+describe("evidencia del bot en los mappers", () => {
+  it("las conversaciones traen la evidencia del bot; sin ella, humano es null", () => {
+    const convs = mapConversaciones({
+      conversations: [
+        { phone: "573001112222", messages: 2, paused: false, last: "…", last_at: null, humano: false, contestadora: true },
+        { phone: "573001112223", messages: 1, paused: false, last: "…", last_at: null },
+      ],
+    });
+    expect(convs[0].humano).toBe(false);
+    expect(convs[0].contestadora).toBe(true);
+    expect(convs[1].humano).toBeNull();
+    expect(convs[1].contestadora).toBe(false);
+  });
+
+  it("el historial trae humano y contestadora (null/false con bots viejos)", () => {
+    const con = mapHistorial({ phone: "573001112222", paused: false, messages: [], ultimo_del_cliente: null, humano: true, contestadora: false });
+    expect(con.humano).toBe(true);
+    const sin = mapHistorial({ phone: "573001112222", paused: false, messages: [], ultimo_del_cliente: null });
+    expect(sin.humano).toBeNull();
+    expect(sin.contestadora).toBe(false);
+  });
+
+  it("las tandas traen respondidos humanos; un bot viejo sin el campo cuenta como el funnel", () => {
+    const [nueva, vieja] = mapTandas({
+      tandas: [
+        { id: 2, plantilla: "p", notas: null, creado_en: "2026-09-15T00:00:00Z", funnel: { respondido: 3 }, interesados: 0, humanos: 2 },
+        { id: 1, plantilla: "p", notas: null, creado_en: "2026-09-14T00:00:00Z", funnel: { respondido: 3 }, interesados: 0 },
+      ],
+    });
+    expect(nueva.humanos).toBe(2);
+    expect(vieja.humanos).toBe(3);
+  });
+});

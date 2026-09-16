@@ -1,21 +1,31 @@
 import { describe, expect, it } from "vitest";
 import { servicioDelSlug, slugDeInteres, SLUG_POR_DEFINIR } from "../catalogo";
 
-// Los precios oficiales son los del brochure y los folletos que ya circulan:
-// el catálogo no puede contradecir lo que el prospecto tiene en la mano.
+// Los precios oficiales son los aprobados el 15 sep 2026 para PyMEs (spec
+// 2026-09-15-zak-vendedor § 4.10): brochure nuevo y página de precios dicen lo
+// mismo que esto. Zak no los dice en el chat.
 describe("precios oficiales del catálogo", () => {
-  it("el bot de WhatsApp cobra montaje de $300.000 y $129.900 al mes", () => {
+  it("el bot de WhatsApp cobra montaje de $199.900 y $129.900 al mes", () => {
     const bot = servicioDelSlug("bot-whatsapp");
     expect(bot?.tarifaSugerida).toBe(129_900);
     expect(bot?.cicloSugerido).toBe("mensual");
-    expect(bot?.montaje).toBe(300_000);
+    expect(bot?.montaje).toBe(199_900);
   });
 
-  it("la página web cuesta $1.200.000 de pago único, sin montaje aparte", () => {
-    const web = servicioDelSlug("pagina-web");
-    expect(web?.tarifaSugerida).toBe(1_200_000);
-    expect(web?.cicloSugerido).toBe("unico");
-    expect(web?.montaje).toBeUndefined();
+  it("landing $590.000, página web $1.190.000 y tienda online $1.490.000, pago único", () => {
+    expect(servicioDelSlug("landing")?.tarifaSugerida).toBe(590_000);
+    expect(servicioDelSlug("landing")?.cicloSugerido).toBe("unico");
+    expect(servicioDelSlug("pagina-web")?.tarifaSugerida).toBe(1_190_000);
+    expect(servicioDelSlug("pagina-web")?.montaje).toBeUndefined();
+    expect(servicioDelSlug("tienda-online")?.tarifaSugerida).toBe(1_490_000);
+    expect(servicioDelSlug("tienda-online")?.tipo).toBe("web");
+  });
+
+  it("mantenimiento $49.900, CRM $99.900 y voz $249.900 + $199.900 de montaje", () => {
+    expect(servicioDelSlug("mantenimiento-web")?.tarifaSugerida).toBe(49_900);
+    expect(servicioDelSlug("crm")?.tarifaSugerida).toBe(99_900);
+    expect(servicioDelSlug("agente-voz")?.tarifaSugerida).toBe(249_900);
+    expect(servicioDelSlug("agente-voz")?.montaje).toBe(199_900);
   });
 });
 
@@ -41,6 +51,14 @@ describe("slugDeInteres", () => {
     expect(slugDeInteres("algo raro")).toBe(SLUG_POR_DEFINIR);
     expect(slugDeInteres(null)).toBe(SLUG_POR_DEFINIR);
     expect(slugDeInteres("")).toBe(SLUG_POR_DEFINIR);
+  });
+
+  it("reconoce los productos nuevos antes que página web", () => {
+    expect(slugDeInteres("menú con QR para el restaurante")).toBe("landing");
+    expect(slugDeInteres("una landing")).toBe("landing");
+    expect(slugDeInteres("tienda online con pagos")).toBe("tienda-online");
+    expect(slugDeInteres("carrito de compras")).toBe("tienda-online");
+    expect(slugDeInteres("página web")).toBe("pagina-web");
   });
 
   // 'mantenimiento web' contiene 'web': el orden de las reglas importa.

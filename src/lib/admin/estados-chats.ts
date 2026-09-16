@@ -96,3 +96,18 @@ export function avancesDesdeChats(
   }
   return avances;
 }
+
+export type RespuestaHistorial = {
+  /** Veredicto del bot: true persona, false solo contestadora, null sin prospecto o bot viejo. */
+  humano: boolean | null;
+  ultimo_del_cliente: string | null;
+  messages: readonly { role: "user" | "assistant" }[];
+};
+
+/** Si el negocio respondió como PERSONA. Con veredicto del bot, manda el
+ * veredicto; sin él, la regla de siempre: cualquier mensaje del cliente. */
+export function respondioSegunHistorial(h: RespuestaHistorial): boolean {
+  if (h.humano === true) return true;
+  if (h.humano === false) return false;
+  return h.ultimo_del_cliente !== null || h.messages.some((m) => m.role === "user");
+}

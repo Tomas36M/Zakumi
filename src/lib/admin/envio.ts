@@ -3,7 +3,9 @@
 // y enviarTandaZak (servidor), así que no importa nada de servidor.
 
 import type { Negocio } from "./negocios";
+import { esSinWeb } from "./negocios";
 import { sinMas } from "./telefono";
+import { repertorioPara } from "./zak-repertorio";
 import {
   agruparPorVertical,
   componentesSaludo,
@@ -52,11 +54,47 @@ export function gruposParaEnvio(
   return [{ vertical, negocios: ordenados }];
 }
 
+/** Lo que el bot sabe del negocio cuando conversa. Las claves de repertorio
+ * se OMITEN (nunca null) cuando el vertical no tiene: para el bot, ausente es
+ * «no se sabe», y un bot viejo las ignora sin romperse. */
+export type ContextoProspecto = {
+  nombre: string;
+  categoria?: string;
+  ciudad?: string;
+  /** El ángulo de una frase de siempre: sigue viajando por si el bot desplegado es viejo. */
+  angulo: string;
+  saludo: string;
+  /** De Google Places, vía el CRM: decide qué gancho va primero. */
+  sin_web: boolean;
+  ganchos?: string[];
+  senal_tipica?: string;
+};
+
+export function contextoDeProspecto(
+  n: Negocio,
+  vertical: VerticalProspeccion,
+  catalogo: CatalogoEnvio,
+): ContextoProspecto {
+  const delNegocio = verticalPara(n.categoria, catalogo.verticales, catalogo.generico);
+  const repertorio = repertorioPara(delNegocio.slug);
+  return {
+    nombre: n.nombre,
+    categoria: n.categoria ?? undefined,
+    ciudad: n.ciudad ?? undefined,
+    angulo: delNegocio.angulo,
+    saludo: vertical.texto,
+    sin_web: esSinWeb(n),
+    ...(repertorio
+      ? { ganchos: [...repertorio.ganchos], senal_tipica: repertorio.senal }
+      : {}),
+  };
+}
+
 /**
  * Un prospecto para el bot. El saludo es el de la plantilla que sale (con el
- * texto EXACTO del catálogo, el folleto se pinta en la bandeja); el ángulo de
- * la conversación es el del tipo de negocio aunque el saludo haya sido el
- * genérico: cuando responda, Zak ya sabe con quién habla.
+ * texto EXACTO del catálogo, el folleto se pinta en la bandeja); el ángulo, la
+ * señal y los ganchos son los del tipo de negocio aunque el saludo haya sido el
+ * genérico: cuando responda, Zak ya sabe con quién habla y qué venderle.
  */
 export function prospectoParaTanda(
   n: Negocio,
@@ -66,13 +104,7 @@ export function prospectoParaTanda(
   return {
     telefono: sinMas(n.telefono as string),
     negocio_id: n.id,
-    contexto: {
-      nombre: n.nombre,
-      categoria: n.categoria ?? undefined,
-      ciudad: n.ciudad ?? undefined,
-      angulo: verticalPara(n.categoria, catalogo.verticales, catalogo.generico).angulo,
-      saludo: vertical.texto,
-    },
+    contexto: contextoDeProspecto(n, vertical, catalogo),
     componentes: componentesSaludo(vertical),
   };
 }

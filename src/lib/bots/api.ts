@@ -364,6 +364,9 @@ export function enviarPlantillaDirecta(
     lang?: string;
     texto?: string;
     componentes?: unknown[] | null;
+    /** Con contexto, el bot deja prospecto (igual que una tanda). */
+    negocio_id?: string;
+    contexto?: Record<string, unknown>;
   },
 ): Promise<Resultado<{ wamid: string | null }>> {
   return pedir("POST", `/instancias/${id}/plantilla`, (j) => ({
@@ -399,6 +402,16 @@ export function listarProspectos(
   if (opts.interesado !== undefined) params.set("interesado", opts.interesado ? "1" : "0");
   params.set("limit", String(opts.limit ?? 500));
   return pedir("GET", `/instancias/${id}/prospectos?${params}`, mapProspectos);
+}
+
+/** «No era interés real»: apaga el interés del prospecto y deja la marca para
+ * que Zak no lo vuelva a poner sin un mensaje humano nuevo. */
+export function descartarInteres(id: number, telefono: string): Promise<Resultado<true>> {
+  return pedir(
+    "POST",
+    `/instancias/${id}/prospectos/${encodeURIComponent(telefono)}/descartar-interes`,
+    () => true,
+  );
 }
 
 // ---------- Labs (chat de prueba sin WhatsApp) ----------
