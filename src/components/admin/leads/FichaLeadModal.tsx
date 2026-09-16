@@ -98,6 +98,7 @@ export function FichaLeadModal({
               negocio={negocio}
               vozZak={vozZak}
               onCerrar={onCerrar}
+              onCambio={onCambio}
               onEliminado={onEliminado}
             />
             <FichaLeadNotas negocioId={negocio.id} version={negocio.updated_at} />

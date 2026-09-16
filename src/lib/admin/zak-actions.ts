@@ -13,22 +13,30 @@ import {
   componentesSaludo,
   contactables,
   despacharTandas,
+  estadoTrasDescartarInteres,
   TANDA_MAX_BOT,
   verticalPorSlug,
   type AvanceEstado,
 } from "./zak";
-import { gruposParaEnvio, modoDesdeCliente, prospectoParaTanda } from "./envio";
+import {
+  contextoDeProspecto,
+  gruposParaEnvio,
+  modoDesdeCliente,
+  prospectoParaTanda,
+} from "./envio";
 import { avanzarEstadoNegocio, avanzarEstadosNegocio } from "./estado-negocio";
 import {
   avancesDesdeChats,
   chatsParaHistorial,
   e164DeChat,
+  respondioSegunHistorial,
   type NegocioSync,
 } from "./estados-chats";
 import { catalogoVerticales } from "./zak-verticales";
 import type { EstadoNegocio, Negocio } from "./negocios";
 import {
   crearTanda,
+  descartarInteres,
   enviarPlantillaDirecta,
   historial,
   listarConversaciones,
@@ -189,12 +197,27 @@ export async function abrirChatZak(
       error: `La plantilla de ${vertical.label} está en revisión de Meta — usa otra o espera la aprobación.`,
     };
   }
+  // El contexto del prospecto, el mismo que en una tanda: sin él, Zak
+  // conversa como el bot genérico del sitio y no puede marcar interés.
+  // Un teléfono suelto (sin negocio) lleva solo ángulo y saludo.
+  let contexto: Record<string, unknown> = { angulo: vertical.angulo, saludo: vertical.texto };
+  if (negocioId) {
+    const { data: fila, error } = await supabase
+      .from("negocios")
+      .select("*")
+      .eq("id", negocioId)
+      .maybeSingle();
+    if (error) console.error("[abrirChatZak] negocio:", error.message);
+    if (fila) contexto = contextoDeProspecto(fila as Negocio, vertical, catalogo);
+  }
   const r = await enviarPlantillaDirecta(ID_ZAK, {
     telefono: sinMas(telefono),
     plantilla: vertical.plantilla,
     lang: "es",
     texto: vertical.texto,
     componentes: componentesSaludo(vertical),
+    negocio_id: negocioId,
+    contexto,
   });
   if (!r.ok) {
     if (r.error === "bot_error") {
@@ -262,10 +285,7 @@ async function consultarRespuestas(telefonos: string[]): Promise<Map<string, boo
   const respuestas = new Map<string, boolean>();
   resultados.forEach((r, i) => {
     if (!r.ok) return;
-    respuestas.set(
-      telefonos[i],
-      r.data.ultimo_del_cliente !== null || r.data.messages.some((m) => m.role === "user"),
-    );
+    respuestas.set(telefonos[i], respondioSegunHistorial(r.data));
   });
   return respuestas;
 }
@@ -376,4 +396,52 @@ export async function sincronizarEstadosZak(): Promise<ConteoSync | { error: str
     revalidatePath("/admin/prospeccion");
   }
   return conteo;
+}
+
+/**
+ * «No era interés real» (spec Zak vendedor § 4.7): Tomás desmarca a mano un
+ * negocio que el bot marcó interesado por una contestadora. Primero el bot
+ * (si falla, el CRM no se toca); después el CRM vuelve a Contactado o
+ * Respondió según haya escrito una persona. Es el clic de Tomás, no la
+ * automatización: sí baja el estado, pero jamás toca cliente ni descartado.
+ */
+export async function noEraInteresReal(
+  negocioId: string | null,
+  telefonoBot: string,
+): Promise<{ ok: true; estado: EstadoNegocio | null } | { error: string }> {
+  const { supabase } = await verifySession();
+
+  const tel = telefonoBot.replace(/\D/g, "");
+  if (tel.length < 7 || tel.length > 15) return { error: "Ese teléfono no se entiende." };
+
+  const r = await descartarInteres(ID_ZAK, tel);
+  if (!r.ok) {
+    return {
+      error:
+        r.error === "no_existe"
+          ? "El bot no tiene prospecto para este chat (se abrió antes de esta versión): cambia el estado a mano en la ficha."
+          : "No hay conexión con el bot para desmarcarlo.",
+    };
+  }
+
+  let estado: EstadoNegocio | null = null;
+  if (negocioId) {
+    const h = await historial(ID_ZAK, tel);
+    estado = estadoTrasDescartarInteres(h.ok ? h.data.humano : null);
+    const { error } = await supabase
+      .from("negocios")
+      .update({ estado })
+      .eq("id", negocioId)
+      .eq("estado", "interesado");
+    if (error) {
+      console.error("[noEraInteresReal] negocios:", error.message);
+      return {
+        error: "El bot ya lo desmarcó, pero el CRM no se pudo actualizar. Recarga e inténtalo de nuevo.",
+      };
+    }
+  }
+
+  revalidatePath("/admin/zak");
+  revalidatePath("/admin/prospeccion");
+  return { ok: true, estado };
 }

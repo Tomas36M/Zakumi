@@ -4,6 +4,7 @@ import {
   avancesDesdeChats,
   chatsParaHistorial,
   e164DeChat,
+  respondioSegunHistorial,
   type NegocioSync,
 } from "../estados-chats";
 
@@ -136,5 +137,18 @@ describe("chatsParaHistorial", () => {
 
   it("con tope, solo los primeros: lo demás se revisa en la siguiente visita", () => {
     expect(chatsParaHistorial(chats, negocios, 2)).toEqual(["573100000001", "573100000002"]);
+  });
+});
+
+describe("respondioSegunHistorial", () => {
+  const base = { ultimo_del_cliente: null, messages: [] as { role: "user" | "assistant" }[] };
+  it("el bot lo dice: persona sí, solo contestadora no", () => {
+    expect(respondioSegunHistorial({ ...base, humano: true })).toBe(true);
+    expect(respondioSegunHistorial({ ...base, humano: false, ultimo_del_cliente: "2026-09-15T10:00:00Z" })).toBe(false);
+  });
+  it("sin veredicto del bot, cuenta como hoy: cualquier mensaje del cliente", () => {
+    expect(respondioSegunHistorial({ ...base, humano: null })).toBe(false);
+    expect(respondioSegunHistorial({ ...base, humano: null, ultimo_del_cliente: "2026-09-15T10:00:00Z" })).toBe(true);
+    expect(respondioSegunHistorial({ ...base, humano: null, messages: [{ role: "user" }] })).toBe(true);
   });
 });

@@ -167,6 +167,11 @@ export function mapVersiones(crudo: unknown): VersionPrompt[] {
   }));
 }
 
+/** true/false tal cual; cualquier otra cosa es «no se sabe». */
+function triestado(v: unknown): boolean | null {
+  return v === true ? true : v === false ? false : null;
+}
+
 export function mapConversaciones(crudo: unknown): Conversacion[] {
   return lista(obj(crudo).conversations).map((f) => ({
     phone: texto(f.phone),
@@ -174,6 +179,8 @@ export function mapConversaciones(crudo: unknown): Conversacion[] {
     paused: f.paused === true,
     last: texto(f.last),
     last_at: textoONull(f.last_at),
+    humano: triestado(f.humano),
+    contestadora: f.contestadora === true,
   }));
 }
 
@@ -192,6 +199,8 @@ export function mapHistorial(crudo: unknown): Historial {
     paused: c.paused === true,
     messages: mapMensajes(c.messages),
     ultimo_del_cliente: textoONull(c.ultimo_del_cliente),
+    humano: triestado(c.humano),
+    contestadora: c.contestadora === true,
   };
 }
 
@@ -303,6 +312,8 @@ export function mapTandas(crudo: unknown): Tanda[] {
         fallido: num(funnel.fallido),
       },
       interesados: num(f.interesados),
+      // Un bot anterior a la clasificación no manda `humanos`: vale el funnel.
+      humanos: f.humanos === undefined ? num(funnel.respondido) : num(f.humanos),
     };
   });
 }

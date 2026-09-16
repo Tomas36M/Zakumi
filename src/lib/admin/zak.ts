@@ -537,14 +537,26 @@ export function avancesDeEstado(
     if (!p) continue;
     if (n.estado === "cliente" || n.estado === "descartado") continue;
     if (n.estado_fijado_manual) continue;
-    if (p.interesado && n.estado !== "interesado") {
+    // La evidencia del bot: true = escribió una persona, false = solo la
+    // contestadora, ausente = prospecto anterior a la clasificación (se trata
+    // como hoy). Interesado exige persona; respondido solo se frena con false.
+    const humano = p.contexto.humano;
+    if (p.interesado && humano === true && n.estado !== "interesado") {
       avances.push({ id: n.id, a: "interesado" });
     } else if (
       p.estado_envio === "respondido" &&
+      humano !== false &&
       (n.estado === "nuevo" || n.estado === "contactado")
     ) {
       avances.push({ id: n.id, a: "respondido" });
     }
   }
   return avances;
+}
+
+/** A dónde vuelve un negocio cuando Tomás dice «no era interés real»: si el
+ * bot ya vio escribir a una persona, a Respondió; si solo hubo contestadora o
+ * no se sabe, a Contactado. Nunca más abajo: el contacto sí ocurrió. */
+export function estadoTrasDescartarInteres(humano: boolean | null): EstadoNegocio {
+  return humano === true ? "respondido" : "contactado";
 }

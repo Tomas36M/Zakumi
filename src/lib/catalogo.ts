@@ -22,8 +22,9 @@ export type Servicio = {
   pitch: string;
 };
 
-// Precios = los del brochure y los folletos que ya tiene el prospecto en la
-// mano (public/folletos/). Si cambian allá, cambian aquí.
+// Precios aprobados el 15 sep 2026 para PyMEs (spec 2026-09-15-zak-vendedor
+// § 4.10). Brochure y página de precios dicen lo mismo que esto; si cambian
+// allá, cambian aquí. Zak no los dice en el chat: cotiza Tomás.
 export const CATALOGO_ZAKUMI: readonly Servicio[] = [
   {
     slug: "bot-whatsapp",
@@ -32,37 +33,59 @@ export const CATALOGO_ZAKUMI: readonly Servicio[] = [
     canal: "whatsapp",
     tarifaSugerida: 129_900,
     cicloSugerido: "mensual",
-    montaje: 300_000,
+    montaje: 199_900,
     disponible: true,
     pitch:
       "Un agente que atiende, vende y captura leads por WhatsApp 24/7, con escalado a humano.",
+  },
+  {
+    slug: "landing",
+    nombre: "Landing / menú digital con QR",
+    tipo: "web",
+    canal: null,
+    tarifaSugerida: 590_000,
+    cicloSugerido: "unico",
+    disponible: true,
+    pitch:
+      "Una página con tu marca, dominio el primer año, botón directo a WhatsApp y QR para el local.",
   },
   {
     slug: "pagina-web",
     nombre: "Página web",
     tipo: "web",
     canal: null,
-    tarifaSugerida: 1_200_000,
+    tarifaSugerida: 1_190_000,
     cicloSugerido: "unico",
     disponible: true,
-    pitch: "Presencia propia con dominio, SEO local es-CO y botón directo a WhatsApp.",
+    pitch: "Hasta cinco secciones, formulario, SEO local es-CO y botón directo a WhatsApp.",
+  },
+  {
+    slug: "tienda-online",
+    nombre: "Tienda online con pagos",
+    tipo: "web",
+    canal: null,
+    tarifaSugerida: 1_490_000,
+    cicloSugerido: "unico",
+    disponible: true,
+    pitch:
+      "Catálogo de hasta 50 productos, carrito, pagos con Wompi o Bold y el pedido directo a tu WhatsApp.",
   },
   {
     slug: "mantenimiento-web",
     nombre: "Mantenimiento web",
     tipo: "mantenimiento",
     canal: null,
-    tarifaSugerida: 80_000,
+    tarifaSugerida: 49_900,
     cicloSugerido: "mensual",
     disponible: true,
-    pitch: "Hosting, cambios de contenido y soporte de la página, sin dolores de cabeza.",
+    pitch: "Hosting, dominio, dos cambios de contenido al mes y soporte, sin dolores de cabeza.",
   },
   {
     slug: "crm",
     nombre: "CRM",
     tipo: "crm",
     canal: null,
-    tarifaSugerida: 120_000,
+    tarifaSugerida: 99_900,
     cicloSugerido: "mensual",
     disponible: true,
     pitch: "Los clientes y pedidos del negocio organizados en un solo lugar.",
@@ -72,8 +95,9 @@ export const CATALOGO_ZAKUMI: readonly Servicio[] = [
     nombre: "Agente de voz",
     tipo: "voz",
     canal: "voz",
-    tarifaSugerida: 250_000,
+    tarifaSugerida: 249_900,
     cicloSugerido: "mensual",
+    montaje: 199_900,
     disponible: true,
     pitch:
       "Un agente que contesta y hace llamadas (~US$0.08/min de conversación). " +
@@ -94,10 +118,12 @@ export const SLUG_POR_DEFINIR = "por-definir";
  *  'web', así que mantenimiento tiene que evaluarse antes que página web. */
 const CLAVES: readonly { slug: string; palabras: readonly string[] }[] = [
   { slug: "mantenimiento-web", palabras: ["mantenimiento", "soporte"] },
+  { slug: "landing", palabras: ["landing", "menu", "qr"] },
+  { slug: "tienda-online", palabras: ["tienda", "carrito", "ecommerce", "e-commerce", "pagos"] },
   { slug: "bot-whatsapp", palabras: ["whatsapp", "bot", "chatbot"] },
   { slug: "agente-voz", palabras: ["voz", "llamada", "telefono", "call"] },
   { slug: "crm", palabras: ["crm", "clientes"] },
-  { slug: "pagina-web", palabras: ["pagina", "web", "sitio", "landing"] },
+  { slug: "pagina-web", palabras: ["pagina", "web", "sitio"] },
 ] as const;
 
 function normalizar(texto: string): string {
