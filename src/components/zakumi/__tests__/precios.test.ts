@@ -92,3 +92,13 @@ describe("copy", () => {
     }
   });
 });
+
+describe("brochure", () => {
+  it("apunta a un PDF con fecha en el nombre, dentro de /folletos/", async () => {
+    const { BROCHURE } = await import("../precios");
+    expect(BROCHURE).toMatch(/^\/folletos\/.+\.pdf$/);
+    // La fecha en el nombre es lo que evita que el PDF de un mes quede
+    // cacheado como el del siguiente (en el navegador y en WhatsApp).
+    expect(BROCHURE).toMatch(/\d{4}-\d{2}/);
+  });
+});

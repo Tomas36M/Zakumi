@@ -4,6 +4,7 @@ import { useLayoutEffect, useRef } from "react";
 import { gsap, ScrollTrigger, magneticCtas, revealBlocks } from "@/lib/motion";
 import { waLink } from "../contact";
 import {
+  BROCHURE,
   COMBO_DESTACADO,
   COMBOS,
   cop,
@@ -125,6 +126,14 @@ export function PreciosPage() {
             <a className="cta cta-ghost" href="#tarifas" style={{ opacity: 1 }}>
               <span>Ver el tarifario</span>
               <span className="arrow">→</span>
+            </a>
+            <a
+              className="precios-brochure"
+              href={BROCHURE}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Descargar el brochure (PDF)
             </a>
           </div>
         </div>
