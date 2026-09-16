@@ -203,7 +203,19 @@ export type Prospecto = {
   tanda_id: number;
   telefono: string; // sin '+', formato del bot
   negocio_id: string | null; // uuid del negocio en Supabase (clave del sync)
-  contexto: { nombre?: string; categoria?: string; ciudad?: string };
+  contexto: {
+    nombre?: string;
+    categoria?: string;
+    ciudad?: string;
+    sin_web?: boolean;
+    ganchos?: string[];
+    senal_tipica?: string;
+    /** Evidencia del bot: true = escribió una persona; false = solo contestadora; ausente = sin clasificar. */
+    humano?: boolean;
+    contestadora?: boolean;
+    /** Tomás dijo «no era interés real»; el bot lo borra con el siguiente mensaje humano. */
+    interes_descartado?: boolean;
+  };
   estado_envio: EstadoEnvio;
   interesado: boolean;
   interes_resumen: string | null;
