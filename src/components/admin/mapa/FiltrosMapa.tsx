@@ -59,8 +59,8 @@ export function FiltrosMapa({ filtro, onCambiar, negocios, territorios, visibles
   return (
     <div
       className={cn(
-        "absolute top-3 left-3 z-10 rounded-fila border border-hairline bg-isla/90 backdrop-blur-md",
-        abierto && "w-72 max-w-[calc(100%-1.5rem)]",
+        "pointer-events-auto rounded-fila border border-hairline bg-isla/90 backdrop-blur-md",
+        abierto && "w-72 max-w-full",
       )}
     >
       <div className="flex h-9 items-center justify-between gap-2 pr-1 pl-3">
