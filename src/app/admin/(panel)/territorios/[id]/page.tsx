@@ -40,6 +40,9 @@ export default async function TerritorioPage({ params }: { params: Promise<{ id:
       territorio={territorio.data as Territorio}
       negocios={(negocios.data as Negocio[]) ?? []}
       negociosTotal={cuenta?.leads ?? null}
+      // La consulta de los locales falló: la lista vacía NO es un territorio
+      // vacío (la página no puede ofrecer barrerlo otra vez por eso).
+      fallaNegocios={negocios.error !== null}
       cuenta={cuenta}
       vozZak={estadoVozZak(zakVoz, Boolean(process.env.ELEVENLABS_PHONE_NUMBER_ID))}
     />

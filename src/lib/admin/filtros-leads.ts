@@ -60,7 +60,7 @@ export function hayFiltro(f: FiltroLeads): boolean {
 }
 
 /** Las categorías que existen en los datos, ordenadas y sin repetir. */
-export function categoriasDe(negocios: readonly Negocio[]): string[] {
+export function categoriasDe(negocios: readonly Pick<Negocio, "categoria">[]): string[] {
   const set = new Set<string>();
   for (const n of negocios) if (n.categoria) set.add(n.categoria);
   return [...set].sort((a, b) => a.localeCompare(b, "es"));

@@ -11,7 +11,6 @@ import {
 } from "@/lib/admin/bots-actions";
 import { fechaCorta, horaDeIso } from "@/lib/admin/formato";
 import { labelEstado, type Negocio } from "@/lib/admin/negocios";
-import { estadoFicha, type FichaFetch } from "@/lib/admin/ficha-fetch";
 import {
   fueraDeVentana,
   srcFolleto,
@@ -34,10 +33,14 @@ import { ListRow } from "@/components/admin/ui/ListRow";
 import { Skeleton } from "@/components/admin/ui/Skeleton";
 import { FichaLeadModal } from "@/components/admin/leads/FichaLeadModal";
 import { useFichaLead } from "@/components/admin/leads/useFichaLead";
+import { useFichaNegocio } from "@/components/admin/leads/useFichaNegocio";
 import { NuevoChatZak } from "./NuevoChatZak";
 import { SelectorPlantilla } from "./SelectorPlantilla";
 import { useConfirmar } from "@/components/admin/ui/Confirmar";
 import { BotonLlamarZak, type EstadoVozZak } from "@/components/admin/voz/BotonLlamarZak";
+
+/** El chat no tiene una lista de negocios cargada: la ficha siempre va por id. */
+const SIN_LISTA: readonly Negocio[] = [];
 
 type Props = {
   instanciaId: number;
@@ -415,47 +418,9 @@ export function Conversaciones({
   const negocioIdActual = fichaActual?.negocioId ?? null;
   // La ficha completa del negocio abierto en el modal: a diferencia de
   // Territorio/Prospección (que la sacan de una lista ya cargada), acá se
-  // trae por fetch — el chat no tiene esa lista. `negocioVersion` fuerza un
-  // refetch después de editar (ver onCambio más abajo).
-  //
-  // UN solo estado, escrito SOLO desde la continuación async: un setState
-  // síncrono en el cuerpo del efecto (resetear al cerrar, marcar
-  // "cargando" al abrir) dispara react-hooks/set-state-in-effect. Lo que
-  // antes era estado — cargando, fallo — ahora se deriva comparando el id
-  // abierto con el id del último fetch que terminó.
-  const [fichaFetch, setFichaFetch] = useState<FichaFetch | null>(null);
-  const [negocioVersion, setNegocioVersion] = useState(0);
-
-  useEffect(() => {
-    if (!leadId) return;
-    let cancelado = false;
-    void (async () => {
-      let negocio: Negocio | null = null;
-      let fallo = false;
-      try {
-        const res = await fetch(`/admin/api/negocios/${leadId}`);
-        // Un id malformado (400: un ?lead= cortado o editado a mano) no puede
-        // existir: es "ya no existe", no un fallo que se arregle reintentando.
-        if (res.status === 400) {
-          negocio = null;
-        } else {
-          if (!res.ok) throw new Error(String(res.status));
-          negocio = ((await res.json()) as { negocio: Negocio | null }).negocio;
-        }
-      } catch {
-        fallo = true;
-      }
-      if (!cancelado) setFichaFetch({ leadId, negocio, fallo });
-    })();
-    return () => {
-      cancelado = true;
-    };
-  }, [leadId, negocioVersion]);
-
-  // Cargando / fallo / ya no existe se derivan del id abierto y del último
-  // fetch que terminó (estadoFicha, con tests). Al reabrir el MISMO negocio
-  // se muestra al instante lo último cargado mientras el efecto refresca.
-  const ficha = estadoFicha(leadId, fichaFetch);
+  // trae siempre por id — el chat no tiene esa lista. Es el mismo hook de esas
+  // pantallas; `recargar` la vuelve a pedir después de editar (ver onCambio).
+  const ficha = useFichaNegocio(leadId, SIN_LISTA);
 
   return (
     // En desktop la bandeja llena el alto que le da el <CockpitBody> del padre
@@ -474,7 +439,7 @@ export function Conversaciones({
           vozZak={vozZak}
           onCerrar={() => abrirLead(null)}
           onCambio={() => {
-            setNegocioVersion((v) => v + 1);
+            ficha.recargar();
             if (telefono) {
               pedidasRef.current.delete(telefono);
               void cruzarConCrm([telefono]);

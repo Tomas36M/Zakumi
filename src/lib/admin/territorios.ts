@@ -80,6 +80,21 @@ export type CuentaTerritorio = {
 const CUENTA_VACIA: CuentaTerritorio = Object.freeze({ leads: 0, sinWeb: 0 });
 
 /**
+ * ¿Se SABE que el territorio no tiene locales? Solo entonces su página ofrece
+ * barrerlo. Con la cuenta exacta del servidor manda la cuenta; sin ella, la
+ * lista cargada, y solo si esa consulta no falló: una consulta caída no es un
+ * territorio vacío, y barrerlo otra vez le paga a Google lo mismo.
+ */
+export function territorioSinLocales(d: {
+  cuenta: CuentaTerritorio | null;
+  cargados: number;
+  fallaCargados: boolean;
+}): boolean {
+  if (d.cuenta !== null) return d.cuenta.leads === 0;
+  return !d.fallaCargados && d.cargados === 0;
+}
+
+/**
  * Cuántos leads produjo cada territorio, en UN solo recorrido de la lista.
  *
  * Existe porque el panel de territorios y la tarjeta del mapa enseñan los

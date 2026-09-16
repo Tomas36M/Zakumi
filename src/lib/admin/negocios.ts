@@ -85,7 +85,7 @@ export function conteoPorEstado(
 /** Las ciudades que existen en la base, para armar el filtro de la lista de
  * leads. Antes era una constante de tres municipios; con territorios libres la
  * única fuente honesta son los datos. */
-export function ciudadesDe(negocios: readonly Negocio[]): string[] {
+export function ciudadesDe(negocios: readonly Pick<Negocio, "ciudad">[]): string[] {
   const vistas = new Set<string>();
   for (const n of negocios) {
     if (n.ciudad) vistas.add(n.ciudad);

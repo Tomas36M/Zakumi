@@ -6,6 +6,10 @@
 
 export const TERRITORIOS_POR_PAGINA = 25;
 
+/** La lista de Leads pagina de a 50: una página es exactamente una tanda de Zak
+ * (`TANDA_MAX_BOT`), así «seleccionar la página» cabe en un envío. */
+export const LEADS_POR_PAGINA = 50;
+
 /**
  * Sanea el ?pagina= de la URL: cualquier cosa que no sea un entero ≥ 1 cae
  * a la página 1 — un link viejo o un valor escrito a mano nunca revienta la
@@ -21,4 +25,16 @@ export function paginaDesdeParam(valor: string | undefined): number {
 export function rangoDePagina(pagina: number, porPagina: number): [number, number] {
   const desde = (pagina - 1) * porPagina;
   return [desde, desde + porPagina - 1];
+}
+
+/** Cuántas páginas hacen falta para `total` filas. Al menos una: una lista
+ * vacía es una página vacía, no cero páginas. */
+export function totalDePaginas(total: number, porPagina: number): number {
+  return Math.max(1, Math.ceil(total / porPagina));
+}
+
+/** La página pedida, o la última que existe si se pidió una más allá (un
+ * enlace viejo, filas que se borraron): nunca una página vacía que miente. */
+export function acotarPagina(pagina: number, total: number, porPagina: number): number {
+  return Math.min(pagina, totalDePaginas(total, porPagina));
 }

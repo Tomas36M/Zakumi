@@ -549,4 +549,8 @@ describe("patronBusqueda", () => {
     expect(patronBusqueda("la_espiga")).toBe("%la\\_espiga%");
     expect(patronBusqueda("uno\\dos")).toBe("%uno\\\\dos%");
   });
+
+  it("un asterisco no es comodín de muchos: PostgREST lo lee como %, así que vale por un solo carácter", () => {
+    expect(patronBusqueda("pizza*express")).toBe("%pizza_express%");
+  });
 });

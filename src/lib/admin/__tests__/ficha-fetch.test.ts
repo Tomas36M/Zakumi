@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Negocio } from "../negocios";
-import { estadoFicha, type FichaFetch } from "../ficha-fetch";
+import { estadoFicha, fichaConLista, type FichaFetch } from "../ficha-fetch";
 
 const negocio = { id: "n1", nombre: "Panadería La Espiga" } as Negocio;
 const REPOSO = { negocio: null, cargando: false, fallo: false, noExiste: false };
@@ -39,5 +39,49 @@ describe("estadoFicha", () => {
       ...REPOSO,
       noExiste: true,
     });
+  });
+});
+
+describe("fichaConLista", () => {
+  it("el lead está en la lista cargada: esa fila manda, sin esperar ningún fetch", () => {
+    expect(fichaConLista("n1", negocio, null)).toEqual({ ...REPOSO, negocio });
+  });
+
+  it("la lista manda aunque haya un fetch viejo del mismo id", () => {
+    const viejo = { ...negocio, nombre: "Nombre viejo" };
+    expect(fichaConLista("n1", negocio, { leadId: "n1", negocio: viejo, fallo: false })).toEqual({
+      ...REPOSO,
+      negocio,
+    });
+  });
+
+  it("no está en la lista: cargando mientras llega el fetch por id", () => {
+    expect(fichaConLista("n1", null, null)).toEqual({ ...REPOSO, cargando: true });
+  });
+
+  it("una fila de la lista con OTRO id no se muestra nunca", () => {
+    expect(fichaConLista("n1", { ...negocio, id: "n2" }, null)).toEqual({ ...REPOSO, cargando: true });
+  });
+
+  it("modal cerrado: reposo", () => {
+    expect(fichaConLista(null, negocio, null)).toEqual(REPOSO);
+  });
+
+  it("el lead salió de la lista con la ficha abierta: sigue la última fila vista mientras llega el fetch", () => {
+    // Un refresh empuja el lead más allá del tope: sin esto, la ficha volvía al
+    // esqueleto y desmontaba el formulario con lo que se estaba escribiendo.
+    expect(fichaConLista("n1", null, null, negocio)).toEqual({ ...REPOSO, negocio });
+  });
+
+  it("cuando llega el fetch por id, manda el fetch sobre la última fila vista", () => {
+    const fresco = { ...negocio, nombre: "Panadería La Espiga 2" };
+    expect(fichaConLista("n1", null, { leadId: "n1", negocio: fresco, fallo: false }, negocio)).toEqual({
+      ...REPOSO,
+      negocio: fresco,
+    });
+  });
+
+  it("la última fila vista de OTRO lead no se muestra", () => {
+    expect(fichaConLista("n1", null, null, { ...negocio, id: "n2" })).toEqual({ ...REPOSO, cargando: true });
   });
 });
