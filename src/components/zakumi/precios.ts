@@ -157,6 +157,22 @@ export const MENSUALIDAD_ZAK = zak.precio;
 const MONTAJE_ZAK = zak.montaje ?? 0;
 
 export const COMBOS: readonly Combo[] = [
+  // El destacado del hero: para cualquier negocio, no para un nicho.
+  {
+    slug: "plan-completo",
+    nombre: "Plan completo",
+    para: "Para cualquier negocio: página propia y un agente que atiende el WhatsApp.",
+    precio: 690_000,
+    incluye: [
+      "Landing con tu marca, tu dominio el primer año y el QR para el local",
+      "Zak atendiendo tu WhatsApp: responde, toma pedidos y agenda citas",
+      "Montaje de Zak incluido",
+      "Botón directo a WhatsApp y posicionamiento local básico",
+    ],
+    sueltos: landing.precio + MONTAJE_ZAK,
+    destacado: true,
+    waMsg: mensaje("el Plan completo (landing + Zak)"),
+  },
   {
     slug: "domicilios-propios",
     nombre: "Domicilios propios",
@@ -168,17 +184,7 @@ export const COMBOS: readonly Combo[] = [
       "Link de pago en línea, sin comisión por pedido",
       "Montaje de Zak incluido",
     ],
-    destacado: true,
     waMsg: mensaje("el combo Domicilios propios"),
-  },
-  {
-    slug: "arranque-digital",
-    nombre: "Arranque digital",
-    para: "Para el negocio que todavía no existe en internet.",
-    precio: 690_000,
-    incluye: ["Landing con tu marca y QR", "Montaje de Zak incluido", "Dominio el primer año"],
-    sueltos: landing.precio + MONTAJE_ZAK,
-    waMsg: mensaje("el combo Arranque digital"),
   },
   {
     slug: "agenda-llena",

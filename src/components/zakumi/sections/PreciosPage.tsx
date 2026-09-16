@@ -130,7 +130,7 @@ export function PreciosPage() {
         </div>
 
         <aside className="precios-destacado reveal-item" aria-label="Combo destacado">
-          <span className="precios-destacado-label">El combo que más se lleva</span>
+          <span className="precios-destacado-label">Landing + agente de WhatsApp</span>
           <h2>{destacado.nombre}</h2>
           <p className="precios-destacado-para">{destacado.para}</p>
           <Cifra precio={destacado.precio} sufijo="pago único" grande />
@@ -140,10 +140,12 @@ export function PreciosPage() {
             ))}
           </ul>
           <p className="precios-destacado-nota">
-            + {cop(MENSUALIDAD_ZAK)} al mes de Zak desde el segundo mes. Un restaurante que mueve
-            sus domicilios por una app paga eso en comisiones en pocos días.
+            + {cop(MENSUALIDAD_ZAK)} al mes de Zak desde el segundo mes, sin permanencia.
+            {destacado.sueltos !== undefined && (
+              <> Ahorras {cop(destacado.sueltos - destacado.precio)} frente a comprar la landing y el montaje por separado.</>
+            )}
           </p>
-          <WaCta href={waLink(destacado.waMsg)} label="Quiero domicilios propios" />
+          <WaCta href={waLink(destacado.waMsg)} label="Quiero el plan completo" />
         </aside>
       </section>
 
@@ -228,8 +230,8 @@ export function PreciosPage() {
         </div>
         <p className="planes-nota reveal-item">
           Todos los combos traen el montaje de Zak incluido; desde el segundo mes se paga su
-          mensualidad de {cop(MENSUALIDAD_ZAK)}, sin permanencia. El combo Domicilios propios está
-          arriba, en el hero.
+          mensualidad de {cop(MENSUALIDAD_ZAK)}, sin permanencia. El plan completo está arriba, en el
+          hero.
         </p>
       </section>
 
