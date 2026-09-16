@@ -18,7 +18,7 @@ import {
   type FichaNegocio,
   type VerticalProspeccion,
 } from "@/lib/admin/zak";
-import { abrirChatZak } from "@/lib/admin/zak-actions";
+import { abrirChatZak, noEraInteresReal } from "@/lib/admin/zak-actions";
 import { usePollingVivo } from "@/lib/admin/usePollingVivo";
 import { mismoJson, noLeidos, sembrarVistos, type Visto } from "@/lib/admin/vivo";
 import { esLabs, type Conversacion, type Historial } from "@/lib/bots/tipos";
@@ -323,6 +323,29 @@ export function Conversaciones({
     })();
   }, [abrirInicial, traerHistorial]);
 
+  async function desmarcarInteres() {
+    if (!telefono || !fichaActual) return;
+    const ok = await confirmar({
+      titulo: "¿No era interés real?",
+      mensaje:
+        "El negocio vuelve a Contactado (o a Respondió si ya escribió una persona) y Zak no lo volverá a marcar hasta que alguien escriba algo nuevo.",
+      accion: "Desmarcar",
+    });
+    if (!ok) return;
+    setAvisoChat(null);
+    const negocioId = fichaActual.negocioId;
+    startOperar(async () => {
+      const res = await noEraInteresReal(negocioId, telefono);
+      if ("error" in res) {
+        setAvisoChat(res.error);
+        return;
+      }
+      // La ficha del CRM se vuelve a pedir: el badge de estado cambia solo.
+      pedidasRef.current.delete(telefono);
+      void cruzarConCrm([telefono]);
+    });
+  }
+
   function alternarPausa() {
     if (!telefono || !historial) return;
     setAvisoChat(null);
@@ -520,6 +543,11 @@ export function Conversaciones({
                     {ficha && <Badge tono="neutro">{ficha.verticalLabel}</Badge>}
                     {ficha && <Badge tono={ficha.estado}>{labelEstado(ficha.estado)}</Badge>}
                     {c.paused && <Badge tono="neutro">⏸ pausado</Badge>}
+                    {c.contestadora && !c.humano && (
+                      <span title="Solo ha respondido el mensaje automático del negocio">
+                        <Badge tono="neutro">🤖 contestadora</Badge>
+                      </span>
+                    )}
                     {sinLeer > 0 && (
                       <span
                         aria-label={`${sinLeer} mensajes sin leer`}
@@ -581,6 +609,14 @@ export function Conversaciones({
                     <Badge tono={fichaActual.estado}>
                       {labelEstado(fichaActual.estado)}
                     </Badge>
+                    {historial?.contestadora && !historial.humano && (
+                      <Badge tono="neutro">🤖 contestadora</Badge>
+                    )}
+                    {esZak && fichaActual.estado === "interesado" && (
+                      <Button disabled={operando} onClick={() => void desmarcarInteres()}>
+                        No era interés real
+                      </Button>
+                    )}
                   </>
                 )}
               </span>

@@ -9,6 +9,7 @@ import { convertirNegocioEnCliente } from "@/lib/admin/cartera-actions";
 import type { Negocio } from "@/lib/admin/negocios";
 import type { EstadoVozZak } from "@/lib/admin/voz-estado";
 import { linkChatZak } from "@/lib/admin/zak";
+import { noEraInteresReal } from "@/lib/admin/zak-actions";
 import { Banner } from "@/components/admin/ui/Banner";
 import { Button } from "@/components/admin/ui/Button";
 import { useConfirmar } from "@/components/admin/ui/Confirmar";
@@ -19,11 +20,13 @@ type Props = {
   vozZak: EstadoVozZak;
   onCerrar: () => void;
   onEliminado: () => void;
+  /** router.refresh() del dueño tras un cambio de estado. */
+  onCambio?: () => void;
 };
 
 /** Lo que se puede hacer con un lead: escribirle o llamarlo con Zak,
  * abrir su sitio, convertirlo en cliente o borrarlo del CRM. */
-export function FichaLeadAcciones({ negocio, vozZak, onCerrar, onEliminado }: Props) {
+export function FichaLeadAcciones({ negocio, vozZak, onCerrar, onEliminado, onCambio }: Props) {
   const router = useRouter();
   const { confirmar, dialogo } = useConfirmar();
   const [ocupado, startAccion] = useTransition();
@@ -86,6 +89,34 @@ export function FichaLeadAcciones({ negocio, vozZak, onCerrar, onEliminado }: Pr
           >
             <ExternalLink className="h-4 w-4" /> Sitio web
           </a>
+        )}
+        {negocio.estado === "interesado" && negocio.telefono !== null && (
+          <Button
+            disabled={ocupado}
+            onClick={() => {
+              void (async () => {
+                const ok = await confirmar({
+                  titulo: "¿No era interés real?",
+                  mensaje:
+                    "Vuelve a Contactado (o a Respondió si ya escribió una persona) y Zak no lo volverá a marcar hasta que alguien escriba algo nuevo.",
+                  accion: "Desmarcar",
+                });
+                if (!ok) return;
+                setError(null);
+                startAccion(async () => {
+                  const res = await noEraInteresReal(negocio.id, negocio.telefono as string);
+                  if ("error" in res) {
+                    setError(res.error);
+                    return;
+                  }
+                  onCambio?.();
+                  router.refresh();
+                });
+              })();
+            }}
+          >
+            No era interés real
+          </Button>
         )}
         <Button
           disabled={ocupado}

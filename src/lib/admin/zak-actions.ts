@@ -13,6 +13,7 @@ import {
   componentesSaludo,
   contactables,
   despacharTandas,
+  estadoTrasDescartarInteres,
   TANDA_MAX_BOT,
   verticalPorSlug,
   type AvanceEstado,
@@ -35,6 +36,7 @@ import { catalogoVerticales } from "./zak-verticales";
 import type { EstadoNegocio, Negocio } from "./negocios";
 import {
   crearTanda,
+  descartarInteres,
   enviarPlantillaDirecta,
   historial,
   listarConversaciones,
@@ -394,4 +396,52 @@ export async function sincronizarEstadosZak(): Promise<ConteoSync | { error: str
     revalidatePath("/admin/prospeccion");
   }
   return conteo;
+}
+
+/**
+ * «No era interés real» (spec Zak vendedor § 4.7): Tomás desmarca a mano un
+ * negocio que el bot marcó interesado por una contestadora. Primero el bot
+ * (si falla, el CRM no se toca); después el CRM vuelve a Contactado o
+ * Respondió según haya escrito una persona. Es el clic de Tomás, no la
+ * automatización: sí baja el estado, pero jamás toca cliente ni descartado.
+ */
+export async function noEraInteresReal(
+  negocioId: string | null,
+  telefonoBot: string,
+): Promise<{ ok: true; estado: EstadoNegocio | null } | { error: string }> {
+  const { supabase } = await verifySession();
+
+  const tel = telefonoBot.replace(/\D/g, "");
+  if (tel.length < 7 || tel.length > 15) return { error: "Ese teléfono no se entiende." };
+
+  const r = await descartarInteres(ID_ZAK, tel);
+  if (!r.ok) {
+    return {
+      error:
+        r.error === "no_existe"
+          ? "El bot no tiene prospecto para este chat (se abrió antes de esta versión): cambia el estado a mano en la ficha."
+          : "No hay conexión con el bot para desmarcarlo.",
+    };
+  }
+
+  let estado: EstadoNegocio | null = null;
+  if (negocioId) {
+    const h = await historial(ID_ZAK, tel);
+    estado = estadoTrasDescartarInteres(h.ok ? h.data.humano : null);
+    const { error } = await supabase
+      .from("negocios")
+      .update({ estado })
+      .eq("id", negocioId)
+      .eq("estado", "interesado");
+    if (error) {
+      console.error("[noEraInteresReal] negocios:", error.message);
+      return {
+        error: "El bot ya lo desmarcó, pero el CRM no se pudo actualizar. Recarga e inténtalo de nuevo.",
+      };
+    }
+  }
+
+  revalidatePath("/admin/zak");
+  revalidatePath("/admin/prospeccion");
+  return { ok: true, estado };
 }

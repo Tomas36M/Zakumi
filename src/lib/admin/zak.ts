@@ -553,3 +553,10 @@ export function avancesDeEstado(
   }
   return avances;
 }
+
+/** A dónde vuelve un negocio cuando Tomás dice «no era interés real»: si el
+ * bot ya vio escribir a una persona, a Respondió; si solo hubo contestadora o
+ * no se sabe, a Contactado. Nunca más abajo: el contacto sí ocurrió. */
+export function estadoTrasDescartarInteres(humano: boolean | null): EstadoNegocio {
+  return humano === true ? "respondido" : "contactado";
+}

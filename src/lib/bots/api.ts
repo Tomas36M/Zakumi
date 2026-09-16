@@ -404,6 +404,16 @@ export function listarProspectos(
   return pedir("GET", `/instancias/${id}/prospectos?${params}`, mapProspectos);
 }
 
+/** «No era interés real»: apaga el interés del prospecto y deja la marca para
+ * que Zak no lo vuelva a poner sin un mensaje humano nuevo. */
+export function descartarInteres(id: number, telefono: string): Promise<Resultado<true>> {
+  return pedir(
+    "POST",
+    `/instancias/${id}/prospectos/${encodeURIComponent(telefono)}/descartar-interes`,
+    () => true,
+  );
+}
+
 // ---------- Labs (chat de prueba sin WhatsApp) ----------
 
 // El turno corre síncrono dentro del bot (3-10 s de Claude + tools), así que

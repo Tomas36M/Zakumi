@@ -15,6 +15,7 @@ import {
   componentesSaludo,
   contactables,
   despacharTandas,
+  estadoTrasDescartarInteres,
   fichaDeNegocio,
   nuevosContactables,
   resumenTanda,
@@ -568,5 +569,13 @@ describe("avancesDeEstado con contestadoras", () => {
       ],
     );
     expect(avances).toEqual([{ id: "a", a: "respondido" }]);
+  });
+});
+
+describe("estadoTrasDescartarInteres", () => {
+  it("si ya escribió una persona vuelve a Respondió; si no, a Contactado", () => {
+    expect(estadoTrasDescartarInteres(true)).toBe("respondido");
+    expect(estadoTrasDescartarInteres(false)).toBe("contactado");
+    expect(estadoTrasDescartarInteres(null)).toBe("contactado");
   });
 });
