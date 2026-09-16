@@ -43,7 +43,8 @@ export default async function MetricasPage() {
     (t, x) => t + x.funnel.enviado + x.funnel.entregado + x.funnel.leido + x.funnel.respondido,
     0,
   );
-  const respondidos = tandasData.reduce((t, x) => t + x.funnel.respondido, 0);
+  // Respondieron PERSONAS: una contestadora no es una respuesta.
+  const respondidos = tandasData.reduce((t, x) => t + x.humanos, 0);
   const tasa = enviados > 0 ? Math.round((respondidos / enviados) * 100) : 0;
 
   return (

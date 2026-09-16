@@ -17,12 +17,18 @@ import {
   verticalPorSlug,
   type AvanceEstado,
 } from "./zak";
-import { gruposParaEnvio, modoDesdeCliente, prospectoParaTanda } from "./envio";
+import {
+  contextoDeProspecto,
+  gruposParaEnvio,
+  modoDesdeCliente,
+  prospectoParaTanda,
+} from "./envio";
 import { avanzarEstadoNegocio, avanzarEstadosNegocio } from "./estado-negocio";
 import {
   avancesDesdeChats,
   chatsParaHistorial,
   e164DeChat,
+  respondioSegunHistorial,
   type NegocioSync,
 } from "./estados-chats";
 import { catalogoVerticales } from "./zak-verticales";
@@ -189,12 +195,27 @@ export async function abrirChatZak(
       error: `La plantilla de ${vertical.label} está en revisión de Meta — usa otra o espera la aprobación.`,
     };
   }
+  // El contexto del prospecto, el mismo que en una tanda: sin él, Zak
+  // conversa como el bot genérico del sitio y no puede marcar interés.
+  // Un teléfono suelto (sin negocio) lleva solo ángulo y saludo.
+  let contexto: Record<string, unknown> = { angulo: vertical.angulo, saludo: vertical.texto };
+  if (negocioId) {
+    const { data: fila, error } = await supabase
+      .from("negocios")
+      .select("*")
+      .eq("id", negocioId)
+      .maybeSingle();
+    if (error) console.error("[abrirChatZak] negocio:", error.message);
+    if (fila) contexto = contextoDeProspecto(fila as Negocio, vertical, catalogo);
+  }
   const r = await enviarPlantillaDirecta(ID_ZAK, {
     telefono: sinMas(telefono),
     plantilla: vertical.plantilla,
     lang: "es",
     texto: vertical.texto,
     componentes: componentesSaludo(vertical),
+    negocio_id: negocioId,
+    contexto,
   });
   if (!r.ok) {
     if (r.error === "bot_error") {
@@ -262,10 +283,7 @@ async function consultarRespuestas(telefonos: string[]): Promise<Map<string, boo
   const respuestas = new Map<string, boolean>();
   resultados.forEach((r, i) => {
     if (!r.ok) return;
-    respuestas.set(
-      telefonos[i],
-      r.data.ultimo_del_cliente !== null || r.data.messages.some((m) => m.role === "user"),
-    );
+    respuestas.set(telefonos[i], respondioSegunHistorial(r.data));
   });
   return respuestas;
 }

@@ -151,8 +151,8 @@ describe("avancesDeEstado", () => {
     const avances = avancesDeEstado(
       [
         prospecto({ negocio_id: "a", estado_envio: "respondido" }),
-        prospecto({ negocio_id: "b", estado_envio: "leido", interesado: true }),
-        prospecto({ negocio_id: "c", estado_envio: "respondido", interesado: true }),
+        prospecto({ negocio_id: "b", estado_envio: "leido", interesado: true, contexto: { humano: true } }),
+        prospecto({ negocio_id: "c", estado_envio: "respondido", interesado: true, contexto: { humano: true } }),
       ],
       [
         { id: "a", estado: "contactado", estado_fijado_manual: false },
@@ -173,7 +173,7 @@ describe("avancesDeEstado", () => {
         // Ya interesado en el CRM: el respondido del funnel no lo baja.
         prospecto({ negocio_id: "a", estado_envio: "respondido" }),
         // Ya interesado en ambos lados: nada que hacer.
-        prospecto({ negocio_id: "b", interesado: true }),
+        prospecto({ negocio_id: "b", interesado: true, contexto: { humano: true } }),
       ],
       [
         { id: "a", estado: "interesado", estado_fijado_manual: false },
@@ -186,7 +186,7 @@ describe("avancesDeEstado", () => {
   it("jamás toca cliente ni descartado, ni negocios sin prospecto", () => {
     const avances = avancesDeEstado(
       [
-        prospecto({ negocio_id: "a", interesado: true }),
+        prospecto({ negocio_id: "a", interesado: true, contexto: { humano: true } }),
         prospecto({ negocio_id: "b", estado_envio: "respondido" }),
         prospecto({ negocio_id: null, estado_envio: "respondido" }),
       ],
@@ -203,7 +203,7 @@ describe("avancesDeEstado", () => {
     const avances = avancesDeEstado(
       [
         prospecto({ negocio_id: "a", estado_envio: "respondido" }),
-        prospecto({ negocio_id: "b", interesado: true }),
+        prospecto({ negocio_id: "b", interesado: true, contexto: { humano: true } }),
       ],
       [
         { id: "a", estado: "nuevo", estado_fijado_manual: true },
@@ -552,5 +552,21 @@ describe("patronBusqueda", () => {
 
   it("un asterisco no es comodín de muchos: PostgREST lo lee como %, así que vale por un solo carácter", () => {
     expect(patronBusqueda("pizza*express")).toBe("%pizza_express%");
+  });
+});
+
+describe("avancesDeEstado con contestadoras", () => {
+  it("una contestadora no es interés: sin persona, interesado no sube (y respondido sí, como hoy)", () => {
+    const avances = avancesDeEstado(
+      [
+        prospecto({ negocio_id: "a", estado_envio: "respondido", interesado: true }), // sin clasificar
+        prospecto({ negocio_id: "b", estado_envio: "respondido", interesado: true, contexto: { humano: false } }),
+      ],
+      [
+        { id: "a", estado: "contactado", estado_fijado_manual: false },
+        { id: "b", estado: "contactado", estado_fijado_manual: false },
+      ],
+    );
+    expect(avances).toEqual([{ id: "a", a: "respondido" }]);
   });
 });

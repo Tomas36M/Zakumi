@@ -364,6 +364,9 @@ export function enviarPlantillaDirecta(
     lang?: string;
     texto?: string;
     componentes?: unknown[] | null;
+    /** Con contexto, el bot deja prospecto (igual que una tanda). */
+    negocio_id?: string;
+    contexto?: Record<string, unknown>;
   },
 ): Promise<Resultado<{ wamid: string | null }>> {
   return pedir("POST", `/instancias/${id}/plantilla`, (j) => ({

@@ -537,10 +537,15 @@ export function avancesDeEstado(
     if (!p) continue;
     if (n.estado === "cliente" || n.estado === "descartado") continue;
     if (n.estado_fijado_manual) continue;
-    if (p.interesado && n.estado !== "interesado") {
+    // La evidencia del bot: true = escribió una persona, false = solo la
+    // contestadora, ausente = prospecto anterior a la clasificación (se trata
+    // como hoy). Interesado exige persona; respondido solo se frena con false.
+    const humano = p.contexto.humano;
+    if (p.interesado && humano === true && n.estado !== "interesado") {
       avances.push({ id: n.id, a: "interesado" });
     } else if (
       p.estado_envio === "respondido" &&
+      humano !== false &&
       (n.estado === "nuevo" || n.estado === "contactado")
     ) {
       avances.push({ id: n.id, a: "respondido" });

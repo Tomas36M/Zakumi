@@ -78,6 +78,9 @@ export type Conversacion = {
   paused: boolean;
   last: string;
   last_at: string | null;
+  /** Veredicto del bot: true persona, false solo contestadora, null sin prospecto. */
+  humano: boolean | null;
+  contestadora: boolean;
 };
 
 export type MensajeChat = {
@@ -93,6 +96,9 @@ export type Historial = {
   messages: MensajeChat[];
   /** Última vez que escribió EL CLIENTE: define la ventana de 24h de Meta. */
   ultimo_del_cliente: string | null;
+  /** Veredicto del bot: true persona, false solo contestadora, null sin prospecto. */
+  humano: boolean | null;
+  contestadora: boolean;
 };
 
 /** Estados de una plantilla en Meta (lo que devuelve Graph, más el fallback). */
@@ -233,6 +239,8 @@ export type Tanda = {
   creado_en: string;
   funnel: FunnelTanda;
   interesados: number;
+  /** Respondidos que fueron persona (o sin clasificar); excluye lo que el bot marcó contestadora. */
+  humanos: number;
 };
 
 /** Conversaciones y leads del Labs llevan teléfono sentinel "labs:<session>". */
