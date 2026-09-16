@@ -228,7 +228,9 @@ Plan aprobado en `~/.claude/plans/hay-que-aprovechar-mas-reactive-toucan.md` (fa
   `count` en el servidor — no heredan el tope de 900 del mapa) y
   `/admin/territorios/[id]` (locales + acciones). El mapa ya no tiene lista: tocar un
   polígono abre su ficha (Barrer, Ver locales, Centrar, Renombrar, Eliminar); Dibujar,
-  Buscar en Google y Añadir manual viven en la barra. `useBarrido`/`DialogoBarrer`/
+  Buscar en Google y Añadir manual flotan SOBRE el mapa (`AccionesMapa`, en la misma
+  columna que `FiltrosMapa` para que el panel abierto no los tape). La banda de encima
+  del mapa (`BarraTerritorio`) solo aparece si falla la consulta de territorios. `useBarrido`/`DialogoBarrer`/
   `BarridoProgreso` NO cambiaron.
 - **Ficha de lead** = `leads/FichaLeadModal` (datos, notas, Chat con Zak, Llamar con
   IA, convertir, eliminar), la misma desde el mapa, la lista Leads y un territorio.

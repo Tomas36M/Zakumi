@@ -2,8 +2,16 @@
 
 import { useCallback, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { poligonoSeCruza, type PermisoBarrido, type Punto } from "@/lib/admin/barrido";
-import { FILTRO_VACIO, filtrarLeads, type FiltroLeads } from "@/lib/admin/filtros-leads";
+import {
+  poligonoSeCruza,
+  type PermisoBarrido,
+  type Punto,
+} from "@/lib/admin/barrido";
+import {
+  FILTRO_VACIO,
+  filtrarLeads,
+  type FiltroLeads,
+} from "@/lib/admin/filtros-leads";
 import type { EstadoCenso, Negocio } from "@/lib/admin/negocios";
 import type { ResultadoPlace } from "@/lib/admin/places";
 import {
@@ -18,6 +26,7 @@ import { FiltrosMapa } from "@/components/admin/mapa/FiltrosMapa";
 import { MapCanvas } from "@/components/admin/mapa/MapCanvas";
 import { SearchPanel } from "@/components/admin/mapa/SearchPanel";
 import { usePantallaCompleta } from "@/components/admin/mapa/usePantallaCompleta";
+import { AccionesMapa } from "./AccionesMapa";
 import { BarraTerritorio } from "./BarraTerritorio";
 import { BarridoProgreso, type AvisoBarrido } from "./BarridoProgreso";
 import { DialogoBarrer } from "./DialogoBarrer";
@@ -122,15 +131,22 @@ export function TerritorioView({
   const [filtros, setFiltros] = useState<FiltroLeads>(FILTRO_VACIO);
   const [tipoMapa, setTipoMapa] = useState<TipoMapa>("roadmap");
   const [pantallaCompleta, alternarPantallaCompleta] = usePantallaCompleta();
-  const negociosVisibles = useMemo(() => filtrarLeads(negocios, filtros), [negocios, filtros]);
+  const negociosVisibles = useMemo(
+    () => filtrarLeads(negocios, filtros),
+    [negocios, filtros],
+  );
 
   // El pin de un negocio abre su ficha en el modal del shell; el pin activo
   // del mapa es el del lead abierto.
-  const seleccionMapa: Seleccion = leadAbierto ? { tipo: "negocio", id: leadAbierto } : seleccion;
+  const seleccionMapa: Seleccion = leadAbierto
+    ? { tipo: "negocio", id: leadAbierto }
+    : seleccion;
 
   const resultadoSeleccionado = useMemo(() => {
     if (seleccion?.tipo !== "resultado") return null;
-    return busqueda.resultados.find((r) => r.placeId === seleccion.placeId) ?? null;
+    return (
+      busqueda.resultados.find((r) => r.placeId === seleccion.placeId) ?? null
+    );
   }, [seleccion, busqueda.resultados]);
 
   // Los territorios abiertos se buscan VIVOS en el array: el prop se renueva en
@@ -141,17 +157,23 @@ export function TerritorioView({
   // fallida a [], y perder la referencia a media faena desmontaría la banda
   // (abortando el barrido) para que el refresh siguiente la remontara y
   // disparara `arrancar` OTRA VEZ, sin que nadie lo confirmara.
-  const vivo = barrido ? (territorios.find((t) => t.id === barrido.territorioId) ?? null) : null;
+  const vivo = barrido
+    ? (territorios.find((t) => t.id === barrido.territorioId) ?? null)
+    : null;
   const [ultimoVivo, setUltimoVivo] = useState<Territorio | null>(null);
   if (vivo !== null && vivo !== ultimoVivo) setUltimoVivo(vivo);
   const territorioBarrido =
-    vivo ?? (barrido && ultimoVivo?.id === barrido.territorioId ? ultimoVivo : null);
+    vivo ??
+    (barrido && ultimoVivo?.id === barrido.territorioId ? ultimoVivo : null);
 
-  const aEstimar = aEstimarId ? (territorios.find((t) => t.id === aEstimarId) ?? null) : null;
+  const aEstimar = aEstimarId
+    ? (territorios.find((t) => t.id === aEstimarId) ?? null)
+    : null;
 
   // El territorio con la ficha abierta se resalta; con un barrido abierto, ESE
   // manda sobre el resaltado (es el que se está gastando plata en barrer).
-  const territorioResaltado = seleccion?.tipo === "territorio" ? seleccion.id : null;
+  const territorioResaltado =
+    seleccion?.tipo === "territorio" ? seleccion.id : null;
   const territorioActivo = barrido?.territorioId ?? territorioResaltado;
   const territorioSeleccionado = territorioResaltado
     ? (territorios.find((t) => t.id === territorioResaltado) ?? null)
@@ -160,7 +182,10 @@ export function TerritorioView({
   // Los números de la ficha salen del MISMO recuento que la tarjeta del hover.
   const cuentas = useMemo(() => cuentasPorTerritorio(negocios), [negocios]);
   const cruzado = useMemo(
-    () => (territorioSeleccionado ? poligonoSeCruza(territorioSeleccionado.poligono) : false),
+    () =>
+      territorioSeleccionado
+        ? poligonoSeCruza(territorioSeleccionado.poligono)
+        : false,
     [territorioSeleccionado],
   );
 
@@ -168,7 +193,11 @@ export function TerritorioView({
   // MapCanvas, y una función nueva en cada render los redibujaría todos.
   // Tocar el polígono abierto lo cierra.
   const onSeleccionarTerritorio = useCallback((id: string) => {
-    setSeleccion((s) => (s?.tipo === "territorio" && s.id === id ? null : { tipo: "territorio", id }));
+    setSeleccion((s) =>
+      s?.tipo === "territorio" && s.id === id
+        ? null
+        : { tipo: "territorio", id },
+    );
   }, []);
 
   // Los tres van en las dependencias del efecto que crea el overlay del trazo.
@@ -180,11 +209,15 @@ export function TerritorioView({
       // Un clic sobre el área ya dibujada llega por el polígono, y si además
       // llegara por el mapa serían dos vértices idénticos de un solo clic.
       const ultimo = t[t.length - 1];
-      if (ultimo && ultimo.lat === punto.lat && ultimo.lng === punto.lng) return t;
+      if (ultimo && ultimo.lat === punto.lat && ultimo.lng === punto.lng)
+        return t;
       return [...t, punto];
     });
   }, []);
-  const reemplazarTrazo = useCallback((puntos: Punto[]) => setTrazo(puntos), []);
+  const reemplazarTrazo = useCallback(
+    (puntos: Punto[]) => setTrazo(puntos),
+    [],
+  );
   const cerrarArea = useCallback(() => setNombrando(true), []);
 
   async function importar(aImportar: ResultadoPlace[]) {
@@ -221,15 +254,7 @@ export function TerritorioView({
         pantallaCompleta && "fixed inset-0 z-40 bg-isla",
       )}
     >
-      <BarraTerritorio
-        dibujando={modo !== null}
-        onDibujar={alternarDibujo}
-        buscando={seleccion?.tipo === "busqueda"}
-        onBuscar={() => setSeleccion((s) => (s?.tipo === "busqueda" ? null : { tipo: "busqueda" }))}
-        capturando={modoCaptura}
-        onCapturar={alternarCaptura}
-        fallaTerritorios={fallaTerritorios}
-      />
+      <BarraTerritorio fallaTerritorios={fallaTerritorios} />
 
       {modo && (
         <div className="shrink-0 px-5 pt-3">
@@ -325,18 +350,40 @@ export function TerritorioView({
                 onCerrarArea={cerrarArea}
               />
             )}
-            <EncuadrarTerritorio encuadre={encuadre} territorios={territorios} visible={!oculta} />
+            <EncuadrarTerritorio
+              encuadre={encuadre}
+              territorios={territorios}
+              visible={!oculta}
+            />
           </MapCanvas>
           {/* Fuera del APIProvider a propósito: no necesita el mapa, y así el
               sitio del mapa sigue siendo solo del mapa. */}
-          <FiltrosMapa
-            filtro={filtros}
-            onCambiar={setFiltros}
-            negocios={negocios}
-            territorios={territorios}
-            visibles={negociosVisibles.length}
-            censo={censo}
-          />
+          {/* Filtros y acciones en UNA columna: al desplegar los filtros, los
+              botones bajan solos en vez de quedar debajo del panel. El hueco
+              entre piezas no intercepta los clics del mapa. */}
+          <div className="pointer-events-none absolute top-3 left-3 z-10 flex max-w-[calc(100%-1.5rem)] flex-col items-start gap-1">
+            <FiltrosMapa
+              filtro={filtros}
+              onCambiar={setFiltros}
+              negocios={negocios}
+              territorios={territorios}
+              visibles={negociosVisibles.length}
+              censo={censo}
+            />
+            <AccionesMapa
+              dibujando={modo !== null}
+              onDibujar={alternarDibujo}
+              buscando={seleccion?.tipo === "busqueda"}
+              onBuscar={() =>
+                setSeleccion((s) =>
+                  s?.tipo === "busqueda" ? null : { tipo: "busqueda" },
+                )
+              }
+              capturando={modoCaptura}
+              onCapturar={alternarCaptura}
+              fallaTerritorios={fallaTerritorios}
+            />
+          </div>
         </div>
 
         <aside
@@ -355,7 +402,10 @@ export function TerritorioView({
               barriendoId={barrido?.territorioId ?? null}
               onBarrer={() => setAEstimarId(territorioSeleccionado.id)}
               onCentrar={() =>
-                setEncuadre((e) => ({ id: territorioSeleccionado.id, n: (e?.n ?? 0) + 1 }))
+                setEncuadre((e) => ({
+                  id: territorioSeleccionado.id,
+                  n: (e?.n ?? 0) + 1,
+                }))
               }
               onCerrar={() => setSeleccion(null)}
               onCambio={() => router.refresh()}
@@ -373,7 +423,9 @@ export function TerritorioView({
               seleccionPlaceId={null}
               onBuscar={busqueda.buscar}
               onImportar={importar}
-              onSeleccionar={(placeId) => setSeleccion({ tipo: "resultado", placeId })}
+              onSeleccionar={(placeId) =>
+                setSeleccion({ tipo: "resultado", placeId })
+              }
             />
           ) : (
             <FichaLateral
@@ -389,7 +441,9 @@ export function TerritorioView({
               }}
               // Cerrar un resultado vuelve a la lista de la búsqueda.
               onCerrar={() =>
-                setSeleccion(seleccion?.tipo === "resultado" ? { tipo: "busqueda" } : null)
+                setSeleccion(
+                  seleccion?.tipo === "resultado" ? { tipo: "busqueda" } : null,
+                )
               }
             />
           )}

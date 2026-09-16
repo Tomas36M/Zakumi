@@ -1,16 +1,8 @@
 "use client";
 
 import { useMap } from "@vis.gl/react-google-maps";
-import {
-  Crosshair,
-  Layers,
-  Maximize2,
-  Minimize2,
-  Minus,
-  Plus,
-  type LucideIcon,
-} from "lucide-react";
-import { cn } from "@/lib/cn";
+import { Crosshair, Layers, Maximize2, Minimize2, Minus, Plus } from "lucide-react";
+import { BotonMapa } from "./BotonMapa";
 
 export type TipoMapa = "roadmap" | "hybrid";
 
@@ -26,40 +18,6 @@ type Props = {
   pantallaCompleta: boolean;
   onPantallaCompleta: () => void;
 };
-
-/** Un botón redondo cuya etiqueta crece hacia la izquierda al pasar el ratón. */
-function Accion({
-  Icono,
-  etiqueta,
-  activa = false,
-  onClick,
-}: {
-  Icono: LucideIcon;
-  etiqueta: string;
-  activa?: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      aria-label={etiqueta}
-      aria-pressed={activa}
-      title={etiqueta}
-      onClick={onClick}
-      className={cn(
-        "group flex h-9 items-center self-end overflow-hidden rounded-full border bg-isla/90 backdrop-blur-sm transition-colors hover:border-acento/40 hover:text-tinta",
-        activa ? "border-acento text-acento" : "border-hairline text-tinta-60",
-      )}
-    >
-      <span className="max-w-0 overflow-hidden text-xs font-medium whitespace-nowrap opacity-0 transition-all duration-300 group-hover:max-w-40 group-hover:pl-3 group-hover:opacity-100">
-        {etiqueta}
-      </span>
-      <span className="flex h-9 w-9 shrink-0 items-center justify-center">
-        <Icono className="h-4 w-4" />
-      </span>
-    </button>
-  );
-}
 
 /**
  * La columna de acciones del mapa (patrón del mapa de LUCI): zoom, recentrar,
@@ -96,16 +54,16 @@ export function ControlesMapa({
 
   return (
     <div className="absolute right-3 bottom-8 z-10 flex flex-col items-end gap-1">
-      <Accion Icono={Plus} etiqueta="Acercar" onClick={() => zoom(1)} />
-      <Accion Icono={Minus} etiqueta="Alejar" onClick={() => zoom(-1)} />
-      <Accion Icono={Crosshair} etiqueta="Recentrar en los negocios" onClick={recentrar} />
-      <Accion
+      <BotonMapa Icono={Plus} etiqueta="Acercar" onClick={() => zoom(1)} />
+      <BotonMapa Icono={Minus} etiqueta="Alejar" onClick={() => zoom(-1)} />
+      <BotonMapa Icono={Crosshair} etiqueta="Recentrar en los negocios" onClick={recentrar} />
+      <BotonMapa
         Icono={Layers}
         etiqueta={tipoMapa === "hybrid" ? "Ver mapa" : "Ver satélite"}
         activa={tipoMapa === "hybrid"}
         onClick={() => onTipoMapa(tipoMapa === "hybrid" ? "roadmap" : "hybrid")}
       />
-      <Accion
+      <BotonMapa
         Icono={pantallaCompleta ? Minimize2 : Maximize2}
         etiqueta={pantallaCompleta ? "Salir de pantalla completa" : "Pantalla completa"}
         activa={pantallaCompleta}
