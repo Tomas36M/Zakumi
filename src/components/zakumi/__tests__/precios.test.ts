@@ -47,12 +47,15 @@ describe("las tarifas salen del catálogo", () => {
 describe("combos", () => {
   it("son los cuatro aprobados y hay uno destacado", () => {
     expect(COMBOS.map((c) => [c.slug, c.precio])).toEqual([
+      ["plan-completo", 690_000],
       ["domicilios-propios", 890_000],
-      ["arranque-digital", 690_000],
       ["agenda-llena", 690_000],
       ["tienda-y-zak", 1_590_000],
     ]);
-    expect(COMBO_DESTACADO.slug).toBe("domicilios-propios");
+    // El destacado del hero es para cualquier negocio, no para un nicho.
+    expect(COMBO_DESTACADO.slug).toBe("plan-completo");
+    expect(COMBO_DESTACADO.incluye.join(" ")).toMatch(/Landing/);
+    expect(COMBO_DESTACADO.incluye.join(" ")).toMatch(/WhatsApp/);
     expect(MENSUALIDAD_ZAK).toBe(129_900);
   });
 
@@ -60,9 +63,9 @@ describe("combos", () => {
     for (const c of COMBOS) {
       if (c.sueltos !== undefined) expect(c.sueltos, c.slug).toBeGreaterThan(c.precio);
     }
-    // Arranque y Agenda ahorran $99.900 frente a landing + montaje de Zak.
-    const arranque = COMBOS.find((c) => c.slug === "arranque-digital")!;
-    expect(arranque.sueltos! - arranque.precio).toBe(99_900);
+    // El plan completo y Agenda ahorran $99.900 frente a landing + montaje de Zak.
+    const completo = COMBOS.find((c) => c.slug === "plan-completo")!;
+    expect(completo.sueltos! - completo.precio).toBe(99_900);
   });
 });
 
