@@ -89,11 +89,11 @@ export function componentesSaludo(vertical: VerticalProspeccion): unknown[] {
 // cuenta las «sin cambios».
 export const PLANTILLA_SALUDO = "saludo_dueno";
 export const PLANTILLA_SALUDO_TEXTO = [
-  "¡Hola! 👋 Este mensaje lo escribe una IA: soy Zak, el asistente de Zakumi Estudio. No te escribo para pedir nada — esto es justo lo que hacemos.",
+  "Hola, buenas 👋 Soy Zak, de Zakumi Estudio, en Bogotá.",
   "",
-  "Montamos agentes como yo para que atiendan el WhatsApp de un negocio: responden al instante, toman el pedido o la reserva completos y no se les escapa un cliente en hora pico.",
+  "Hacemos tres cosas para negocios como el tuyo: páginas web que convierten, aplicaciones web y móviles, y agentes de IA que atienden tu WhatsApp para que no se quede ningún cliente sin respuesta.",
   "",
-  "¿Hablo con el dueño o con quien decide estas cosas? Te muestro en un minuto cómo se vería en tu negocio.",
+  "Antes de contarte más: ¿con quién hablo? ¿Eres el dueño del negocio?",
 ].join("\n");
 
 // ---------- Verticales de prospección ----------
