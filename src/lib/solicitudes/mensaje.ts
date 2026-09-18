@@ -92,11 +92,20 @@ export function construirAvisoRescate(d: DatosAvisoRescate): string {
   return lineas.join("\n");
 }
 
-// ---- Plantillas de Meta (las de utilidad creadas el 2026-09-02 en el WABA) ----
+// ---- Plantillas de Meta (avisos internos del equipo) ----
 // Nombres tal cual están en Meta. Las variables van EN EL ORDEN del cuerpo
 // aprobado: cambiar el orden acá sin cambiar la plantilla desordena el aviso.
-export const PLANTILLA_AVISO_SOLICITUD = "aviso_solicitud";
-export const PLANTILLA_AVISO_RESCATE = "aviso_prospecto_perdido";
+//
+// Las `_v2` (18 sep 2026) son las MISMAS —cuerpo, pie y botón idénticos— pero
+// creadas en categoría **UTILITY**: las originales nacieron MARKETING y eso
+// cuesta $46 COP por aviso en vez de ~$3, para un mensaje que Zakumi se manda
+// A SÍ MISMA (16 de los 95 cobrados de septiembre eran esto). La categoría de
+// una plantilla APROBADA no se puede cambiar —Meta responde «No puedes
+// actualizar una categoría de plantilla aprobada», subcódigo 3835031—, así que
+// el camino es crear la gemela y apuntar acá. Las viejas quedan aprobadas en
+// Meta y nadie las manda, igual que saludo_zakumi.
+export const PLANTILLA_AVISO_SOLICITUD = "aviso_solicitud_v2";
+export const PLANTILLA_AVISO_RESCATE = "aviso_prospecto_perdido_v2";
 
 /** aviso_solicitud: {{1}} canal · {{2}} contacto · {{3}} servicio · {{4}} detalle.
  *  Un solo hueco para todo lo variable (cita, Meet, lo que pidió, horario), así

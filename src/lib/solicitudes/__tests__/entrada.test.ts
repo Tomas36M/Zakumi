@@ -94,7 +94,7 @@ describe("registrarSolicitudEntrante", () => {
     expect(avisar.mock.calls[0][0]).toContain("María");
     // El aviso viaja con su plantilla de Meta: fuera de la ventana de 24h el
     // texto libre no llega (error 131047), la plantilla sí.
-    expect(avisar.mock.calls[0][1]).toMatchObject({ nombre: "aviso_solicitud" });
+    expect(avisar.mock.calls[0][1]).toMatchObject({ nombre: "aviso_solicitud_v2" });
     expect(avisar.mock.calls[0][1]?.variables[1]).toContain("María");
   });
 
@@ -332,7 +332,7 @@ describe("registrarSolicitudEntrante", () => {
     expect(avisar).toHaveBeenCalledOnce();
     expect(avisar.mock.calls[0][0]).toContain("NO quedó en la bandeja");
     expect(avisar.mock.calls[0][0]).toContain("María");
-    expect((avisar.mock.calls[0] as unknown[])[1]).toMatchObject({ nombre: "aviso_prospecto_perdido" });
+    expect((avisar.mock.calls[0] as unknown[])[1]).toMatchObject({ nombre: "aviso_prospecto_perdido_v2" });
   });
 
   it("un detalle de más de 2000 caracteres llega truncado (lo exige el check de mensaje)", async () => {

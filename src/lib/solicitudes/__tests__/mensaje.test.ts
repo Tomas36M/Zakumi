@@ -81,9 +81,11 @@ describe("construirAviso", () => {
   });
 });
 
-describe("variablesAviso (plantilla aviso_solicitud)", () => {
+describe("variablesAviso (plantilla aviso_solicitud_v2)", () => {
   it("son exactamente las 4 del cuerpo aprobado en Meta: canal, contacto, servicio, detalle", () => {
-    expect(PLANTILLA_AVISO_SOLICITUD).toBe("aviso_solicitud");
+    // La _v2 es la misma plantilla en categoría UTILITY (18 sep 2026): mismo
+    // cuerpo, mismas 4 variables y en el mismo orden.
+    expect(PLANTILLA_AVISO_SOLICITUD).toBe("aviso_solicitud_v2");
     const v = variablesAviso(BASE);
     expect(v).toHaveLength(4);
     expect(v[0]).toBe("llamada de voz");
@@ -119,9 +121,9 @@ describe("variablesAviso (plantilla aviso_solicitud)", () => {
   });
 });
 
-describe("variablesAvisoRescate (plantilla aviso_prospecto_perdido)", () => {
+describe("variablesAvisoRescate (plantilla aviso_prospecto_perdido_v2)", () => {
   it("son las 3 del cuerpo aprobado: canal, motivo, datos", () => {
-    expect(PLANTILLA_AVISO_RESCATE).toBe("aviso_prospecto_perdido");
+    expect(PLANTILLA_AVISO_RESCATE).toBe("aviso_prospecto_perdido_v2");
     const v = variablesAvisoRescate({
       origen: "whatsapp",
       motivo: "db",
