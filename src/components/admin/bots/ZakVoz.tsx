@@ -5,9 +5,11 @@ import type { AgenteVozFila } from "@/lib/admin/voz";
 import type { VozEleven } from "@/lib/voz/api";
 import type { LlamadaVoz } from "@/lib/voz/tipos";
 import { EmptyState } from "@/components/admin/ui/EmptyState";
+import type { EstadoVozZak } from "@/lib/admin/voz-estado";
 import { ConfigAgenteVoz } from "@/components/admin/voz/ConfigAgenteVoz";
 import { CrearZakVoz } from "@/components/admin/voz/CrearZakVoz";
 import { LabVoz } from "@/components/admin/voz/LabVoz";
+import { ColaVoz } from "@/components/admin/voz/ColaVoz";
 import { LlamadasVoz } from "@/components/admin/voz/LlamadasVoz";
 import { TandaVoz } from "@/components/admin/voz/TandaVoz";
 import { WidgetVoz } from "@/components/admin/voz/WidgetVoz";
@@ -16,6 +18,8 @@ type Props = {
   tab: PestanaVoz;
   /** El agente es_zak, o null si a Zak todavía no le han dado voz. */
   agente: AgenteVozFila | null;
+  /** Qué tan lista está la voz: lo que habilita «Llamar con IA» en la cola. */
+  vozZak: EstadoVozZak;
   llamadas: LlamadaVoz[];
   llamadasHoy: number;
   voces: VozEleven[] | null;
@@ -33,6 +37,7 @@ type Props = {
 export function ZakVoz({
   tab,
   agente,
+  vozZak,
   llamadas,
   llamadasHoy,
   voces,
@@ -66,6 +71,7 @@ export function ZakVoz({
         )}
       </div>
       {sub === "llamadas" && <LlamadasVoz agenteId={agente.id} llamadas={llamadas} />}
+      {sub === "cola" && <ColaVoz vozZak={vozZak} />}
       {sub === "tanda" && (
         <TandaVoz agente={agente} llamadasHoy={llamadasHoy} telefoniaLista={telefoniaLista} />
       )}

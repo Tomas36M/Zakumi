@@ -47,6 +47,7 @@ const LABEL_VOZ: Record<PestanaVoz, string> = {
   "voz-config": "Configuración",
   "voz-lab": "Lab",
   "voz-llamadas": "Llamadas",
+  "voz-cola": "Por llamar",
   "voz-tanda": "Tanda",
   "voz-widget": "Widget",
 };
@@ -236,6 +237,7 @@ export function ZakView({
           <ZakVoz
             tab={tab as PestanaVoz}
             agente={agenteVoz}
+            vozZak={vozZak}
             llamadas={llamadasVoz}
             llamadasHoy={llamadasVozHoy}
             voces={voces}
