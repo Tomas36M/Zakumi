@@ -24,53 +24,63 @@ ahora en el primero.
 
 ## El texto (el que van a leer 50 negocios)
 
-Segunda versión, del 18 sep. La primera se probó en el celular de Tomás y se
-cayó — ver «Lo que no va», abajo.
+**Versión viva: la escribió Tomás el 18 sep**, después de probar en su celular
+las dos que había escrito Claude. Plantilla `saludo_dueno_v2`, id de Meta
+`3404517709727463`. Acá va con la puntuación corregida y ni una palabra
+cambiada.
 
 ```
-Hola, buenas 👋 Soy Zak, de Zakumi Estudio, en Bogotá.
+¡Hola! ¿Qué tal? Soy Zak, un agente de inteligencia artificial. Te escribo de
+Zakumi Estudio, una agencia de software que ayuda a emprendedores a impulsar
+sus ventas.
 
 Hacemos tres cosas para negocios como el tuyo: páginas web que convierten,
 aplicaciones web y móviles, y agentes de IA que atienden tu WhatsApp para que
 no se quede ningún cliente sin respuesta.
 
 Antes de contarte más: ¿con quién hablo? ¿Eres el dueño del negocio?
+
+¿Quieres más información? Visita nuestra página web: https://zakumistudio.com/
 ```
 
-Tres decisiones, por si se quiere discutir alguna:
+Qué conserva de lo aprendido:
 
-1. **Los tres servicios, con las palabras de la imagen.** El header ofrece
-   «Páginas web que convierten · Aplicaciones web y móviles · Agentes de IA
-   para tu negocio»: un texto que vendiera solo agentes de WhatsApp diría menos
-   que su propia imagen, y eso se lee como error. Van en UNA línea y sin
-   viñetas — el menú con viñetas de `saludo_general` es justo lo que invitaba a
-   la contestadora.
-2. **Zak firma, no se declara.** Ni «este mensaje lo escribe una IA» ni
-   «asistente de inteligencia artificial»: ponerse la etiqueta de robot en la
-   primera frase regala la sospecha que el mensaje tiene que desarmar. Que
-   vendemos agentes de IA sí se dice — es lo que ofrecemos, no lo que firmamos.
-3. **Cierra en una pregunta de sí o no que solo una persona contesta**
-   («¿eres el dueño del negocio?»). Es lo más fácil de responder que existe y
-   ninguna bienvenida automática la responde. Si no llega respuesta, el número
-   cae en la cola de llamadas.
+1. **Los tres servicios, con las palabras de la imagen**, en una línea y sin
+   viñetas — el menú con viñetas de `saludo_general` es lo que invitaba a la
+   contestadora del negocio.
+2. **Cierra en una pregunta de sí o no que solo una persona contesta**
+   («¿eres el dueño del negocio?»). Si no llega respuesta, el número cae en la
+   cola de llamadas.
+3. **Sin cifras** (regla dura: los precios los dice la página) y sin variables
+   — la personalización con el nombre del negocio es cosa del agente de voz,
+   que ya llama a un local con nombre.
 
-Sin cifras (regla dura: los precios los dice la página).
+Y una decisión que es de Tomás, no de la evidencia: **se presenta como agente
+de inteligencia artificial**. Claude había quitado esa frase; él la volvió a
+poner al reescribir el texto. Queda dicho para que nadie la "arregle" creyendo
+que es un descuido.
 
-### Lo que no va (v1, rechazada el 18 sep)
+### El historial de esta plantilla (por qué hay tres)
 
-El primer texto abría con «Este mensaje lo escribe una IA: soy Zak, el
-asistente de Zakumi Estudio», vendía solo agentes de WhatsApp y cerraba con
-«¿Hablo con el dueño o con quien decide estas cosas?». Tomás lo probó en su
-celular y lo bajó por las tres cosas: la declaración de IA («esto no por
-dios»), la omisión de las páginas web que la imagen sí ofrece, y la pregunta
-mal redactada. Quedó como regla en el wiki de preferencias del usuario.
+| Plantilla | Texto | Estado |
+|---|---|---|
+| `saludo_general` | catálogo de 4 servicios con viñetas | aprobada, sin uso |
+| `saludo_dueno` | v1 de Claude («este mensaje lo escribe una IA»), editada a v2 | aprobada, sin uso |
+| `saludo_dueno_v2` | **el de Tomás — el que se manda** | la viva |
+
+El tercer cambio del día ya no cupo como edición: Meta respondió
+`code 100 · subcode 2388124 — «Solo puedes editar una plantilla activa una vez
+cada 24 horas»`. Esperar hasta el otro día costaba una jornada de prospección,
+así que se creó la plantilla nueva. **Esa es la razón de la regla «se crea, no
+se edita»**, y ahora está medida: la primera edición del día pasó, la segunda
+rebotó.
 
 Cambiar el texto es cambiar **un string en tres archivos**, y los tres tienen
 que quedar idénticos byte a byte (Meta guarda el texto y el panel lo compara
 para promover borrador→vigente):
 
 - `whatsapp-bot/scripts/crear_plantilla_saludo.py` → `CUERPO`
-- `supabase/plantillas-saludo-dueno-texto.sql` → `texto_borrador`
+- `supabase/plantillas-saludo-dueno-v2.sql` → `texto_borrador`
 - `src/lib/admin/zak.ts` → `PLANTILLA_SALUDO_TEXTO` (el espejo que se guarda
   como mensaje del asistente al abrir el chat)
 

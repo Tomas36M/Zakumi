@@ -79,21 +79,24 @@ export function componentesSaludo(vertical: VerticalProspeccion): unknown[] {
 // sale de la tabla `plantillas_zak` (ver zak-verticales.ts), así que dejarlo
 // viejo no rompe un envío — pero si Supabase no responde, el genérico volvería
 // en silencio al texto anterior.
-// `saludo_dueno` reemplazó a `saludo_general` el 2026-09-18 (id de Meta
-// 3260201447512388): el texto viejo era un catálogo de servicios que terminaba
-// en «Cuéntame qué hace tu negocio» — justo lo que la contestadora del negocio
-// está hecha para contestar, y 18 de 22 «respuestas» de las tandas 4-6 fueron
-// máquinas. El nuevo dice que lo escribe una IA, que no viene a pedir nada, y
-// pregunta por el dueño (algo que el bot de atención del negocio no sabe
-// responder). Plantilla nueva y no edición: Meta solo acepta 1 cada 24 h y
-// cuenta las «sin cambios».
-export const PLANTILLA_SALUDO = "saludo_dueno";
+// `saludo_dueno_v2` es la plantilla viva desde el 2026-09-18 (id de Meta
+// 3404517709727463); el texto lo escribió Tomás. Antes estuvo `saludo_general`,
+// un catálogo con viñetas que terminaba en «Cuéntame qué hace tu negocio» —
+// justo lo que la contestadora del negocio está hecha para contestar, y 18 de
+// 22 «respuestas» de las tandas 4-6 fueron máquinas. El texto de hoy nombra los
+// tres servicios en una línea y cierra en una pregunta de sí o no que solo
+// contesta una persona. Hubo una `saludo_dueno` (v1 y v2 del copy, la segunda
+// por edición) que quedó aprobada y sin uso: el tercer cambio el mismo día ya
+// no cabía —Meta permite 1 edición cada 24 h— y por eso se creó esta.
+export const PLANTILLA_SALUDO = "saludo_dueno_v2";
 export const PLANTILLA_SALUDO_TEXTO = [
-  "Hola, buenas 👋 Soy Zak, de Zakumi Estudio, en Bogotá.",
+  "¡Hola! ¿Qué tal? Soy Zak, un agente de inteligencia artificial. Te escribo de Zakumi Estudio, una agencia de software que ayuda a emprendedores a impulsar sus ventas.",
   "",
   "Hacemos tres cosas para negocios como el tuyo: páginas web que convierten, aplicaciones web y móviles, y agentes de IA que atienden tu WhatsApp para que no se quede ningún cliente sin respuesta.",
   "",
   "Antes de contarte más: ¿con quién hablo? ¿Eres el dueño del negocio?",
+  "",
+  "¿Quieres más información? Visita nuestra página web: https://zakumistudio.com/",
 ].join("\n");
 
 // ---------- Verticales de prospección ----------
