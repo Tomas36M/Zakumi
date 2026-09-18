@@ -86,12 +86,22 @@ cambios» — esa trampa ya costó un día el 13 sep.
 
    Imprime el id y el estado. Con `--dry` solo muestra el payload sin crear.
 
+   ✅ **HECHO el 2026-09-18**: `saludo_dueno` = **`3260201447512388`**,
+   PENDING · MARKETING · `es`, header de imagen (`generico-v2.jpg`), cuerpo
+   verificado idéntico al `CUERPO` del script. Se creó llamando al Graph API con
+   el mismo payload del script (dos pasos: `POST /{app_id}/uploads` + bytes con
+   `Authorization: OAuth` → `header_handle`, y `POST /{waba}/message_templates`)
+   porque el checkout del sitio no tiene `railway link` ni el `DATABASE_URL` del
+   bot, y el script necesita la fila de la instancia. El script sigue siendo el
+   camino reproducible: correrlo ahora ve que ya existe y no duplica.
+
 2. **Esperar APPROVED**: `/admin/zak` → Plantillas → «Refrescar estados», o
    mirar la consola de Meta.
 
-3. **Apuntar el genérico a la plantilla nueva**: pegar el id que imprimió el
-   paso 1 en `supabase/plantillas-saludo-dueno.sql` y correrlo en el SQL Editor
-   de Supabase.
+3. **Apuntar el genérico a la plantilla nueva**: correr
+   `supabase/plantillas-saludo-dueno.sql` en el SQL Editor de Supabase — el id
+   del paso 1 **ya está pegado** ahí (si algún día se crea otra plantilla, ese
+   es el único valor que hay que cambiar).
 
 4. **Refrescar estados** otra vez en el panel: con APPROVED y el texto
    coincidente, el borrador pasa a vigente y el selector deja mandarla.

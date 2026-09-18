@@ -72,24 +72,28 @@ export function componentesSaludo(vertical: VerticalProspeccion): unknown[] {
   ];
 }
 
-// El cuerpo visible de saludo_general: se guarda como mensaje del asistente al
+// El cuerpo visible de saludo_dueno: se guarda como mensaje del asistente al
 // abrir/reabrir un chat, para que la conversación exista en la bandeja y Zak
 // sepa que ya saludó. Mantener en espejo con la plantilla aprobada en Meta.
-// `saludo_general` reemplazó a `saludo_zakumi` el 2026-09-13 (imagen nueva y
-// texto que dice qué es Zakumi y qué vende, sin asteriscos): editar la vieja
-// estaba bloqueado por el límite de Meta de 1 edición cada 24 h.
-export const PLANTILLA_SALUDO = "saludo_general";
+// Esto es SOLO el fallback del genérico: la plantilla que se manda de verdad
+// sale de la tabla `plantillas_zak` (ver zak-verticales.ts), así que dejarlo
+// viejo no rompe un envío — pero si Supabase no responde, el genérico volvería
+// en silencio al texto anterior.
+// `saludo_dueno` reemplazó a `saludo_general` el 2026-09-18 (id de Meta
+// 3260201447512388): el texto viejo era un catálogo de servicios que terminaba
+// en «Cuéntame qué hace tu negocio» — justo lo que la contestadora del negocio
+// está hecha para contestar, y 18 de 22 «respuestas» de las tandas 4-6 fueron
+// máquinas. El nuevo dice que lo escribe una IA, que no viene a pedir nada, y
+// pregunta por el dueño (algo que el bot de atención del negocio no sabe
+// responder). Plantilla nueva y no edición: Meta solo acepta 1 cada 24 h y
+// cuenta las «sin cambios».
+export const PLANTILLA_SALUDO = "saludo_dueno";
 export const PLANTILLA_SALUDO_TEXTO = [
-  "¡Hola! 👋 Soy Zak, el asistente de IA de Zakumi Estudio.",
+  "¡Hola! 👋 Este mensaje lo escribe una IA: soy Zak, el asistente de Zakumi Estudio. No te escribo para pedir nada — esto es justo lo que hacemos.",
   "",
-  "Ayudamos a negocios como el tuyo a vender más y atender mejor con tecnología hecha a la medida:",
+  "Montamos agentes como yo para que atiendan el WhatsApp de un negocio: responden al instante, toman el pedido o la reserva completos y no se les escapa un cliente en hora pico.",
   "",
-  "🤖 Agentes de IA para WhatsApp que responden, toman pedidos y captan clientes 24/7",
-  "📞 Agentes de voz que contestan y hacen llamadas por ti",
-  "🌐 Páginas web y tiendas en línea con pasarela de pagos",
-  "📊 CRM y automatizaciones para no perder ningún cliente",
-  "",
-  "Cuéntame qué hace tu negocio y te digo cómo podemos ayudarte. Si quieres, te mando el brochure con servicios y precios. 🧡",
+  "¿Hablo con el dueño o con quien decide estas cosas? Te muestro en un minuto cómo se vería en tu negocio.",
 ].join("\n");
 
 // ---------- Verticales de prospección ----------

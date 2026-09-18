@@ -250,8 +250,8 @@ describe("verticalPara", () => {
     expect(verticalPara("convenience store").slug).toBe("comercio");
   });
 
-  it("lo desconocido cae al genérico (saludo_general)", () => {
-    expect(verticalPara("manufacturer").plantilla).toBe("saludo_general");
+  it("lo desconocido cae al genérico (saludo_dueno)", () => {
+    expect(verticalPara("manufacturer").plantilla).toBe("saludo_dueno");
     expect(verticalPara("bank").slug).toBe("generico");
     expect(verticalPara(null).slug).toBe("generico");
   });
@@ -469,7 +469,7 @@ describe("verticalDeSaludo", () => {
 describe("verticalPorSlug", () => {
   it("encuentra el vertical por su slug (el que eligió el humano en la UI)", () => {
     expect(verticalPorSlug("panaderia").plantilla).toBe("saludo_panaderia");
-    expect(verticalPorSlug("generico").plantilla).toBe("saludo_general");
+    expect(verticalPorSlug("generico").plantilla).toBe("saludo_dueno");
   });
 
   it("slug desconocido o ausente cae al genérico: jamás rompe el envío", () => {

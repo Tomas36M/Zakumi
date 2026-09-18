@@ -21,13 +21,15 @@
 -- trampa que costó un día el 13 sep). `saludo_general` queda aprobada y nadie
 -- la manda, igual que `saludo_zakumi`.
 --
--- ⚠️ ANTES de correr esto:
---   1) crear la plantilla en Meta:
---      railway run --service bot python scripts/crear_plantilla_saludo.py
---   2) pegar abajo el id que imprimió (meta_template_id). Con 'PEGAR_ID_META'
---      sin reemplazar, el UPDATE no hace nada: el WHERE lo impide a propósito.
---   3) el texto de abajo tiene que ser IDÉNTICO byte a byte al `CUERPO` del
---      script — el panel compara el texto para promover borrador→vigente.
+-- ⚠️ Pasos 1 y 2 ya HECHOS el 2026-09-18: la plantilla está creada en Meta
+-- (id `3260201447512388`, PENDING · MARKETING · es, header de imagen) y el id
+-- ya está pegado abajo. Se creó con el mismo payload del script
+-- (`whatsapp-bot/scripts/crear_plantilla_saludo.py`, que sigue siendo el camino
+-- reproducible: correrlo otra vez ve que ya existe y no duplica nada) porque
+-- este checkout no tiene railway linkeado ni DATABASE_URL del bot.
+--   3) el texto de abajo es IDÉNTICO byte a byte al `CUERPO` del script y al
+--      que quedó guardado en Meta (verificado) — el panel compara el texto
+--      para promover borrador→vigente.
 --
 -- Cómo queda: como una edición EN REVISIÓN (borrador = lo nuevo, vigente = lo
 -- viejo, estado PENDING). El selector del cockpit no deja mandar el genérico
@@ -43,7 +45,7 @@
 -- propósito: un reemplazar-todo del marcador no lo toca.
 do $$
 begin
-  if 'PEGAR_ID_META' = 'PEGAR_ID' || '_META' then
+  if '3260201447512388' = 'PEGAR_ID' || '_META' then
     raise exception 'Falta pegar el meta_template_id: corre antes whatsapp-bot/scripts/crear_plantilla_saludo.py y pon el id que imprima';
   end if;
 end $$;
@@ -57,7 +59,7 @@ set
   estado_meta          = 'PENDING',
   motivo_rechazo       = null,
   categoria_meta       = 'MARKETING',
-  meta_template_id     = 'PEGAR_ID_META',
+  meta_template_id     = '3260201447512388',
   envios_revision      = '{}'::timestamptz[]   -- plantilla nueva: el contador de ediciones arranca en cero
 where slug = 'generico'
   and plantilla <> 'saludo_dueno';
