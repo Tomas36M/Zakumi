@@ -1,4 +1,10 @@
 -- ============================================================================
+-- ⚠️ SUPERADO el mismo 2026-09-18 por `plantillas-saludo-dueno-v2.sql`: la
+-- fila `generico` ya no sigue a `saludo_dueno` sino a `saludo_dueno_v2`, con
+-- el texto que escribió Tomás. Este archivo queda como registro; correrlo hoy
+-- revienta a propósito en la guarda de abajo (la fila no apunta a
+-- `saludo_dueno`), que es lo que tiene que pasar.
+--
 -- Texto nuevo de `saludo_dueno` (2026-09-18, segunda versión del copy).
 --
 -- Por qué: Tomás probó la primera versión en su celular y la rechazó por tres
