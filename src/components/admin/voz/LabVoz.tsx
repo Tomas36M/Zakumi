@@ -2,18 +2,16 @@
 
 import Script from "next/script";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState, useTransition } from "react";
-import {
-  estadoLlamadaVoz,
-  llamadaPruebaVoz,
-  type FaseLlamadaLab,
-} from "@/lib/admin/voz-actions";
+import { useCallback, useState, useTransition } from "react";
+import { estadoLlamadaVoz, llamadaPruebaVoz } from "@/lib/admin/voz-actions";
 import type { AgenteVozFila } from "@/lib/admin/voz";
 import { Banner } from "@/components/admin/ui/Banner";
 import { Button } from "@/components/admin/ui/Button";
+import { ChatBubble } from "@/components/admin/ui/ChatBubble";
 import { Field, Input } from "@/components/admin/ui/Field";
 import { Island } from "@/components/admin/ui/Island";
 import { DetalleLlamada } from "./LlamadasVoz";
+import { useLlamadaEnVivo } from "./useLlamadaEnVivo";
 
 // El widget es un custom element; React 19 tipa JSX dentro del módulo react
 // y eso solo se puede declarar con namespace (no hay equivalente ES2015).
@@ -28,9 +26,6 @@ declare module "react" {
     }
   }
 }
-
-const POLL_MS = 4_000;
-const MAX_INTENTOS = 90; // ~6 minutos: más que cualquier prueba razonable
 
 const COPY_FASE: Record<string, string> = {
   buscando: "Marcando…",
@@ -61,58 +56,27 @@ export function LabVoz({
 
   const [telefono, setTelefono] = useState("");
   const [enCurso, setEnCurso] = useState<string | null>(null);
-  const [fase, setFase] = useState<FaseLlamadaLab | null>(null);
-  const [agotado, setAgotado] = useState(false);
   const [sinId, setSinId] = useState(false);
   const [widgetCaido, setWidgetCaido] = useState(false);
-  const intentos = useRef(0);
-  const tickEnVuelo = useRef(false);
 
   const widgetListo = Boolean(agente.agent_id_eleven) && agente.activo;
 
-  useEffect(() => {
-    if (!enCurso) return;
-    let activo = true;
-    const timer = setInterval(() => {
-      void (async () => {
-        if (tickEnVuelo.current) return; // el tick anterior sigue en vuelo: sin apilar ni desordenar
-        tickEnVuelo.current = true;
-        intentos.current += 1;
-        try {
-          const f = await estadoLlamadaVoz(agente.id, enCurso);
-          if (!activo) return;
-          setFase(f);
-          if (f.fase === "aterrizada" || f.fase === "error") {
-            setEnCurso(null);
-            if (f.fase === "aterrizada") router.refresh(); // contadores + pestaña Llamadas
-            return;
-          }
-        } catch {
-          // Transporte caído (red, deploy a mitad): tick perdido, se reintenta —
-          // el tope de intentos de abajo evita pollear para siempre.
-        } finally {
-          tickEnVuelo.current = false;
-        }
-        if (!activo) return;
-        if (intentos.current >= MAX_INTENTOS) {
-          setEnCurso(null);
-          setAgotado(true);
-        }
-      })();
-    }, POLL_MS);
-    return () => {
-      activo = false;
-      clearInterval(timer);
-    };
-  }, [enCurso, agente.id, router]);
+  // El mismo narrador que usa el cockpit de Zak, preguntando por ESTE agente.
+  const consultar = useCallback(
+    (conversationId: string) => estadoLlamadaVoz(agente.id, conversationId),
+    [agente.id],
+  );
+  const { fase, turnos, activo, agotado } = useLlamadaEnVivo({
+    conversationId: enCurso,
+    consultar,
+    onAterrizada: () => router.refresh(), // contadores + pestaña Llamadas
+  });
+  const dichos = turnos.filter((t) => t.message);
 
   function llamar() {
     setError(null);
-    setFase(null);
-    setAgotado(false);
+    setEnCurso(null);
     setSinId(false);
-    intentos.current = 0;
-    tickEnVuelo.current = false;
     startTransition(async () => {
       try {
         const r = await llamadaPruebaVoz(agente.id, telefono);
@@ -122,7 +86,6 @@ export function LabVoz({
         }
         if (r.conversationId) {
           setEnCurso(r.conversationId);
-          setFase({ fase: "buscando" });
         } else {
           // Sin conversation_id no hay polling: el webhook aterriza igual.
           setSinId(true);
@@ -217,7 +180,7 @@ export function LabVoz({
         <Button
           variante="primaria"
           className="self-start"
-          disabled={pendiente || !telefoniaLista || enCurso !== null}
+          disabled={pendiente || !telefoniaLista || activo}
           onClick={llamar}
         >
           {pendiente ? "Marcando…" : "Llamarme"}
@@ -236,6 +199,19 @@ export function LabVoz({
           </Banner>
         )}
         {fase?.fase === "error" && <Banner variante="error">{fase.error}</Banner>}
+        {fase?.fase !== "aterrizada" && dichos.length > 0 && (
+          <div className="barra-fina flex max-h-64 flex-col gap-3 overflow-y-auto rounded-fila border border-hairline bg-isla p-3">
+            {dichos.map((t, i) => (
+              <ChatBubble
+                key={i}
+                lado={t.role === "agent" ? "agente" : "cliente"}
+                autor={t.role === "agent" ? agente.nombre : "Tú"}
+              >
+                {t.message}
+              </ChatBubble>
+            ))}
+          </div>
+        )}
         {agotado && (
           <Banner>
             Dejé de preguntar (~6 min). Si la llamada terminó, aparece en la pestaña

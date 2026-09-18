@@ -2,6 +2,8 @@
 // con los mismos nombres snake_case, como cartera.ts espeja su SQL.
 // Solo tipos y constantes puras: importable desde componentes cliente y tests.
 
+import type { TurnoTranscript } from "./transcript";
+
 // Pins verificados en producción por el lazo de voz de Luci (2026-07-06):
 // - gpt-4.1-mini: Gemini con razonamiento leyó su chain-of-thought EN INGLÉS
 //   al teléfono; 4.1-mini es rápido y disciplinado.
@@ -94,7 +96,7 @@ export type LlamadaVoz = {
   duracion_seg: number | null;
   costo_creditos: number | null;
   resumen: string | null;
-  transcript: { role: string; message: string | null }[] | null;
+  transcript: TurnoTranscript[] | null;
   datos: Record<string, unknown> | null;
   criterios: Record<string, unknown> | null;
   batch_id: string | null;

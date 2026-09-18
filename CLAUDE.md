@@ -137,6 +137,19 @@ entrada "Voz" en `Sidebar.tsx`) — no queda ninguna clase `adm-*`.
   hace polling: fila del webhook primero, `GET conversations/{id}` mientras).
   Para el mic del widget, `next.config.ts` abre `microphone=(self)` SOLO bajo
   `/admin/:path*` — el resto del sitio sigue bloqueado.
+- **Llamada en vivo desde el cockpit** (2026-09-17): «Llamar con IA» marca
+  directo (sin confirmar) y abre `ModalLlamadaZak` — fase, transcripción que va
+  cayendo y, al colgar, `DetalleLlamada` completo. El modal lo monta
+  `BotonLlamarZak`, así que lo heredan bandeja, Interesados, ficha de lead y
+  Territorios. **Cerrar NO cuelga** (no hay endpoint de colgar) y se dice en
+  pantalla. El poll es un solo hook, `useLlamadaEnVivo` (4 s, tope ~6 min),
+  compartido con el Lab; a quién se pregunta lo decide `consultar`
+  (`estadoLlamadaVoz` con agente conocido, `estadoLlamadaZak` resolviendo
+  `es_zak` en el servidor porque el id del agente no baja al cliente). La
+  transcripción parcial sale del MISMO `GET conversations/{id}` y se parsea con
+  `parseTurnos` (`src/lib/voz/transcript.ts`), el único parser de turnos — lo
+  usa también el webhook post-call, para que lo que se pinta en vivo y lo que
+  se guarda en `llamadas_voz.transcript` no puedan divergir.
 - El **cap diario cuenta solo `saliente`+`prueba`** (lo que nosotros marcamos):
   widget y entrantes ni gastan ni bloquean (`DIRECCIONES_CAP` en
   `src/lib/admin/voz.ts`).

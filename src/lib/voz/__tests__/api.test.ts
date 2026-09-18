@@ -14,7 +14,33 @@ describe("parseConversacionEleven", () => {
       agent_id: "agent_xyz",
       transcript: [],
     });
-    expect(r).toEqual({ conversation_id: "conv_abc123", status: "in-progress" });
+    expect(r).toEqual({ conversation_id: "conv_abc123", status: "in-progress", turnos: [] });
+  });
+
+  // Lo que hace posible narrar la llamada mientras pasa: el mismo GET trae la
+  // transcripción parcial, y crece turno a turno.
+  it("trae los turnos ya transcritos de una llamada en curso", () => {
+    const r = parseConversacionEleven({
+      conversation_id: "conv_abc123",
+      status: "in-progress",
+      transcript: [
+        { role: "agent", message: "¡Hola! Soy Zak, de Zakumi.", time_in_call_secs: 0 },
+        { role: "user", message: "Cuéntame.", time_in_call_secs: 5 },
+      ],
+    });
+    expect(r.turnos).toEqual([
+      { role: "agent", message: "¡Hola! Soy Zak, de Zakumi." },
+      { role: "user", message: "Cuéntame." },
+    ]);
+  });
+
+  // Sin transcripción no hay narración, pero tampoco error: el UI pinta la
+  // fase y espera. Por eso `turnos` es siempre un array.
+  it("sin transcript en el json, turnos queda vacío", () => {
+    expect(parseConversacionEleven({ conversation_id: "c_123456", status: "initiated" }).turnos)
+      .toEqual([]);
+    expect(parseConversacionEleven({ conversation_id: "c_123456", transcript: "rota" }).turnos)
+      .toEqual([]);
   });
 
   it.each(["initiated", "processing", "done", "failed"] as const)(
@@ -43,14 +69,17 @@ describe("parseConversacionEleven", () => {
     expect(parseConversacionEleven(null)).toEqual({
       conversation_id: "",
       status: "desconocido",
+      turnos: [],
     });
     expect(parseConversacionEleven("texto")).toEqual({
       conversation_id: "",
       status: "desconocido",
+      turnos: [],
     });
     expect(parseConversacionEleven({ status: 42 })).toEqual({
       conversation_id: "",
       status: "desconocido",
+      turnos: [],
     });
   });
 });

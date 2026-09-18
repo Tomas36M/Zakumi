@@ -10,6 +10,7 @@
 // reintenta — nada se pierde por una caída del proveedor.
 
 import { revalidatePath } from "next/cache";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { verifySession } from "./dal";
 import {
   agenteZakVoz,
@@ -43,6 +44,7 @@ import {
   type LlamadaVoz,
   type TipoExtraccion,
 } from "@/lib/voz/tipos";
+import type { TurnoTranscript } from "@/lib/voz/transcript";
 import {
   actualizarAgenteEleven,
   agregarVozCompartida,
@@ -672,25 +674,25 @@ export async function agregarVozEspanol(
   return { error: null };
 }
 
-/** Fase de una llamada de prueba, para el polling del lab. */
+/** Fase de una llamada en curso, para el polling del lab y del cockpit. Las
+ *  fases con línea abierta llevan lo transcrito HASTA AHORA: es lo que se
+ *  narra en vivo mientras el webhook post-call no ha llegado. */
 export type FaseLlamadaLab =
   | { fase: "buscando" } // ElevenLabs aún no registra la conversación
-  | { fase: "sonando" } // initiated
-  | { fase: "hablando" } // in-progress
-  | { fase: "procesando" } // colgada; el webhook post-call viene en camino
+  | { fase: "sonando"; turnos: TurnoTranscript[] } // initiated
+  | { fase: "hablando"; turnos: TurnoTranscript[] } // in-progress
+  | { fase: "procesando"; turnos: TurnoTranscript[] } // colgada; el webhook post-call viene en camino
   | { fase: "fallida" } // failed en ElevenLabs (el fallo_inicio aterriza por webhook)
   | { fase: "aterrizada"; llamada: LlamadaVoz } // terminal: fila en llamadas_voz
   | { fase: "error"; error: string };
 
-export async function estadoLlamadaVoz(
+// El cuerpo compartido por las dos puertas de polling: con agente conocido
+// (el lab) y con el agente de Zak resuelto acá (el cockpit).
+async function faseDeLlamada(
+  supabase: SupabaseClient,
   agenteId: string,
   conversationId: string,
 ): Promise<FaseLlamadaLab> {
-  const { supabase } = await verifySession();
-  if (!UUID.test(agenteId) || !CONVERSACION_ID.test(conversationId)) {
-    return { fase: "error", error: "Llamada no válida." };
-  }
-
   // Terminal primero: la fila del webhook es la verdad completa (transcript,
   // datos, audio) — en cuanto existe, se deja de preguntar a ElevenLabs.
   const llamada = await obtenerLlamadaVoz(supabase, agenteId, conversationId);
@@ -702,17 +704,46 @@ export async function estadoLlamadaVoz(
     if (r.error === "no_existe") return { fase: "buscando" };
     return { fase: "error", error: mensajeDe(r.error) };
   }
+  const turnos = r.data.turnos;
   switch (r.data.status) {
     case "initiated":
-      return { fase: "sonando" };
+      return { fase: "sonando", turnos };
     case "in-progress":
-      return { fase: "hablando" };
+      return { fase: "hablando", turnos };
     case "failed":
       return { fase: "fallida" };
     default:
       // processing | done | desconocido: colgada, esperando el post-call.
-      return { fase: "procesando" };
+      return { fase: "procesando", turnos };
   }
+}
+
+export async function estadoLlamadaVoz(
+  agenteId: string,
+  conversationId: string,
+): Promise<FaseLlamadaLab> {
+  const { supabase } = await verifySession();
+  if (!UUID.test(agenteId) || !CONVERSACION_ID.test(conversationId)) {
+    return { fase: "error", error: "Llamada no válida." };
+  }
+  return faseDeLlamada(supabase, agenteId, conversationId);
+}
+
+/**
+ * Lo mismo para una llamada de Zak: el cockpit despacha con `llamarConZak` y
+ * solo se queda con el conversation_id — el id del agente de voz no baja al
+ * cliente, así que se resuelve acá por `es_zak`.
+ */
+export async function estadoLlamadaZak(conversationId: string): Promise<FaseLlamadaLab> {
+  const { supabase } = await verifySession();
+  if (!CONVERSACION_ID.test(conversationId)) {
+    return { fase: "error", error: "Llamada no válida." };
+  }
+  const agente = await agenteZakVoz(supabase);
+  if (!agente) {
+    return { fase: "error", error: "Zak no tiene voz todavía — créala en /admin/voz." };
+  }
+  return faseDeLlamada(supabase, agente.id, conversationId);
 }
 
 export async function lanzarTandaVoz(

@@ -7,6 +7,7 @@
 // direccion): un valor nuevo de ElevenLabs jamás debe tumbar el insert.
 
 import type { Direccion, EstadoLlamada, ResultadoLlamada } from "./tipos";
+import { parseTurnos, type TurnoTranscript } from "./transcript";
 
 export type ParamsRpc = {
   p_agent_id_eleven: string;
@@ -18,7 +19,7 @@ export type ParamsRpc = {
   p_duracion_seg: number | null;
   p_costo_creditos: number | null;
   p_resumen: string | null;
-  p_transcript: { role: string; message: string | null }[] | null;
+  p_transcript: TurnoTranscript[] | null;
   p_datos: Record<string, unknown> | null;
   p_criterios: Record<string, unknown> | null;
   p_dynamic_variables: Record<string, unknown> | null;
@@ -103,16 +104,7 @@ export function parseEventoPostCall(json: unknown): EventoParseado {
     }
   }
 
-  let transcript: { role: string; message: string | null }[] | null = null;
-  if (Array.isArray(data.transcript)) {
-    transcript = data.transcript
-      .map((turno) => obj(turno))
-      .filter((t): t is Record<string, unknown> => t !== null)
-      .map((t) => ({
-        role: texto(t.role) ?? "desconocido",
-        message: typeof t.message === "string" ? t.message : null,
-      }));
-  }
+  const transcript = parseTurnos(data.transcript);
 
   const inicioUnix = entero(metadata?.start_time_unix_secs);
 
