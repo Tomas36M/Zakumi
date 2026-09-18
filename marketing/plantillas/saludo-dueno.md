@@ -24,53 +24,55 @@ ahora en el primero.
 
 ## El texto (el que van a leer 50 negocios)
 
+Segunda versión, del 18 sep. La primera se probó en el celular de Tomás y se
+cayó — ver «Lo que no va», abajo.
+
 ```
-¡Hola! 👋 Este mensaje lo escribe una IA: soy Zak, el asistente de Zakumi
-Estudio. No te escribo para pedir nada — esto es justo lo que hacemos.
+Hola, buenas 👋 Soy Zak, de Zakumi Estudio, en Bogotá.
 
-Montamos agentes como yo para que atiendan el WhatsApp de un negocio:
-responden al instante, toman el pedido o la reserva completos y no se les
-escapa un cliente en hora pico.
+Hacemos tres cosas para negocios como el tuyo: páginas web que convierten,
+aplicaciones web y móviles, y agentes de IA que atienden tu WhatsApp para que
+no se quede ningún cliente sin respuesta.
 
-¿Hablo con el dueño o con quien decide estas cosas? Te muestro en un minuto
-cómo se vería en tu negocio.
+Antes de contarte más: ¿con quién hablo? ¿Eres el dueño del negocio?
 ```
 
 Tres decisiones, por si se quiere discutir alguna:
 
-1. **Abre diciendo que es una IA.** Es verdad, desarma la sospecha de estafa y
-   de paso es la demostración del producto: el mensaje que lee es el trabajo
-   que vende. No hay forma más corta de explicar qué hacemos.
-2. **«No te escribo para pedir nada»** es la línea que rompe el reflejo de la
-   contestadora: el humano que abra el chat después entiende en un segundo que
-   esto no es un pedido.
-3. **Termina en una pregunta que solo un humano puede contestar** («¿hablo con
-   el dueño?»). Su bot no sabe responderla, así que la respuesta —si llega— es
-   de una persona. Y si no llega, el número cae en la cola de llamadas.
+1. **Los tres servicios, con las palabras de la imagen.** El header ofrece
+   «Páginas web que convierten · Aplicaciones web y móviles · Agentes de IA
+   para tu negocio»: un texto que vendiera solo agentes de WhatsApp diría menos
+   que su propia imagen, y eso se lee como error. Van en UNA línea y sin
+   viñetas — el menú con viñetas de `saludo_general` es justo lo que invitaba a
+   la contestadora.
+2. **Zak firma, no se declara.** Ni «este mensaje lo escribe una IA» ni
+   «asistente de inteligencia artificial»: ponerse la etiqueta de robot en la
+   primera frase regala la sospecha que el mensaje tiene que desarmar. Que
+   vendemos agentes de IA sí se dice — es lo que ofrecemos, no lo que firmamos.
+3. **Cierra en una pregunta de sí o no que solo una persona contesta**
+   («¿eres el dueño del negocio?»). Es lo más fácil de responder que existe y
+   ninguna bienvenida automática la responde. Si no llega respuesta, el número
+   cae en la cola de llamadas.
 
-Sin cifras (regla dura: los precios los dice la página) y sin lista de
-viñetas, que en chat se leen mal.
+Sin cifras (regla dura: los precios los dice la página).
 
-### Alternativa más sobria
+### Lo que no va (v1, rechazada el 18 sep)
 
-Si el «lo escribe una IA» no convence, esta dice lo mismo sin el gancho:
+El primer texto abría con «Este mensaje lo escribe una IA: soy Zak, el
+asistente de Zakumi Estudio», vendía solo agentes de WhatsApp y cerraba con
+«¿Hablo con el dueño o con quien decide estas cosas?». Tomás lo probó en su
+celular y lo bajó por las tres cosas: la declaración de IA («esto no por
+dios»), la omisión de las páginas web que la imagen sí ofrece, y la pregunta
+mal redactada. Quedó como regla en el wiki de preferencias del usuario.
 
-```
-¡Hola! 👋 Soy Zak, el asistente de IA de Zakumi Estudio. Ojo: no soy un
-cliente escribiendo, te escribo por trabajo.
-
-Montamos agentes como yo para que atiendan el WhatsApp de un negocio:
-responden, toman pedidos y reservas y no pierden clientes en hora pico.
-
-¿Hablo con el dueño? Te muestro en un minuto cómo se vería en el tuyo.
-```
-
-Cambiarla es cambiar **un string en dos archivos**, y tienen que quedar
-idénticos byte a byte (Meta guarda el texto y el panel lo compara para
-promover borrador→vigente):
+Cambiar el texto es cambiar **un string en tres archivos**, y los tres tienen
+que quedar idénticos byte a byte (Meta guarda el texto y el panel lo compara
+para promover borrador→vigente):
 
 - `whatsapp-bot/scripts/crear_plantilla_saludo.py` → `CUERPO`
-- `supabase/plantillas-saludo-dueno.sql` → `texto_borrador`
+- `supabase/plantillas-saludo-dueno-texto.sql` → `texto_borrador`
+- `src/lib/admin/zak.ts` → `PLANTILLA_SALUDO_TEXTO` (el espejo que se guarda
+  como mensaje del asistente al abrir el chat)
 
 ## Runbook de encendido
 
@@ -108,6 +110,14 @@ cambios» — esa trampa ya costó un día el 13 sep.
 
 5. La primera tanda con el texto nuevo va **con la cola de llamadas al lado**:
    lo que no responda queda en `/admin/zak` → Voz → **Por llamar**.
+
+6. **Si el texto cambia después de aprobada** (pasó el 18 sep con la v1): es
+   una EDICIÓN de `saludo_dueno`, no una plantilla nueva — mientras le quede
+   edición disponible (1 cada 24 h, 10 cada 30 días). Se manda el POST al
+   template id con los components COMPLETOS (header + body) y se corre
+   `supabase/plantillas-saludo-dueno-texto.sql`, que anota la edición en
+   `envios_revision` igual que lo haría el panel: sin ese apunte, el contador
+   del panel cree que la edición del día sigue libre y deja quemar el intento.
 
 `saludo_general` queda aprobada en Meta y nadie la manda, igual que
 `saludo_zakumi`. No se borra: borrar una plantilla aprobada es perder el
