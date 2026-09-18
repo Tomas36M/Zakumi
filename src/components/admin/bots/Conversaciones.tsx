@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
-import { IdCard, Pause, Play, Trash2 } from "lucide-react";
+import { IdCard, MessageSquarePlus, Pause, Play, Trash2 } from "lucide-react";
 import {
   borrarConversacion,
   enviarManual,
@@ -18,7 +18,7 @@ import {
   type FichaNegocio,
   type VerticalProspeccion,
 } from "@/lib/admin/zak";
-import { abrirChatZak, noEraInteresReal } from "@/lib/admin/zak-actions";
+import { noEraInteresReal } from "@/lib/admin/zak-actions";
 import { usePollingVivo } from "@/lib/admin/usePollingVivo";
 import { mismoJson, noLeidos, sembrarVistos, type Visto } from "@/lib/admin/vivo";
 import {
@@ -41,8 +41,8 @@ import { Skeleton } from "@/components/admin/ui/Skeleton";
 import { FichaLeadModal } from "@/components/admin/leads/FichaLeadModal";
 import { useFichaLead } from "@/components/admin/leads/useFichaLead";
 import { useFichaNegocio } from "@/components/admin/leads/useFichaNegocio";
+import { DialogoReabrir } from "./DialogoReabrir";
 import { NuevoChatZak } from "./NuevoChatZak";
-import { SelectorPlantilla } from "./SelectorPlantilla";
 import { useConfirmar } from "@/components/admin/ui/Confirmar";
 import { BotonLlamarZak, type EstadoVozZak } from "@/components/admin/voz/BotonLlamarZak";
 
@@ -125,7 +125,9 @@ export function Conversaciones({
   // Teléfonos cuyo cruce con el CRM ya respondió (con o sin match): antes de
   // eso, "Llamar con IA" espera para no despachar sin el negocio_id.
   const [telsResueltos, setTelsResueltos] = useState<Set<string>>(new Set());
-  const [slugReabrir, setSlugReabrir] = useState<string | null>(null);
+  // El diálogo de reabrir (plantilla + vista previa) vive en el header: acá
+  // solo está su interruptor, y se baja al cambiar de chat.
+  const [reabrirAbierto, setReabrirAbierto] = useState(false);
   // Teléfonos ya consultados (con o sin negocio): cada número viaja al CRM
   // UNA vez por visita — ni clics repetidos ni paginar re-preguntan.
   const pedidasRef = useRef(new Set<string>());
@@ -287,7 +289,7 @@ export function Conversaciones({
       setHistorial(null);
       telefonoRef.current = tel;
       setTelefono(tel);
-      setSlugReabrir(null);
+      setReabrirAbierto(false);
       bajarRef.current = true; // chat recién abierto: scroll al último mensaje
       return traerHistorial(tel);
     },
@@ -394,19 +396,6 @@ export function Conversaciones({
     });
   }
 
-  function reabrirConPlantilla(slug: string) {
-    if (!telefono) return;
-    setAvisoChat(null);
-    startOperar(async () => {
-      const res = await abrirChatZak(telefono, slug, fichaActual?.negocioId);
-      if ("error" in res) {
-        setAvisoChat(res.error);
-        return;
-      }
-      await cargarHistorial(telefono);
-    });
-  }
-
   async function borrar() {
     if (!telefono) return;
     const ok = await confirmar({
@@ -460,7 +449,7 @@ export function Conversaciones({
   }));
 
   const fichaActual = telefono ? fichas[telefono] : undefined;
-  const slugParaReabrir = slugReabrir ?? fichaActual?.verticalSlug ?? "generico";
+  const slugParaReabrir = fichaActual?.verticalSlug ?? "generico";
 
   const [leadId, abrirLead] = useFichaLead();
   const negocioIdActual = fichaActual?.negocioId ?? null;
@@ -477,6 +466,19 @@ export function Conversaciones({
     // calc() propio se descuadraba en cuanto aparecía un banner encima.
     <div className="grid items-start gap-aire min-[900px]:h-full min-[900px]:grid-cols-[340px_minmax(0,1fr)] min-[900px]:items-stretch">
       {dialogo}
+      {/* Se monta con `ventanaCerrada`, así que si la ventana se abre (o se
+          cambia de chat) el modal se va solo: no queda ofreciendo plantilla
+          sobre un chat que ya admite texto libre. */}
+      {reabrirAbierto && ventanaCerrada && telefono && (
+        <DialogoReabrir
+          telefono={telefono}
+          slugInicial={slugParaReabrir}
+          negocioId={negocioIdActual}
+          verticales={verticales}
+          onCerrar={() => setReabrirAbierto(false)}
+          onReabierto={() => cargarHistorial(telefono)}
+        />
+      )}
       {esZak && vozZak && (
         <FichaLeadModal
           leadId={leadId}
@@ -671,6 +673,19 @@ export function Conversaciones({
               </span>
               {historial && (
                 <div className="flex flex-wrap items-center gap-1">
+                  {/* Con la ventana cerrada, reabrir es LA acción del chat:
+                      va primera y en acento, para que se distinga de los
+                      íconos neutros de al lado. */}
+                  {ventanaCerrada && (
+                    <IconButton
+                      etiqueta="Reabrir con plantilla"
+                      disabled={operando}
+                      onClick={() => setReabrirAbierto(true)}
+                      className="text-acento hover:bg-acento-10 hover:text-acento"
+                    >
+                      <MessageSquarePlus className="h-4 w-4" />
+                    </IconButton>
+                  )}
                   {esZak && negocioIdActual && (
                     <IconButton
                       etiqueta="Ver ficha del negocio"
@@ -749,55 +764,45 @@ export function Conversaciones({
               })}
             </div>
             {avisoChat && <Banner variante="error">{avisoChat}</Banner>}
+            {/* Un solo compositor, ventana abierta o cerrada: con la de Meta
+                vencida queda muerto (el texto libre no llega) y lo dice la
+                línea de abajo — reabrir se hace desde el header. */}
             <div className="flex flex-col gap-2 border-t border-hairline pt-3">
-              {ventanaCerrada ? (
-                <>
-                  <Banner>
-                    WhatsApp cerró el chat libre: pasaron más de 24 horas desde el
-                    último mensaje de esta persona (regla de Meta — el texto libre se
-                    descarta en silencio). Para reabrirlo, Zak saluda con la plantilla.
-                  </Banner>
-                  <div className="flex flex-wrap items-end gap-3">
-                    <div className="min-w-64 max-w-md flex-1">
-                      <SelectorPlantilla
-                        valor={slugParaReabrir}
-                        onCambiar={setSlugReabrir}
-                        disabled={operando}
-                        opciones={verticales}
-                      />
-                    </div>
-                    <Button
-                      variante="primaria"
-                      disabled={operando}
-                      onClick={() => reabrirConPlantilla(slugParaReabrir)}
-                    >
-                      {operando ? "Enviando…" : "Reabrir con plantilla"}
-                    </Button>
-                  </div>
-                </>
-              ) : (
-                <form
-                  className="flex gap-2"
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    enviar();
-                  }}
+              <form
+                className="flex gap-2"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  enviar();
+                }}
+              >
+                <Input
+                  className="flex-1"
+                  value={mensaje}
+                  onChange={(e) => setMensaje(e.target.value)}
+                  placeholder={
+                    ventanaCerrada
+                      ? "Chat cerrado por Meta: el texto libre no llega"
+                      : "Mensaje manual por WhatsApp (como el negocio)"
+                  }
+                  disabled={operando || ventanaCerrada || esLabs(telefono)}
+                />
+                <Button
+                  variante="primaria"
+                  type="submit"
+                  disabled={
+                    operando || !mensaje.trim() || ventanaCerrada || esLabs(telefono)
+                  }
                 >
-                  <Input
-                    className="flex-1"
-                    value={mensaje}
-                    onChange={(e) => setMensaje(e.target.value)}
-                    placeholder="Mensaje manual por WhatsApp (como el negocio)"
-                    disabled={operando || esLabs(telefono)}
-                  />
-                  <Button
-                    variante="primaria"
-                    type="submit"
-                    disabled={operando || !mensaje.trim() || esLabs(telefono)}
-                  >
-                    Enviar
-                  </Button>
-                </form>
+                  Enviar
+                </Button>
+              </form>
+              {ventanaCerrada && (
+                <p className="text-sm text-tinta-40">
+                  WhatsApp cerró el chat libre: pasaron más de 24 horas desde el
+                  último mensaje de esta persona y Meta descarta el texto libre en
+                  silencio. Reábrelo con «Reabrir con plantilla», arriba en el header
+                  del chat.
+                </p>
               )}
               {esLabs(telefono) && (
                 <p className="text-sm text-tinta-40">
