@@ -113,3 +113,47 @@ describe("el guion de Zak al llamar (2026-09-12)", () => {
     expect(PRIMER_MENSAJE_ZAK).not.toContain("Tomás");
   });
 });
+
+describe("la voz verifica qué TIENE el negocio (2026-09-18)", () => {
+  it("el guion averigua web, bot y software antes de ofrecer nada", () => {
+    const g = SECCIONES_ZAK.guion;
+    const averigua = g.indexOf("TRES cosas concretas");
+    const conecta = g.indexOf("Conecta UN solo servicio");
+    expect(averigua).toBeGreaterThan(-1);
+    expect(averigua).toBeLessThan(conecta);
+    for (const cosa of ["PÁGINA WEB", "BOT", "SOFTWARE"]) {
+      expect(g).toContain(cosa);
+    }
+  });
+
+  it("una pregunta a la vez: el guion prohíbe soltar las tres seguidas", () => {
+    expect(SECCIONES_ZAK.guion).toMatch(/no dispares las tres seguidas/i);
+  });
+
+  it("lo averiguado queda en campos, no solo en la transcripción", () => {
+    const claves = ZAK.map((c) => c.clave);
+    expect(claves).toEqual(
+      expect.arrayContaining(["tiene_web", "tiene_bot", "tiene_software", "le_hace_falta"]),
+    );
+    for (const clave of ["tiene_web", "tiene_bot", "tiene_software"]) {
+      expect(ZAK.find((c) => c.clave === clave)?.tipo).toBe("boolean");
+    }
+    expect(ZAK.find((c) => c.clave === "le_hace_falta")?.tipo).toBe("string");
+  });
+
+  it("si no se habló del tema el campo va null — nunca un false inventado", () => {
+    for (const clave of ["tiene_web", "tiene_bot", "tiene_software", "le_hace_falta"]) {
+      expect(ZAK.find((c) => c.clave === clave)?.descripcion).toMatch(/null/);
+    }
+  });
+
+  it("llegan a la voz que YA existe por «Poner al día los campos»", () => {
+    const comoEstabaAntes = ZAK.filter(
+      (c) => !c.clave.startsWith("tiene_") && c.clave !== "le_hace_falta",
+    );
+    const r = fusionarExtraccion(comoEstabaAntes, ZAK);
+    expect(r.map((c) => c.clave)).toEqual(
+      expect.arrayContaining(["tiene_web", "tiene_bot", "tiene_software", "le_hace_falta"]),
+    );
+  });
+});

@@ -92,6 +92,13 @@ tienda, de una llamada o de un chat. Espec y runbook:
 - **Campos de Zak**: `EXTRACCION_ZAK` solo se aplica al CREAR el agente. Para
   un agente ya existente, el botón «Poner al día los campos» de su ficha
   (`ponerAlDiaCamposZak`) fusiona los estándar sin pisar lo escrito a mano.
+  Desde el 2026-09-18 incluye **qué YA tiene el negocio** (`tiene_web`,
+  `tiene_bot`, `tiene_software` y `le_hace_falta`): el paso 2 del guion los
+  averigua de a una pregunta y `src/lib/voz/datos.ts` (puro) los pinta
+  legibles en la ficha de la llamada («Ya tiene página web: No», no
+  `tiene_web: false`). ⚠️ Ese botón NO actualiza el GUION: las 5 secciones
+  viven en `agentes_voz` y la semilla de `voz/zak.ts` solo aplica al crear,
+  así que un cambio de guion hay que pegarlo en la ficha del agente.
 - **Pendiente fuera de este repo**: la tool del bot Flask
   (`docs/bot-flask/tool-registrar-solicitud.md`).
 - **Brochure de servicios y precios** (2026-09-13): `public/folletos/

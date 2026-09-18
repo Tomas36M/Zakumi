@@ -80,9 +80,18 @@ export const SECCIONES_ZAK: SeccionesVoz = {
     "respuesta y usa el nombre de ahí en adelante. Si {{nombre_contacto}} trae " +
     "un nombre, confírmalo («¿hablo con…?») en vez de preguntarlo.\n" +
     "2) Pregunta por el negocio antes de ofrecer nada: qué vende y cómo vende " +
-    "hoy. ¿Tiene página web? ¿Vende por WhatsApp? ¿Cobra en línea o en " +
-    "efectivo? ¿Se le quedan chats o llamadas sin responder? Una pregunta a " +
-    "la vez.\n" +
+    "hoy. Y averigua TRES cosas concretas, que son las que deciden qué le " +
+    "sirve: (a) si ya tiene PÁGINA WEB propia o solo redes sociales; (b) si " +
+    "ya usa un BOT o respuestas automáticas para el WhatsApp, o si contestan " +
+    "todo a mano; (c) si lleva pedidos, clientes o inventario en algún " +
+    "SOFTWARE —un CRM, un punto de venta, un sistema de facturación— o en " +
+    "cuaderno y de memoria. Una pregunta a la vez, dentro de la " +
+    "conversación: no dispares las tres seguidas ni suenes a encuesta. Y si " +
+    "sale, aprovecha: ¿cobra en línea o en efectivo? ¿se le quedan chats o " +
+    "llamadas sin responder? Cuando tengas el cuadro, repítelo en una frase " +
+    "para confirmar que entendiste («entonces hoy no tienen página y el " +
+    "WhatsApp lo contesta usted mismo, ¿cierto?»): así la llamada se siente " +
+    "sobre su negocio y no un guion.\n" +
     "3) Conecta UN solo servicio con lo que le contaron — no recites el " +
     "catálogo. Chats sin responder: bot de WhatsApp. Sin página web: página " +
     "web. Vende productos por chat: tienda en línea con catálogo y pagos. " +
@@ -128,6 +137,33 @@ export const EXTRACCION_ZAK: readonly CampoExtraccion[] = [
     tipo: "string",
     descripcion:
       "Cuál servicio le interesó: bot de WhatsApp, página web, mantenimiento, CRM o agente de voz. Si ninguno, null.",
+  },
+  // Las TRES cosas que decide la llamada: qué ya tiene el negocio. Sin esto,
+  // lo averiguado vivía solo en la transcripción y para saber si un negocio
+  // necesita web o bot había que leerse la llamada entera.
+  {
+    clave: "tiene_web",
+    tipo: "boolean",
+    descripcion:
+      "true si el negocio YA tiene página web propia funcionando; false si no tiene o si solo usa redes sociales (Instagram, Facebook). Si no se habló del tema, null.",
+  },
+  {
+    clave: "tiene_bot",
+    tipo: "boolean",
+    descripcion:
+      "true si ya usa un bot, un agente de IA o respuestas automáticas para atender WhatsApp o redes; false si contestan todo a mano. Si no se habló del tema, null.",
+  },
+  {
+    clave: "tiene_software",
+    tipo: "boolean",
+    descripcion:
+      "true si ya usa algún software para el negocio (CRM, punto de venta, sistema de pedidos, inventario o facturación); false si lleva todo en cuaderno, Excel o de memoria. Si no se habló del tema, null.",
+  },
+  {
+    clave: "le_hace_falta",
+    tipo: "string",
+    descripcion:
+      "Lo que el negocio NO tiene y más le serviría, en una frase y nombrando el servicio de Zakumi que lo cubre (ej. 'vende solo por Instagram y no tiene web → página web'). Si no alcanzó a entenderse, null.",
   },
   {
     clave: "mejor_horario",

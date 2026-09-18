@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { fechaCorta } from "@/lib/admin/formato";
+import { etiquetaDato, valorDato } from "@/lib/voz/datos";
 import {
   LABEL_DIRECCION,
   LABEL_RESULTADO,
@@ -46,8 +47,8 @@ export function DetalleLlamada({
         <dl className="grid gap-2 sm:grid-cols-2">
           {datos.map(([clave, valor]) => (
             <div key={clave} className="rounded-fila bg-isla px-3 py-2">
-              <dt className="text-xs text-tinta-40">{clave}</dt>
-              <dd className="text-sm text-tinta">{String(valor)}</dd>
+              <dt className="text-xs text-tinta-40">{etiquetaDato(clave)}</dt>
+              <dd className="text-sm text-tinta">{valorDato(valor)}</dd>
             </div>
           ))}
         </dl>
