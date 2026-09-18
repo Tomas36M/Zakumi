@@ -18,6 +18,13 @@ El material pesado (PNG, JPG, MP4, MP3, TTF) está **fuera de git** (ver
     de arte y QA.
   - Los folletos que usa el sitio están aparte, en `public/folletos/` (tracked).
 
+### `plantillas/` — el copy de las plantillas de WhatsApp
+- `saludo-dueno.md` — el saludo en frío de las tandas (2026-09-18): el texto,
+  por qué se reescribió (los números de las tandas 4–6) y el runbook para
+  crearla en Meta. El texto vive por duplicado a propósito en
+  `whatsapp-bot/scripts/crear_plantilla_saludo.py` y
+  `supabase/plantillas-saludo-dueno.sql`: tienen que ser idénticos byte a byte.
+
 ### `video-70s/` — video promocional de 70 segundos (Marcela + Zak)
 - `guion-video-70s-zak.md` — el guion completo.
 - `prompts-video-70s-zak-EN.md` — prompts en inglés para el generador de video.

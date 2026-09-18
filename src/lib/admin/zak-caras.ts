@@ -21,6 +21,9 @@ export const PESTANAS_VOZ = [
   "voz-config",
   "voz-lab",
   "voz-llamadas",
+  // Los negocios cuya única respuesta fue su contestadora: el bot ya no les
+  // escribe (ver whatsapp-bot/app.py), así que al dueño se le llama.
+  "voz-cola",
   "voz-tanda",
   "voz-widget",
 ] as const;

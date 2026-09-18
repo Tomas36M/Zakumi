@@ -170,6 +170,47 @@ entrada "Voz" en `Sidebar.tsx`) — no queda ninguna clase `adm-*`.
   `SUPABASE_SERVICE_ROLE_KEY` (webhook + /api/zak/llamar), `ZAK_VOZ_TOKEN`.
 - `catalogo.ts` sigue `disponible: false` en `agente-voz` hasta el paso 8 del runbook.
 
+## Contestadoras: el bot se calla y la llamada se encola (2026-09-18, rama `feat/cola-contestadoras`)
+
+Medido sobre las tandas 4, 5 y 6 (15–17 sep, 150 negocios): **el 69 % abre el
+mensaje**, pero de 22 conversaciones con respuesta **18 eran la contestadora
+del negocio**; en las tandas 4 y 5 juntas, 16 respuestas = 15 máquinas + 1
+humano. La fuga no estaba en la persuasión: el embudo medía máquinas.
+
+- **El detector ya existía** (`whatsapp-bot/contestadora.py`, alimentado con
+  los textos reales de la bandeja). Lo nuevo es que **decide**:
+  `veredicto_respuesta` (puro) manda sobre el texto suelto y es **pegajoso
+  hacia arriba** — quien ya escribió como persona NUNCA vuelve a ser máquina,
+  porque callarse con un humano al otro lado es el fallo caro.
+- **El bot no le contesta a una máquina.** `app._encolar_para` clasifica
+  ANTES de encolar; si es máquina el job va con `tipo='contestadora'` y el
+  worker (`worker._atender`, branch ANTES del de pausados) **archiva el
+  mensaje y no llama a Claude**. El mensaje se guarda igual: la bandeja tiene
+  que mostrar qué dijo. ⚠️ **Esto va en código, no en el prompt**: el playbook
+  ya ordenaba «no lo contestes como si fuera una persona» y el 17 sep, con la
+  instrucción viva, el modelo le contestó igual.
+- **Una máquina no avanza el funnel**: no se llama `marcar_respondido`. Por eso
+  los contadores de tandas anteriores al 18 sep están inflados.
+- **La cola de llamadas**: `/admin/zak` → Voz → **«Por llamar»**
+  (`ColaVoz.tsx` + `/admin/api/zak/cola-voz`, lógica pura en
+  `src/lib/admin/cola-voz.ts`). Es **derivada**, no hay tabla nueva: mira las
+  últimas 300 conversaciones del bot, cruza el CRM y marca quién ya recibió
+  llamada. **No llama sola a nadie** — cada llamada la dispara Tomás desde su
+  fila (y abre el modal que la narra en vivo). Marcar sesenta números de golpe
+  es lo que quema una lista sin que nadie mire.
+- **Escalar deja fila en el CRM**: `escalar_a_humano` pausaba el chat y mandaba
+  el aviso por WhatsApp, y ahí moría — el 15 sep un chat ofreció pasarnos con
+  quien decide, Zak prometió que Tomás escribía y nadie escribió. Ahora
+  también crea la solicitud (`_solicitud_de_escalado` → `/api/zak/solicitud`,
+  solo la instancia de Zak), idempotente por teléfono + día de Bogotá: si el
+  modelo ya la registró en el turno, el sitio responde 'duplicada'.
+- **Plantilla nueva `saludo_dueno`** (pendiente de crear/aprobar en Meta):
+  copy y runbook en `marketing/plantillas/saludo-dueno.md`, creación con
+  `whatsapp-bot/scripts/crear_plantilla_saludo.py`, y
+  `supabase/plantillas-saludo-dueno.sql` DESPUÉS de APPROVED (hay que pegarle
+  el id o revienta a propósito). Se crea, no se edita `saludo_general`: Meta
+  solo acepta 1 edición cada 24 h y cuenta las «sin cambios».
+
 ## Encontrar clientes /admin/prospeccion — territorios y barrido (2026-09-01, rama `feat/mapa-prospeccion`)
 
 Spec + **runbook de encendido**: `docs/superpowers/specs/2026-08-31-mapa-prospeccion-design.md`.
