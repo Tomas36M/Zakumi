@@ -11,6 +11,8 @@ import "server-only";
 // listar y PATCHear TODOS los agentes (incluidos los de Luci) — jamás
 // listar-y-editar agentes del workspace.
 
+import { parseTurnos, type TurnoTranscript } from "./transcript";
+
 export type ErrorVoz =
   | "sin_configurar" // falta ELEVENLABS_API_KEY
   | "sin_conexion" // red caída o timeout
@@ -309,6 +311,9 @@ export type EstadoConversacionEleven =
 export type ConversacionEleven = {
   conversation_id: string;
   status: EstadoConversacionEleven;
+  /** Lo transcrito HASTA AHORA (crece llamada adentro). Vacío si el
+   *  proveedor todavía no transcribió nada o no mandó el campo. */
+  turnos: TurnoTranscript[];
 };
 
 const ESTADOS_CONVERSACION: readonly string[] = [
@@ -323,6 +328,9 @@ const ESTADOS_CONVERSACION: readonly string[] = [
  * Parser PURO del GET /v1/convai/conversations/{id} (testeable sin red).
  * Un status que no conocemos no revienta el polling: cae a "desconocido",
  * mismo criterio defensivo que el parseo del webhook.
+ *
+ * El mismo GET trae la transcripción parcial mientras la llamada pasa: es lo
+ * que permite narrarla en vivo sin esperar el webhook post-call.
  */
 export function parseConversacionEleven(json: unknown): ConversacionEleven {
   const c = (json ?? {}) as Record<string, unknown>;
@@ -332,6 +340,7 @@ export function parseConversacionEleven(json: unknown): ConversacionEleven {
       typeof c.status === "string" && ESTADOS_CONVERSACION.includes(c.status)
         ? (c.status as EstadoConversacionEleven)
         : "desconocido",
+    turnos: parseTurnos(c.transcript) ?? [],
   };
 }
 

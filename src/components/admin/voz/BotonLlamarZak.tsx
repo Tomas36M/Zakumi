@@ -6,6 +6,7 @@ import { llamarConZak } from "@/lib/admin/voz-actions";
 import type { EstadoVozZak } from "@/lib/admin/voz-estado";
 import { Button } from "@/components/admin/ui/Button";
 import { IconButton } from "@/components/admin/ui/IconButton";
+import { ModalLlamadaZak } from "./ModalLlamadaZak";
 
 /** Qué tan lista está la voz de Zak — lo calcula el server con `estadoVozZak`.
  * Re-exportado para que los consumidores viejos sigan importándolo de aquí. */
@@ -20,8 +21,12 @@ const MOTIVO: Record<Exclude<EstadoVozZak, "lista">, string> = {
 
 /**
  * "Llamar con IA": Zak marca al prospecto con su agente de voz. Vive en la
- * bandeja del cockpit y en Interesados; el resultado (transcript, datos)
- * aterriza en /admin/voz vía el webhook post-call.
+ * bandeja del cockpit, en Interesados y en la ficha de lead; el resultado
+ * (transcript, datos) aterriza en /admin/voz vía el webhook post-call.
+ *
+ * El clic marca DIRECTO, sin confirmar, y abre el modal que narra la llamada
+ * en vivo. El modal lo monta este botón a propósito: así lo hereda cualquier
+ * pantalla que ya lo tenga, sin cablear nada.
  */
 export function BotonLlamarZak({
   vozZak,
@@ -43,7 +48,9 @@ export function BotonLlamarZak({
   compacto?: boolean;
 }) {
   const [pendiente, startTransition] = useTransition();
-  const [llamando, setLlamando] = useState(false);
+  // La llamada que se está mirando. `conversationId: null` = salió pero el
+  // proveedor no dio id narrable (el modal lo dice y no pollea).
+  const [enCurso, setEnCurso] = useState<{ conversationId: string | null } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   function llamar() {
@@ -59,15 +66,15 @@ export function BotonLlamarZak({
           setError(r.error);
           return;
         }
-        setLlamando(true);
+        setEnCurso({ conversationId: r.conversationId });
       } catch {
         setError("Se perdió la conexión — revisa Llamadas en /admin/voz antes de reintentar.");
       }
     });
   }
 
-  const texto = llamando ? "Zak está llamando 📞" : pendiente ? "Marcando…" : "Llamar con IA";
-  const deshabilitado = pendiente || llamando || cargando || vozZak !== "lista";
+  const texto = enCurso ? "Zak está llamando 📞" : pendiente ? "Marcando…" : "Llamar con IA";
+  const deshabilitado = pendiente || enCurso !== null || cargando || vozZak !== "lista";
   const motivo = vozZak !== "lista" ? MOTIVO[vozZak] : cargando ? "Cargando la ficha del CRM…" : undefined;
 
   return (
@@ -83,6 +90,14 @@ export function BotonLlamarZak({
         </Button>
       )}
       {error && <span className="text-xs text-peligro">{error}</span>}
+      {enCurso && (
+        <ModalLlamadaZak
+          conversationId={enCurso.conversationId}
+          nombre={nombre}
+          telefono={telefono}
+          onCerrar={() => setEnCurso(null)}
+        />
+      )}
     </span>
   );
 }
