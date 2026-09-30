@@ -150,3 +150,23 @@ export function hayIntencion(datos: unknown): boolean {
     lleno(d.cita_fecha_hora)
   );
 }
+
+/**
+ * Qué llamadas pueden volverse solicitud (con cita y aviso). Saliente y
+ * entrante, siempre. La «prueba» del panel solo cuando marcó a un número que
+ * NO es del equipo (`propios` = AVISOS_WHATSAPP_TO): el 30 sep el botón de
+ * prueba se usó con una prospecta real, dijo que sí, y no quedó en la bandeja.
+ * Sin teléfono o sin la lista del equipo no se puede distinguir → no cuenta.
+ */
+export function esLlamadaComercial(
+  direccion: Direccion,
+  telefono: string | null,
+  propios: string[],
+): boolean {
+  if (direccion === "saliente" || direccion === "entrante") return true;
+  if (direccion !== "prueba") return false;
+  const digitos = (t: string) => t.replace(/\D/g, "");
+  const tel = telefono ? digitos(telefono) : "";
+  if (tel === "" || propios.length === 0) return false;
+  return !propios.some((p) => digitos(p) === tel);
+}

@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { verificarFirma } from "@/lib/voz/hmac";
-import { parseEventoPostCall, hayIntencion } from "@/lib/voz/webhook";
+import { parseEventoPostCall, hayIntencion, esLlamadaComercial } from "@/lib/voz/webhook";
 import { createSupabaseService } from "@/lib/voz/supabase-service";
-import { avisarAdmin } from "@/lib/portal/avisos";
+import { avisarAdmin, destinatarios } from "@/lib/portal/avisos";
 import { registrarSolicitudEntrante } from "@/lib/solicitudes/entrada";
 
 // Webhook post-call de ElevenLabs — endpoint público (src/proxy.ts no cubre
@@ -70,20 +70,26 @@ export async function POST(request: Request) {
   //     solicitud en la bandeja + cita + aviso (todo dentro de entrada.ts).
   //   - agente DE UN CLIENTE (lead): se comporta igual que siempre — la venta
   //     ya la creó la RPC en ventas_cliente y aquí solo sale el aviso.
-  // 'prueba' (el lab del panel) nunca produce efectos comerciales. Del agente
-  // interno solo cuentan saliente/entrante: sus sesiones de widget son casi
-  // siempre el propio lab.
+  // Del agente interno cuentan saliente/entrante, y la 'prueba' del panel solo
+  // si marcó a alguien de fuera del equipo (ver esLlamadaComercial): sus
+  // sesiones de widget son casi siempre el propio lab. En agentes de clientes
+  // la 'prueba' sigue sin producir efectos comerciales.
   const d = evento.params.p_datos ?? {};
   const dir = evento.params.p_direccion;
   const texto = (v: unknown) => (typeof v === "string" && v !== "" ? v : null);
+  const comercial = esLlamadaComercial(
+    dir,
+    evento.params.p_telefono,
+    destinatarios(process.env.AVISOS_WHATSAPP_TO),
+  );
 
-  if (r.status === "ok" && dir !== "prueba") {
+  if (r.status === "ok") {
     // '' del extractor no es un teléfono: cae al número marcado del evento.
     const telLead = texto(d.lead_telefono) ?? evento.params.p_telefono;
 
     // Solo con intención (interés, servicio, horario o cita — ver hayIntencion):
     // un nombre suelto y colgar no es una solicitud.
-    if (r.sin_cliente === true && hayIntencion(d) && (dir === "saliente" || dir === "entrante")) {
+    if (r.sin_cliente === true && hayIntencion(d) && comercial) {
       // La propia RPC devuelve el id de la fila que acaba de insertar en
       // llamadas_voz (v_llamada_id) — no hace falta ir a buscarlo aparte.
       await registrarSolicitudEntrante(supabase, {
@@ -96,7 +102,7 @@ export async function POST(request: Request) {
         citaCruda: d.cita_fecha_hora,
         llamadaId: r.llamada_id ?? null,
       });
-    } else if (r.lead === true) {
+    } else if (r.lead === true && dir !== "prueba") {
       const quien = [d.lead_nombre, telLead]
         .filter((x): x is string => typeof x === "string" && x !== "")
         .join(" · ");

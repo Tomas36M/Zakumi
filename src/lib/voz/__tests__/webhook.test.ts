@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseEventoPostCall, hayIntencion } from "../webhook";
+import { parseEventoPostCall, hayIntencion, esLlamadaComercial } from "../webhook";
 
 /** Evento post_call_transcription con el shape de los fixtures de la doc
  * oficial (los mismos que usa Luci). */
@@ -232,5 +232,33 @@ describe("hayIntencion — cuándo una llamada de Zak se vuelve solicitud", () =
     expect(hayIntencion({ lead_interesado: "true", cita_fecha_hora: 42 })).toBe(false);
     expect(hayIntencion({})).toBe(false);
     expect(hayIntencion(undefined)).toBe(false);
+  });
+});
+
+describe("esLlamadaComercial — qué llamadas pueden crear solicitud", () => {
+  const propios = ["573001112233", "573004445566"];
+
+  it("saliente y entrante siempre cuentan", () => {
+    expect(esLlamadaComercial("saliente", "+573001112233", propios)).toBe(true);
+    expect(esLlamadaComercial("entrante", null, propios)).toBe(true);
+  });
+
+  it("la prueba a un número del equipo NO cuenta (es el lab de siempre)", () => {
+    expect(esLlamadaComercial("prueba", "+573001112233", propios)).toBe(false);
+    expect(esLlamadaComercial("prueba", "57 300 444 5566", propios)).toBe(false);
+  });
+
+  it("la prueba a un número ajeno cuenta: es un prospecto real", () => {
+    // 30 sep: el botón de prueba se usó con una prospecta y su interés se perdió.
+    expect(esLlamadaComercial("prueba", "+573227778899", propios)).toBe(true);
+  });
+
+  it("prueba sin teléfono o sin lista del equipo: por las dudas, no cuenta", () => {
+    expect(esLlamadaComercial("prueba", null, propios)).toBe(false);
+    expect(esLlamadaComercial("prueba", "+573227778899", [])).toBe(false);
+  });
+
+  it("widget nunca cuenta", () => {
+    expect(esLlamadaComercial("widget", "+573227778899", propios)).toBe(false);
   });
 });
